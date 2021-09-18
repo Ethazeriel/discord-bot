@@ -44,7 +44,7 @@ module.exports = {
       await interaction.reply({ files: [attachment] });
     } else { // code for specific dabs
       const dabStr = 'https://ethazeriel.net/pride/sprites/dab_' + dabChoice + '.png';
-
+      // i am sad rhythm bot is dead
       // rendering with a canvas means we can control the image size
       const canvas = Canvas.createCanvas(160, 100);
       const context = canvas.getContext('2d');
