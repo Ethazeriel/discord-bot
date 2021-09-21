@@ -9,7 +9,11 @@ const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('
 if (process.argv.length > 3) {
   console.log('Too many arguments');
   process.exit();
+} else if (process.argv.length < 3) {
+  console.log('Please enter a launch argument. The valid arguments are: guild, global');
+  process.exit();
 }
+
 console.log('Deployment started with scope: ' + launchArg);
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
