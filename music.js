@@ -33,5 +33,12 @@ async function playTrack(interaction, track) {
   }
 }
 
+async function leaveVoice(interaction) {
+  const connection = getVoiceConnection(interaction.guild.id);
+  connection.destroy();
+}
+
+
 exports.createVoiceConnection = createVoiceConnection;
 exports.playTrack = playTrack;
+exports.leaveVoice = leaveVoice;
