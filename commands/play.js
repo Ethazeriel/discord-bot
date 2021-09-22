@@ -1,7 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, entersState, VoiceConnectionStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
-
+const music = require('../music.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -47,29 +46,8 @@ module.exports = {
       await interaction.reply({ content:`Failed to parse string ${reqstr}`, ephemeral: true });
     }
 
-    const connection = joinVoiceChannel({
-      channelId: interaction.member.voice.channel.id,
-      guildId: interaction.member.voice.channel.guild.id,
-      adapterCreator: interaction.member.voice.channel.guild.voiceAdapterCreator,
-    });
-    connection.on('stateChange', (oldState, newState) => { console.log(`Connection transitioned from ${oldState.status} to ${newState.status}`); });
-    const player = createAudioPlayer();
-    player.on('error', error => {console.error('error:', error.message, 'with file', error.resource.metadata.title, 'full:', error);});
-    player.on('stateChange', (oldState, newState) => { console.log(`Player transitioned from ${oldState.status} to ${newState.status}`); });
-
-    const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
-    player.play(resource);
-    connection.subscribe(player);
-
-    try {
-      await entersState(connection, VoiceConnectionStatus.Ready, 5e3);
-      await interaction.reply(`Now Playing: ${resource.metadata.title}`);
-      return connection;
-    } catch (error) {
-      connection.destroy();
-      console.log(error);
-    }
-
+    music.createVoiceConnection(interaction);
+    music.playTrack(interaction, track);
   },
 };
 
