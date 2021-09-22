@@ -15,21 +15,32 @@ module.exports = {
 
     const reqstr = interaction.options.getString('source');
 
-    let songInfo = null;
-    let song = null;
+    let trackInfo = null;
+    let track = null;
     switch (getRequestType(reqstr)) {
     case 'youtube':
-      // handle direct youtube urls
-      console.log(reqstr);
-      songInfo = await ytdl.getInfo(reqstr);
-      song = {
-        title: songInfo.videoDetails.title,
-        url: songInfo.videoDetails.video_url,
-      };
+      try {
+        // handle direct youtube urls
+        trackInfo = await ytdl.getInfo(reqstr);
+        track = {
+          title: trackInfo.videoDetails.title,
+          url: trackInfo.videoDetails.video_url,
+        };
+      } catch (error) {
+        console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+      }
       break;
+
     case 'spotify':
-      // handle direct spotify urls
+      try {
+        // handle direct spotify urls
+
+      } catch (error) {
+        console.error('Error parsing spotify string:', reqstr, '. Stacktrace:', error);
+      }
+
       break;
+
     default:
       // error out if we don't know how to handle the string
       console.log(`Failed to parse string ${reqstr}`);
@@ -46,7 +57,7 @@ module.exports = {
     player.on('error', error => {console.error('error:', error.message, 'with file', error.resource.metadata.title, 'full:', error);});
     player.on('stateChange', (oldState, newState) => { console.log(`Player transitioned from ${oldState.status} to ${newState.status}`); });
 
-    const resource = createAudioResource(ytdl(song.url), { metadata: { title: song.title } });
+    const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
     player.play(resource);
     connection.subscribe(player);
 
