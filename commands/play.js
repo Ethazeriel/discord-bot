@@ -27,6 +27,7 @@ module.exports = {
         };
       } catch (error) {
         console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+        await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
       }
       break;
 
@@ -36,6 +37,7 @@ module.exports = {
 
       } catch (error) {
         console.error('Error parsing spotify string:', reqstr, '. Stacktrace:', error);
+        await interaction.reply({ content:`Error parsing spotify string: ${reqstr}`, ephemeral: true });
       }
 
       break;
