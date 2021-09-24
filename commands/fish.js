@@ -13,19 +13,19 @@ module.exports = {
         .addChoice('Random', 'random')
         .addChoice('Pride', 'pride')
         .addChoice('Trans', 'trans')
-        // .addChoice('Agender', 'agender')
-        // .addChoice('Aromantic', 'aromantic')
+        .addChoice('Agender', 'agender')
+        .addChoice('Aromantic', 'aromantic')
         .addChoice('Asexual', 'asexual')
         .addChoice('Bigender', 'bigender')
-        // .addChoice('Demisexual', 'demisexual')
+        .addChoice('Demisexual', 'demisexual')
         .addChoice('Gay(men)', 'gaymen')
         .addChoice('Genderfluid', 'genderfluid')
         .addChoice('Genderqueer', 'genderqueer')
         .addChoice('Intersex', 'intersex')
         .addChoice('Lesbian', 'lesbian')
         .addChoice('Nonbinary', 'nonbinary')
-        .addChoice('Pan', 'pan'),
-      // .addChoice('Poly', 'poly')
+        .addChoice('Pan', 'pan')
+        .addChoice('Poly', 'poly'),
     ),
   async execute(interaction) {
     const fishChoice = interaction.options.getString('type');
