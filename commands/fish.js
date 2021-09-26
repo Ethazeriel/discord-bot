@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment } = require('discord.js');
 const Canvas = require('canvas');
+const utils = require('../utils.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -30,14 +31,11 @@ module.exports = {
   async execute(interaction) {
     const fishChoice = interaction.options.getString('type');
     if (fishChoice == 'random') { // do this if we've selected random fishs
-      const fisharray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
-      const ranfish = fisharray[Math.floor(Math.random() * fisharray.length)];
-      const fishStr = 'https://ethazeriel.net/pride/sprites/fish_' + ranfish + '.png';
 
       // rendering with a canvas means we can control the image size
       const canvas = Canvas.createCanvas(160, 160);
       const context = canvas.getContext('2d');
-      const fishimg = await Canvas.loadImage(fishStr);
+      const fishimg = await Canvas.loadImage(utils.pickPride('fish'));
       context.drawImage(fishimg, 0, 0, canvas.width, canvas.height);
       const attachment = new MessageAttachment(canvas.toBuffer(), 'fish-image.png');
 

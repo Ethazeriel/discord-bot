@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment } = require('discord.js');
 const Canvas = require('canvas');
+const utils = require('../utils.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -29,14 +30,10 @@ module.exports = {
   async execute(interaction) {
     const dabChoice = interaction.options.getString('type');
     if (dabChoice == 'random') { // do this if we've selected random dabs
-      const dabarray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
-      const randab = dabarray[Math.floor(Math.random() * dabarray.length)];
-      const dabStr = 'https://ethazeriel.net/pride/sprites/dab_' + randab + '.png';
-
       // rendering with a canvas means we can control the image size
       const canvas = Canvas.createCanvas(160, 100);
       const context = canvas.getContext('2d');
-      const dabimg = await Canvas.loadImage(dabStr);
+      const dabimg = await Canvas.loadImage(utils.pickPride('dab'));
       context.drawImage(dabimg, 0, 0, canvas.width, canvas.height);
       const attachment = new MessageAttachment(canvas.toBuffer(), 'dab-image.png');
 
