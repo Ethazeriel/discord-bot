@@ -3,6 +3,7 @@ const music = require('../music.js');
 const ytdl = require('ytdl-core');
 const { MessageAttachment } = require('discord.js');
 const Canvas = require('canvas');
+const utils = require('../utils.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -84,12 +85,31 @@ module.exports = {
 
     case 'nowplaying': {
       // const track = music.getCurrentTrack();
+      const track = {
+        title: 'Song Name',
+        artist: 'Artist Name',
+        album: 'Album Name',
+        url: 'url',
+      };
 
 
-      const canvas = Canvas.createCanvas(160, 100);
+      const canvas = Canvas.createCanvas(700, 250);
       const context = canvas.getContext('2d');
-      const bg = await Canvas.loadImage('http://ethazeriel.net/bg.png');
+      const bg = await Canvas.loadImage('testing/bg.jpg');
       context.drawImage(bg, 0, 0, canvas.width, canvas.height);
+      const albumart = await Canvas.loadImage('testing/albumart.jpg');
+      context.drawImage(albumart, 25, 25, 200, 200);
+
+      context.textBaseline = 'top';
+      context.font = 'bold 60px sans-serif';
+      context.fillText(track.title, 250, 35);
+      context.font = '32px sans-serif';
+      context.fillText(track.artist, 250, 105);
+      context.fillText(track.album, 250, 145);
+
+      const dabimg = await Canvas.loadImage(utils.pickPride('dab'));
+      context.drawImage(dabimg, 605, 185, 80, 50);
+
       const attachment = new MessageAttachment(canvas.toBuffer(), 'np-image.png');
 
       // push the message to chat
