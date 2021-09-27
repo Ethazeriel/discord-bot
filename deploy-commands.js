@@ -35,7 +35,7 @@ const rest = new REST({ version: '9' }).setToken(token);
         Routes.applicationCommands(clientId),
         { body: commands },
       );
-      console.log('Successfully registered commands at scope: guild');
+      console.log('Successfully registered commands at scope: global');
     } else {
       console.log('Invalid launch argument. The valid options are: guild, global');
     }
