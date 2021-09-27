@@ -1,5 +1,6 @@
 const fs = require('fs');
 // Require the necessary discord.js classes
+global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json');
 
@@ -20,6 +21,7 @@ for (const file of commandFiles) {
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
   console.log('Ready!');
+  console.log('Node version: ', process.version);
 });
 
 // actually run the commands
