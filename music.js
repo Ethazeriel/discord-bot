@@ -32,7 +32,7 @@ async function createVoiceConnection(interaction) { // join a voice channel
 }
 
 
-async function addToQueue(track) { // append things to the queue
+function addToQueue(track) { // append things to the queue
   queue.push(track);
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
@@ -40,14 +40,14 @@ async function addToQueue(track) { // append things to the queue
 
 }
 
-async function addToQueueTop(track) { // prepend things to the queue
+function addToQueueTop(track) { // prepend things to the queue
   queue.unshift(track);
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
 }
 
-async function addToQueueSkip(track) { // start playing immediately
+function addToQueueSkip(track) { // start playing immediately
   queue.unshift(track);
   playTrack();
 }
