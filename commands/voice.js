@@ -1,7 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const ytdl = require('ytdl-core');
-const { MessageAttachment, MessageEmbed } = require('discord.js');
 const utils = require('../utils.js');
 
 module.exports = {
@@ -16,12 +15,25 @@ module.exports = {
       .setDescription('forces the bot to leave voice'))
     .addSubcommand(subcommand => subcommand
       .setName('play')
-      .setDescription('play a song')
+      .setDescription('adds a song to the queue')
       .addStringOption(option =>
         option.setName('source').setDescription('Song source').setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('nowplaying')
-      .setDescription('Gets the current track')),
+      .setDescription('Gets the current track'))
+    .addSubcommand(subcommand => subcommand
+      .setName('playtop')
+      .setDescription('adds a song to the top of the queue')
+      .addStringOption(option =>
+        option.setName('source').setDescription('Song source').setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('playskip')
+      .setDescription('adds a song to the top of the queue, and plays it immediately')
+      .addStringOption(option =>
+        option.setName('source').setDescription('Song source').setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('skip')
+      .setDescription('skips the currently running song')),
 
 
   async execute(interaction) {
@@ -45,68 +57,108 @@ module.exports = {
 
       let trackInfo = null;
       let track = null;
-      switch (getRequestType(reqstr)) {
-      case 'youtube':
-        try {
+      try {
         // handle direct youtube urls
-          trackInfo = await ytdl.getInfo(reqstr);
-          track = {
-            title: trackInfo.videoDetails.title,
-            url: trackInfo.videoDetails.video_url,
-          };
-        } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
-        }
-        break;
-
-      case 'spotify':
-        try {
-        // handle direct spotify urls
-
-        } catch (error) {
-          console.error('Error parsing spotify string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing spotify string: ${reqstr}`, ephemeral: true });
-        }
-
-        break;
-
-      default:
-      // error out if we don't know how to handle the string
-        console.log(`Failed to parse string ${reqstr}`);
-        await interaction.reply({ content:`Failed to parse string ${reqstr}`, ephemeral: true });
+        trackInfo = await ytdl.getInfo(reqstr);
+        track = {
+          title: trackInfo.videoDetails.title,
+          artist: 'placeholder artist',
+          album: 'placeholder album',
+          url: trackInfo.videoDetails.video_url,
+          albumart: 'testing/albumart.jpg',
+        };
+      } catch (error) {
+        console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+        await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
       }
 
       music.createVoiceConnection(interaction);
-      music.playTrack(interaction, track);
+      music.addToQueue(track);
+      utils.generateTrackReply(interaction, track, 'Added to Queue: ');
       break;
     }
 
     case 'nowplaying': {
-      // const track = music.getCurrentTrack();
-      const track = {
-        title: 'Song Name',
-        artist: 'very extremely long Artist Name',
-        album: 'living as ghosts with buildings as teeth is such a long Album Name',
-        url: 'url',
-        albumart: 'arturl',
-      };
+      const track = music.getCurrentTrack();
+      console.log(track);
 
-      const albumart = new MessageAttachment('testing/albumart.jpg');
-      const npEmbed = new MessageEmbed()
-        .setAuthor('Now Playing: ', utils.pickPride('fish'))
-        .setColor('#580087')
-        .addFields(
-          { name: track.title, value: '** **' },
-          { name: track.artist, value: '** **', inline: true },
-          { name: '\u200b', value: '** **', inline: true },
-          { name: track.album, value: '** **', inline: true },
-        )
-        .setThumbnail('attachment://albumart.jpg');
-      await interaction.reply({ embeds: [npEmbed], files: [albumart] });
+      if (track != null) {
+        utils.generateTrackReply(interaction, track, 'Now Playing: ');
+      } else {
+        await interaction.reply({ content:'unable to get the current track.', ephemeral: true });
+      }
       break;
     }
 
+    case 'playtop': {
+      const reqstr = interaction.options.getString('source');
+
+      let trackInfo = null;
+      let track = null;
+      try {
+        // handle direct youtube urls
+        trackInfo = await ytdl.getInfo(reqstr);
+        track = {
+          title: trackInfo.videoDetails.title,
+          artist: 'placeholder artist',
+          album: 'placeholder album',
+          url: trackInfo.videoDetails.video_url,
+          albumart: 'testing/albumart.jpg',
+        };
+      } catch (error) {
+        console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+        await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+      }
+
+      music.createVoiceConnection(interaction);
+      music.addToQueueTop(track);
+      utils.generateTrackReply(interaction, track, 'Added to top of queue: ');
+      break;
+    }
+
+    case 'playskip': {
+      const reqstr = interaction.options.getString('source');
+
+      let trackInfo = null;
+      let track = null;
+      try {
+        // handle direct youtube urls
+        trackInfo = await ytdl.getInfo(reqstr);
+        track = {
+          title: trackInfo.videoDetails.title,
+          artist: 'placeholder artist',
+          album: 'placeholder album',
+          url: trackInfo.videoDetails.video_url,
+          albumart: 'testing/albumart.jpg',
+        };
+      } catch (error) {
+        console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+        await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+      }
+
+      music.createVoiceConnection(interaction);
+      music.addToQueueSkip(track);
+      utils.generateTrackReply(interaction, track, 'Playing Now: ');
+      break;
+    }
+
+    case 'skip': {
+
+      let track = null;
+
+      track = {
+        title: 'Silence',
+        artist: 'placeholder artist',
+        album: 'placeholder album',
+        url: '../empty.mp3',
+        albumart: 'testing/albumart.jpg',
+      };
+
+      music.createVoiceConnection(interaction);
+      music.playLocalTrack(track);
+      await interaction.reply({ content:'Skipped.' });
+      break;
+    }
     default: {
       console.log('OH NO SOMETHING\'S FUCKED');
       await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
@@ -116,13 +168,3 @@ module.exports = {
 
   },
 };
-
-
-function getRequestType(string) {
-  const test = string.split('//');
-  if (test[1].startsWith('www.youtube' || 'youtube' || 'youtu.be')) {
-    return ('youtube');
-  } else if (test[1].startsWith('open.spotify' || 'spotify')) {
-    return ('spotify');
-  }
-}
