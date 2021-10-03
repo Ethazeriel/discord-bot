@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const ytdl = require('ytdl-core');
 const utils = require('../utils.js');
+const playlists = require('../playlists.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -33,7 +34,20 @@ module.exports = {
         option.setName('source').setDescription('Song source').setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('skip')
-      .setDescription('skips the currently running song')),
+      .setDescription('skips the currently running song'))
+    .addSubcommand(subcommand => subcommand
+      .setName('showqueue')
+      .setDescription('Prints the current queue')
+      .addIntegerOption(option =>
+        option.setName('page').setDescription('Page to show').setRequired(false)))
+    .addSubcommand(subcommand => subcommand
+      .setName('playtest')
+      .setDescription('TRAINSONG'))
+    .addSubcommand(subcommand => subcommand
+      .setName('remove')
+      .setDescription('remove a track from the queue')
+      .addIntegerOption(option =>
+        option.setName('track').setDescription('Track to remove').setRequired(true))),
 
 
   async execute(interaction) {
@@ -74,16 +88,16 @@ module.exports = {
 
       music.createVoiceConnection(interaction);
       music.addToQueue(track);
-      utils.generateTrackReply(interaction, track, 'Added to Queue: ');
+      utils.generateTrackEmbed(interaction, track, 'Added to Queue: ');
       break;
     }
 
     case 'nowplaying': {
       const track = music.getCurrentTrack();
-      console.log(track);
+      // console.log(track);
 
       if (track != null) {
-        utils.generateTrackReply(interaction, track, 'Now Playing: ');
+        utils.generateTrackEmbed(interaction, track, 'Now Playing: ');
       } else {
         await interaction.reply({ content:'unable to get the current track.', ephemeral: true });
       }
@@ -112,7 +126,7 @@ module.exports = {
 
       music.createVoiceConnection(interaction);
       music.addToQueueTop(track);
-      utils.generateTrackReply(interaction, track, 'Added to top of queue: ');
+      utils.generateTrackEmbed(interaction, track, 'Added to top of queue: ');
       break;
     }
 
@@ -138,7 +152,7 @@ module.exports = {
 
       music.createVoiceConnection(interaction);
       music.addToQueueSkip(track);
-      utils.generateTrackReply(interaction, track, 'Playing Now: ');
+      utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
       break;
     }
 
@@ -148,8 +162,8 @@ module.exports = {
 
       track = {
         title: 'Silence',
-        artist: 'placeholder artist',
-        album: 'placeholder album',
+        artist: 'Eth',
+        album: 'ethsound',
         url: '../empty.mp3',
         albumart: 'testing/albumart.jpg',
       };
@@ -159,6 +173,34 @@ module.exports = {
       await interaction.reply({ content:'Skipped.' });
       break;
     }
+
+    case 'showqueue': {
+      const track = music.getCurrentTrack();
+      let page = interaction.options.getInteger('page');
+      if (page == null) {page = 1;}
+
+      if (track != null) {
+        utils.generateQueueEmbed(interaction, track, music.queue, 'Current Queue:', page);
+      } else {
+        await interaction.reply({ content:'unable to get the current queue.', ephemeral: true });
+      }
+      break;
+    }
+
+    case 'playtest': {
+      music.createVoiceConnection(interaction);
+      music.addMultipleToQueue(playlists.trainsong);
+      await interaction.reply({ content:'TRAINSONG' });
+      break;
+    }
+
+    case 'remove': {
+      music.removeTrack(interaction.options.getInteger('track') - 1);
+      await interaction.reply(`Removed item ${interaction.options.getInteger('track')} from the queue.`);
+      break;
+    }
+
+
     default: {
       console.log('OH NO SOMETHING\'S FUCKED');
       await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });

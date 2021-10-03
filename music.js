@@ -12,7 +12,7 @@ player.on('error', error => {console.error('error:', error.message, 'with file',
 player.on('stateChange', (oldState, newState) => {
   console.log(`Player transitioned from ${oldState.status} to ${newState.status}`);
   playerStatus = newState.status;
-  if (oldState.status == 'playing' && newState.status == 'idle') {
+  if (oldState.status == 'playing' && newState.status == 'idle') { // Starts the next track in line when one finishes
     playTrack();
   }
 });
@@ -34,6 +34,15 @@ async function createVoiceConnection(interaction) { // join a voice channel
 
 function addToQueue(track) { // append things to the queue
   queue.push(track);
+  if (playerStatus == 'idle') { // start playing if the player is idle
+    playTrack();
+  }
+}
+
+function addMultipleToQueue(tracks) {
+  for (const track of tracks) {
+    queue.push(track);
+  }
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
@@ -85,6 +94,9 @@ function getCurrentTrack() {
   }
 }
 
+function removeTrack(track) {
+  queue.splice(track, 1);
+}
 
 exports.createVoiceConnection = createVoiceConnection;
 exports.playTrack = playTrack;
@@ -95,3 +107,5 @@ exports.getCurrentTrack = getCurrentTrack;
 exports.addToQueueTop = addToQueueTop;
 exports.addToQueueSkip = addToQueueSkip;
 exports.playLocalTrack = playLocalTrack;
+exports.addMultipleToQueue = addMultipleToQueue;
+exports.removeTrack = removeTrack;
