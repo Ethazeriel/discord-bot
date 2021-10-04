@@ -19,10 +19,15 @@ module.exports = {
 
 
   async execute(interaction) {
+    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName} and options url:${interaction.options.getString('url')}, type:${interaction.options.getString('type')}`);
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
-      switch (interaction.options.getString('type')) {
+      let type = interaction.options.getString('type');
+      if (type == null) { type = 'end';}
 
-      case null || 'end': {
+
+      switch (type) {
+
+      case 'end': {
         const reqstr = interaction.options.getString('url');
 
         let trackInfo = null;
