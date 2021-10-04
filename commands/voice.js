@@ -47,7 +47,10 @@ module.exports = {
       .setName('remove')
       .setDescription('remove a track from the queue')
       .addIntegerOption(option =>
-        option.setName('track').setDescription('Track to remove').setRequired(true))),
+        option.setName('track').setDescription('Track to remove').setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('loop')
+      .setDescription('Toggles queue looping')),
 
 
   async execute(interaction) {
@@ -56,13 +59,13 @@ module.exports = {
 
     case 'join': {
       music.createVoiceConnection(interaction);
-      await interaction.reply(`Joined voice channel ${interaction.member.voice.channel}`);
+      await interaction.reply({ content:`Joined voice channel ${interaction.member.voice.channel}`, ephemeral: true });
       break;
     }
 
     case 'leave': {
       music.leaveVoice(interaction);
-      await interaction.reply('Left voice channel (if I was in one).');
+      await interaction.reply({ content:'Left voice channel (if I was in one).', ephemeral: true });
       break;
     }
 
@@ -189,7 +192,8 @@ module.exports = {
 
     case 'playtest': {
       music.createVoiceConnection(interaction);
-      music.addMultipleToQueue(playlists.trainsong);
+      await music.addMultipleToQueue(playlists.trainsong);
+      // utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Queued Trainsong:', 1);
       await interaction.reply({ content:'TRAINSONG' });
       break;
     }
@@ -200,6 +204,13 @@ module.exports = {
       break;
     }
 
+    case 'loop': {
+      const status = music.toggleLoop();
+      if (status == true) {
+        await interaction.reply({ content:'Enabled Queue Loop.' });
+      } else {await interaction.reply({ content:'Disabled Queue Loop.' });}
+      break;
+    }
 
     default: {
       console.log('OH NO SOMETHING\'S FUCKED');

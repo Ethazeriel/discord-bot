@@ -7,6 +7,7 @@ let currentTrack = [];
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
+let loop = false;
 
 player.on('error', error => {console.error('error:', error.message, 'with file', error.resource.metadata.title, 'full:', error);});
 player.on('stateChange', (oldState, newState) => {
@@ -70,6 +71,7 @@ async function playTrack() { // start the player
     player.play(resource);
     currentTrack = queue[0];
     queue.shift();
+    if (loop == true) {queue.push(track);}
   } else {
     console.log('queue finished');
   }
@@ -98,6 +100,23 @@ function removeTrack(track) {
   queue.splice(track, 1);
 }
 
+function toggleLoop() {
+  if (loop == false) {
+    loop = true;
+    if (currentTrack != queue[queue.length - 1]) {
+      queue.push(currentTrack);
+    }
+    return true;
+  } else {
+    loop = false;
+    return false;
+  }
+}
+
+function getLoop() {
+  return loop;
+}
+
 exports.createVoiceConnection = createVoiceConnection;
 exports.playTrack = playTrack;
 exports.leaveVoice = leaveVoice;
@@ -109,3 +128,5 @@ exports.addToQueueSkip = addToQueueSkip;
 exports.playLocalTrack = playLocalTrack;
 exports.addMultipleToQueue = addMultipleToQueue;
 exports.removeTrack = removeTrack;
+exports.toggleLoop = toggleLoop;
+exports.getLoop = getLoop;

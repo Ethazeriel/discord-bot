@@ -1,4 +1,5 @@
 const { MessageAttachment } = require('discord.js');
+const music = require('./music.js');
 
 function pickPride(type) {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
@@ -9,7 +10,7 @@ function pickPride(type) {
 
 
 async function generateTrackEmbed(interaction, track, messagetitle) {
-  const albumart = new MessageAttachment(track.albumart);
+  const albumart = new MessageAttachment(track.albumart, 'art.jpg');
   const npEmbed = {
     color: 0x580087,
     author: {
@@ -23,7 +24,7 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
       { name: track.album, value: '** **', inline: true },
     ],
     thumbnail: {
-      url: 'attachment://albumart.jpg',
+      url: 'attachment://art.jpg',
     },
   };
   await interaction.reply({ embeds: [npEmbed], files: [albumart] });
@@ -31,7 +32,7 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
 
 
 async function generateQueueEmbed(interaction, track, queue, messagetitle, page) {
-  const albumart = new MessageAttachment(track.albumart);
+  const albumart = new MessageAttachment(track.albumart, 'art.jpg');
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   if (page > pages) {
@@ -39,7 +40,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.**' + queuePart[i].artist + ' - ' + queuePart[i].title + '\n';
+      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + queuePart[i].artist + ' - ' + queuePart[i].title + '\n';
       queueStr = queueStr.concat(part);
     }
     const queueEmbed = {
@@ -49,12 +50,13 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
         icon_url: pickPride('fish'),
       },
       thumbnail: {
-        url: 'attachment://albumart.jpg',
+        url: 'attachment://art.jpg',
       },
       fields: [
         { name: 'Current Track:', value: `${track.artist} - ${track.title}` },
         { name: 'Next Up:', value: queueStr },
-        { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Queue length ${queue.length}`, inline: true },
+        { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
+        { name: `Loop Status: ${music.getLoop()}`, value: '** **' },
       ],
     };
     await interaction.reply({ embeds: [queueEmbed], files: [albumart] });
