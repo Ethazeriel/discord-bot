@@ -15,7 +15,7 @@
 		"comma-style": "error",
 		"curly": ["error", "multi-line", "consistent"],
 		"dot-location": ["error", "property"],
-		"handle-callback-err": "off",
+		"handle-callback-err": "warn",
 		"indent": ["error", 2],
 		"keyword-spacing": "error",
 		"max-nested-callbacks": ["error", { "max": 4 }],
