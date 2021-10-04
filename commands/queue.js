@@ -26,60 +26,60 @@ module.exports = {
 
 
   async execute(interaction) {
+    if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+      switch (interaction.options.getSubcommand()) {
 
-    switch (interaction.options.getSubcommand()) {
+      case 'skip': {
 
-    case 'skip': {
+        let track = null;
 
-      let track = null;
+        track = {
+          title: 'Silence',
+          artist: 'Eth',
+          album: 'ethsound',
+          url: '../empty.mp3',
+          albumart: 'albumart/albumart.jpg',
+        };
 
-      track = {
-        title: 'Silence',
-        artist: 'Eth',
-        album: 'ethsound',
-        url: '../empty.mp3',
-        albumart: 'albumart/albumart.jpg',
-      };
-
-      music.createVoiceConnection(interaction);
-      music.playLocalTrack(track);
-      await interaction.reply({ content:'Skipped.' });
-      break;
-    }
-
-    case 'showqueue': {
-      const track = music.getCurrentTrack();
-      let page = interaction.options.getInteger('page');
-      if (page == null) {page = 1;}
-
-      if (track != null) {
-        utils.generateQueueEmbed(interaction, track, music.queue, 'Current Queue:', page);
-      } else {
-        await interaction.reply({ content:'unable to get the current queue.', ephemeral: true });
+        music.createVoiceConnection(interaction);
+        music.playLocalTrack(track);
+        await interaction.reply({ content:'Skipped.' });
+        break;
       }
-      break;
-    }
 
-    case 'remove': {
-      music.removeTrack(interaction.options.getInteger('track') - 1);
-      await interaction.reply(`Removed item ${interaction.options.getInteger('track')} from the queue.`);
-      break;
-    }
+      case 'showqueue': {
+        const track = music.getCurrentTrack();
+        let page = interaction.options.getInteger('page');
+        if (page == null) {page = 1;}
 
-    case 'loop': {
-      const status = music.toggleLoop();
-      if (status == true) {
-        await interaction.reply({ content:'Enabled Queue Loop.' });
-      } else {await interaction.reply({ content:'Disabled Queue Loop.' });}
-      break;
-    }
+        if (track != null) {
+          utils.generateQueueEmbed(interaction, track, music.queue, 'Current Queue:', page);
+        } else {
+          await interaction.reply({ content:'unable to get the current queue.', ephemeral: true });
+        }
+        break;
+      }
 
-    default: {
-      console.log('OH NO SOMETHING\'S FUCKED');
-      await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
-    }
+      case 'remove': {
+        music.removeTrack(interaction.options.getInteger('track') - 1);
+        await interaction.reply(`Removed item ${interaction.options.getInteger('track')} from the queue.`);
+        break;
+      }
 
-    }
+      case 'loop': {
+        const status = music.toggleLoop();
+        if (status == true) {
+          await interaction.reply({ content:'Enabled Queue Loop.' });
+        } else {await interaction.reply({ content:'Disabled Queue Loop.' });}
+        break;
+      }
 
+      default: {
+        console.log('OH NO SOMETHING\'S FUCKED');
+        await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
+      }
+
+      }
+    } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
   },
 };

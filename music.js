@@ -13,7 +13,7 @@ player.on('error', error => {console.error('error:', error.message, 'with file',
 player.on('stateChange', (oldState, newState) => {
   console.log(`Player transitioned from ${oldState.status} to ${newState.status}`);
   playerStatus = newState.status;
-  if (oldState.status == 'playing' && newState.status == 'idle') { // Starts the next track in line when one finishes
+  if (newState.status == 'idle') { // Starts the next track in line when one finishes
     playTrack();
   }
 });

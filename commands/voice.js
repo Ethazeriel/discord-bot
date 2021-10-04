@@ -18,39 +18,40 @@ module.exports = {
 
 
   async execute(interaction) {
+    if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+      switch (interaction.options.getSubcommand()) {
 
-    switch (interaction.options.getSubcommand()) {
-
-    case 'join': {
-      music.createVoiceConnection(interaction);
-      await interaction.reply({ content:`Joined voice channel ${interaction.member.voice.channel}`, ephemeral: true });
-      break;
-    }
-
-    case 'leave': {
-      music.leaveVoice(interaction);
-      await interaction.reply({ content:'Left voice channel (if I was in one).', ephemeral: true });
-      break;
-    }
-
-    case 'nowplaying': {
-      const track = music.getCurrentTrack();
-      // console.log(track);
-
-      if (track != null) {
-        utils.generateTrackEmbed(interaction, track, 'Now Playing: ');
-      } else {
-        await interaction.reply({ content:'unable to get the current track.', ephemeral: true });
+      case 'join': {
+        music.createVoiceConnection(interaction);
+        await interaction.reply({ content:`Joined voice channel ${interaction.member.voice.channel}`, ephemeral: true });
+        break;
       }
-      break;
-    }
 
-    default: {
-      console.log('OH NO SOMETHING\'S FUCKED');
-      await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
-    }
+      case 'leave': {
+        music.leaveVoice(interaction);
+        await interaction.reply({ content:'Left voice channel (if I was in one).', ephemeral: true });
+        break;
+      }
 
-    }
+      case 'nowplaying': {
+        const track = music.getCurrentTrack();
+        // console.log(track);
 
+        if (track != null) {
+          utils.generateTrackEmbed(interaction, track, 'Now Playing: ');
+        } else {
+          await interaction.reply({ content:'unable to get the current track.', ephemeral: true });
+        }
+        break;
+      }
+
+      default: {
+        console.log('OH NO SOMETHING\'S FUCKED');
+        await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
+      }
+
+      }
+    } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
   },
+
 };
