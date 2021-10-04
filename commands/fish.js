@@ -5,11 +5,11 @@ const utils = require('../utils.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('dab')
-    .setDescription('Sends a dab')
+    .setName('fish')
+    .setDescription('Sends a Fish')
     .addStringOption(option =>
       option.setName('type')
-        .setDescription('Dab type')
+        .setDescription('Fish type')
         .setRequired(true)
         .addChoice('Random', 'random')
         .addChoice('Pride', 'pride')
@@ -26,28 +26,30 @@ module.exports = {
         .addChoice('Lesbian', 'lesbian')
         .addChoice('Nonbinary', 'nonbinary')
         .addChoice('Pan', 'pan')
-        .addChoice('Poly', 'poly')),
+        .addChoice('Poly', 'poly'),
+    ),
   async execute(interaction) {
-    const dabChoice = interaction.options.getString('type');
-    if (dabChoice == 'random') { // do this if we've selected random dabs
+    const fishChoice = interaction.options.getString('type');
+    if (fishChoice == 'random') { // do this if we've selected random fishs
+
       // rendering with a canvas means we can control the image size
-      const canvas = Canvas.createCanvas(160, 100);
+      const canvas = Canvas.createCanvas(160, 160);
       const context = canvas.getContext('2d');
-      const dabimg = await Canvas.loadImage(utils.pickPride('dab'));
-      context.drawImage(dabimg, 0, 0, canvas.width, canvas.height);
-      const attachment = new MessageAttachment(canvas.toBuffer(), 'dab-image.png');
+      const fishimg = await Canvas.loadImage(utils.pickPride('fish'));
+      context.drawImage(fishimg, 0, 0, canvas.width, canvas.height);
+      const attachment = new MessageAttachment(canvas.toBuffer(), 'fish-image.png');
 
       // push the message to chat
       await interaction.reply({ files: [attachment] });
-    } else { // code for specific dabs
-      const dabStr = 'https://ethazeriel.net/pride/sprites/dab_' + dabChoice + '.png';
+    } else { // code for specific fishs
+      const fishStr = 'https://ethazeriel.net/pride/sprites/fish_' + fishChoice + '.png';
 
       // rendering with a canvas means we can control the image size
-      const canvas = Canvas.createCanvas(160, 100);
+      const canvas = Canvas.createCanvas(160, 160);
       const context = canvas.getContext('2d');
-      const dabimg = await Canvas.loadImage(dabStr);
-      context.drawImage(dabimg, 0, 0, canvas.width, canvas.height);
-      const attachment = new MessageAttachment(canvas.toBuffer(), 'dab-image.png');
+      const fishimg = await Canvas.loadImage(fishStr);
+      context.drawImage(fishimg, 0, 0, canvas.width, canvas.height);
+      const attachment = new MessageAttachment(canvas.toBuffer(), 'fish-image.png');
 
       // push the message to chat
       await interaction.reply({ files: [attachment] });
