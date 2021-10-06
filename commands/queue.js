@@ -48,7 +48,7 @@ module.exports = {
         break;
       }
 
-      case 'showqueue': {
+      case 'show': {
         const track = music.getCurrentTrack();
         let page = interaction.options.getInteger('page');
         if (page == null) {page = 1;}
