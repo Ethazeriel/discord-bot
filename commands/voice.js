@@ -18,6 +18,7 @@ module.exports = {
 
 
   async execute(interaction) {
+    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, subcommand ${interaction.options.getSubcommand()}`);
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       switch (interaction.options.getSubcommand()) {
 

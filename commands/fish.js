@@ -26,9 +26,10 @@ module.exports = {
         .addChoice('Lesbian', 'lesbian')
         .addChoice('Nonbinary', 'nonbinary')
         .addChoice('Pan', 'pan')
-        .addChoice('Poly', 'poly'),
-    ),
+        .addChoice('Poly', 'poly')),
+
   async execute(interaction) {
+    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, type: ${interaction.options.getString('type')}`);
     const fishChoice = interaction.options.getString('type');
     if (fishChoice == 'random') { // do this if we've selected random fishs
 

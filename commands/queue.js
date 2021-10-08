@@ -26,6 +26,7 @@ module.exports = {
 
 
   async execute(interaction) {
+    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, subcommand ${interaction.options.getSubcommand()} and options page: ${interaction.options.getString('page')}, track: ${interaction.options.getString('track')}`);
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       switch (interaction.options.getSubcommand()) {
 
@@ -47,7 +48,7 @@ module.exports = {
         break;
       }
 
-      case 'showqueue': {
+      case 'show': {
         const track = music.getCurrentTrack();
         let page = interaction.options.getInteger('page');
         if (page == null) {page = 1;}
