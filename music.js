@@ -2,7 +2,7 @@ const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioReso
 const ytdl = require('ytdl-core');
 
 // set things up
-const queue = [];
+let queue = [];
 let currentTrack = [];
 const player = createAudioPlayer();
 let playerStatus = 'idle';
@@ -38,6 +38,7 @@ function addToQueue(track) { // append things to the queue
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
+  return queue.length;
 }
 
 function addMultipleToQueue(tracks) {
@@ -66,9 +67,13 @@ function addToQueueSkip(track) { // start playing immediately
 async function playTrack() { // start the player
   if (queue.length > 0) {
     const track = queue[0];
-    const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
-    // const connection = getVoiceConnection(id);
-    player.play(resource);
+    try {
+      const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
+      // const connection = getVoiceConnection(id);
+      player.play(resource);
+    } catch (error) {
+      console.error(error);
+    }
     currentTrack = queue[0];
     queue.shift();
     if (loop == true) {queue.push(track);}
@@ -117,6 +122,10 @@ function getLoop() {
   return loop;
 }
 
+function emptyQueue() {
+  queue = [];
+}
+
 exports.createVoiceConnection = createVoiceConnection;
 exports.playTrack = playTrack;
 exports.leaveVoice = leaveVoice;
@@ -130,3 +139,4 @@ exports.addMultipleToQueue = addMultipleToQueue;
 exports.removeTrack = removeTrack;
 exports.toggleLoop = toggleLoop;
 exports.getLoop = getLoop;
+exports.emptyQueue = emptyQueue;

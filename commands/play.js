@@ -24,6 +24,7 @@ module.exports = {
       let type = interaction.options.getString('type');
       if (type == null) { type = 'end';}
 
+      await interaction.deferReply({ ephemeral: true });
 
       switch (type) {
 
@@ -44,12 +45,16 @@ module.exports = {
           };
         } catch (error) {
           console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
         music.createVoiceConnection(interaction);
-        music.addToQueue(track);
-        utils.generateTrackEmbed(interaction, track, 'Added to Queue: ');
+        const length = music.addToQueue(track);
+        if (length == 0) {
+          utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
+        } else {
+          utils.generateTrackEmbed(interaction, track, `Added to queue at position ${length}:`);
+        }
         break;
       }
 
@@ -70,7 +75,7 @@ module.exports = {
           };
         } catch (error) {
           console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
         music.createVoiceConnection(interaction);
@@ -96,7 +101,7 @@ module.exports = {
           };
         } catch (error) {
           console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
         music.createVoiceConnection(interaction);
@@ -109,13 +114,13 @@ module.exports = {
         music.createVoiceConnection(interaction);
         await music.addMultipleToQueue(playlists.trainsong);
         // utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Queued Trainsong:', 1);
-        await interaction.reply({ content:'TRAINSONG' });
+        await interaction.followUp({ content:'TRAINSONG' });
         break;
       }
 
       default: {
         console.log('OH NO SOMETHING\'S FUCKED');
-        await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
+        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 
       }

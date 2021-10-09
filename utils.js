@@ -27,7 +27,11 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
       url: 'attachment://art.jpg',
     },
   };
-  await interaction.reply({ embeds: [npEmbed], files: [albumart] });
+  try {
+    await interaction.followUp({ embeds: [npEmbed], files: [albumart] });
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 
@@ -36,7 +40,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   if (page > pages) {
-    await interaction.reply({ content: `Invalid page number ${page}. Please try again.`, ephemeral: true });
+    await interaction.followUp({ content: `Invalid page number ${page}. Please try again.`, ephemeral: true });
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
@@ -59,7 +63,11 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
         { name: `Loop Status: ${music.getLoop()}`, value: '** **' },
       ],
     };
-    await interaction.reply({ embeds: [queueEmbed], files: [albumart] });
+    try {
+      await interaction.followUp({ embeds: [queueEmbed], files: [albumart] });
+    } catch (error) {
+      console.error(error);
+    }
   }
 }
 exports.generateTrackEmbed = generateTrackEmbed;
