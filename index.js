@@ -3,6 +3,7 @@ const fs = require('fs');
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json');
+const logger = require('./logger.js');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -20,8 +21,7 @@ for (const file of commandFiles) {
 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
-  console.log('Ready!');
-  console.log('Node version: ', process.version);
+  logger.logLine('info', ['Ready!', `Node version: ${process.version}`]);
 });
 
 // actually run the commands
