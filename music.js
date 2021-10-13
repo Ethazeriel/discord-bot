@@ -7,7 +7,10 @@ let currentTrack = [];
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
+let connectionId = null;
 let loop = false;
+let queuestash = [];
+let client = null;
 
 player.on('error', error => {console.error('error:', error.message, 'with file', error.resource.metadata.title, 'full:', error);});
 player.on('stateChange', (oldState, newState) => {
@@ -26,12 +29,29 @@ async function createVoiceConnection(interaction) { // join a voice channel
       guildId: interaction.member.voice.channel.guild.id,
       adapterCreator: interaction.member.voice.channel.guild.voiceAdapterCreator,
     });
-    connection.on('stateChange', (oldState, newState) => { console.log(`Connection transitioned from ${oldState.status} to ${newState.status}`); });
+    connectionId = interaction.guild.id;
+    client = interaction.client; // we need this so we can access our client instance in playtrack
+    connection.on('stateChange', (oldState, newState) => {
+      console.log(`Connection transitioned from ${oldState.status} to ${newState.status}`);
+      if (newState.status == 'destroyed') {
+        stashQueue(); // store the current queue in a variable when the bot leaves chat
+      }
+    });
     connection.subscribe(player);
     voiceConnected = true;
   }
 }
 
+function stashQueue() { // if something fucks up, this lets us get the most recent queue back
+  queuestash = queue;
+  queue.unshift(currentTrack);
+  emptyQueue();
+}
+
+function unstashQueue() {
+  queue = queuestash;
+  playTrack();
+}
 
 function addToQueue(track) { // append things to the queue
   queue.push(track);
@@ -65,20 +85,25 @@ function addToQueueSkip(track) { // start playing immediately
 
 
 async function playTrack() { // start the player
-  if (queue.length > 0) {
-    const track = queue[0];
-    try {
-      const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
-      // const connection = getVoiceConnection(id);
-      player.play(resource);
-    } catch (error) {
-      console.error(error);
+  const channel = client.channels.cache.get(getVoiceConnection(connectionId).joinConfig.channelId);
+  if (channel.members.size < 2) {
+    if (queue.length > 0) {
+      const track = queue[0];
+      try {
+        const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
+        player.play(resource);
+      } catch (error) {
+        console.error(error);
+      }
+      currentTrack = queue[0];
+      queue.shift();
+      if (loop == true) {queue.push(track);}
+    } else {
+      console.log('queue finished');
     }
-    currentTrack = queue[0];
-    queue.shift();
-    if (loop == true) {queue.push(track);}
   } else {
-    console.log('queue finished');
+    leaveVoice();
+    console.log('Alone in channel, leaving voice');
   }
 }
 
@@ -87,9 +112,11 @@ async function playLocalTrack(track) { // play a locally stored track
   player.play(resource);
 }
 
-async function leaveVoice(interaction) { // leave a voice channel
-  const connection = getVoiceConnection(interaction.guild.id);
+async function leaveVoice() { // leave a voice channel
+  skipTrack();
+  const connection = getVoiceConnection(connectionId);
   connection.destroy();
+  stashQueue();
   voiceConnected = false;
 }
 
@@ -118,7 +145,7 @@ function toggleLoop() {
   }
 }
 
-function getLoop() {
+function getLoop() { // this is really just for the showqueue command
   return loop;
 }
 
@@ -126,6 +153,18 @@ function emptyQueue() {
   queue = [];
 }
 
+function skipTrack() {
+
+  const track = {
+    title: 'Silence',
+    artist: 'Eth',
+    album: 'ethsound',
+    url: '../empty.mp3',
+    albumart: 'albumart/albumart.jpg',
+  };
+
+  playLocalTrack(track);
+}
 exports.createVoiceConnection = createVoiceConnection;
 exports.playTrack = playTrack;
 exports.leaveVoice = leaveVoice;
@@ -140,3 +179,6 @@ exports.removeTrack = removeTrack;
 exports.toggleLoop = toggleLoop;
 exports.getLoop = getLoop;
 exports.emptyQueue = emptyQueue;
+exports.stashQueue = stashQueue;
+exports.unstashQueue = unstashQueue;
+exports.skipTrack = skipTrack;

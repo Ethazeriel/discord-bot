@@ -35,19 +35,7 @@ module.exports = {
       switch (interaction.options.getSubcommand()) {
 
       case 'skip': {
-
-        let track = null;
-
-        track = {
-          title: 'Silence',
-          artist: 'Eth',
-          album: 'ethsound',
-          url: '../empty.mp3',
-          albumart: 'albumart/albumart.jpg',
-        };
-
-        music.createVoiceConnection(interaction);
-        music.playLocalTrack(track);
+        music.skipTrack();
         await interaction.followUp({ content:'Skipped.' });
         break;
       }

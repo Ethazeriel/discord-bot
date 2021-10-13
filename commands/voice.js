@@ -30,7 +30,7 @@ module.exports = {
       }
 
       case 'leave': {
-        music.leaveVoice(interaction);
+        music.leaveVoice();
         await interaction.followUp({ content:'Left voice channel (if I was in one).', ephemeral: true });
         break;
       }
