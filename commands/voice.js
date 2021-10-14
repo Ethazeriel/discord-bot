@@ -55,7 +55,7 @@ module.exports = {
       }
 
       default: {
-        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

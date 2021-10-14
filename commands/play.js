@@ -21,11 +21,11 @@ module.exports = {
 
   async execute(interaction) {
     logLine('command',
-      ['Recieved command from ',
+      ['Recieved command from',
         interaction.member,
-        'with name ',
+        'with name',
         interaction.commandName,
-        'and options url: ',
+        'and options url:',
         interaction.options.getString('url'),
         'type: ',
         interaction.options.getString('type')]);
@@ -129,7 +129,7 @@ module.exports = {
       }
 
       default: {
-        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

@@ -23,7 +23,7 @@ player.on('stateChange', (oldState, newState) => {
 });
 
 
-async function createVoiceConnection(interaction) { // join a voice channel
+function createVoiceConnection(interaction) { // join a voice channel
   if (voiceConnected == false) {
     const connection = joinVoiceChannel({
       channelId: interaction.member.voice.channel.id,
@@ -88,7 +88,7 @@ function addToQueueSkip(track) { // start playing immediately
 
 async function playTrack() { // start the player
   const channel = client.channels.cache.get(getVoiceConnection(connectionId).joinConfig.channelId);
-  if (channel.members.size > 2) {
+  if (channel.members.size > 1) {
     if (queue.length > 0) {
       const track = queue[0];
       try {
@@ -102,11 +102,11 @@ async function playTrack() { // start the player
       queue.shift();
       if (loop == true) {queue.push(track);}
     } else {
-      logLine('info', 'queue finished');
+      logLine('info', ['queue finished']);
     }
   } else {
     leaveVoice();
-    logLine('info', 'Alone in channel, leaving voice');
+    logLine('info', ['Alone in channel, leaving voice']);
   }
 }
 
@@ -119,7 +119,6 @@ async function leaveVoice() { // leave a voice channel
   skipTrack();
   const connection = getVoiceConnection(connectionId);
   connection.destroy();
-  stashQueue();
   voiceConnected = false;
 }
 

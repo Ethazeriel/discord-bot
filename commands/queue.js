@@ -39,13 +39,13 @@ module.exports = {
     logLine('command',
       ['Recieved command from ',
         interaction.member,
-        'with name ',
+        'with name',
         interaction.commandName,
-        'subcommand ',
+        'subcommand',
         interaction.options.getSubcommand(),
-        'and options page: ',
+        'and options page:',
         interaction.options.getString('page'),
-        'track: ',
+        'track:',
         interaction.options.getString('track')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
@@ -105,7 +105,7 @@ module.exports = {
       }
 
       default: {
-        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 
