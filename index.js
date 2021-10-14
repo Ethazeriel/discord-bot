@@ -3,7 +3,7 @@ const fs = require('fs');
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json');
-const { logLine } = require('./logger');
+const { logLine } = require('./logger.js');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });

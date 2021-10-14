@@ -1,6 +1,6 @@
 const { MessageAttachment } = require('discord.js');
 const music = require('./music.js');
-const { logLine } = require('../logger');
+const { logLine } = require('./logger.js');
 
 function pickPride(type) {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];

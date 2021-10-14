@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment } = require('discord.js');
 const Canvas = require('canvas');
 const utils = require('../utils.js');
-const { logLine } = require('../logger');
+const { logLine } = require('../logger.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,11 +31,11 @@ module.exports = {
 
   async execute(interaction) {
     logLine('command',
-      ['Recieved command from ',
+      ['Recieved command from',
         interaction.member,
-        'with name ',
+        'with name',
         interaction.commandName,
-        'type: ',
+        'type:',
         interaction.options.getString('type')]);
     const dabChoice = interaction.options.getString('type');
     if (dabChoice == 'random') { // do this if we've selected random dabs

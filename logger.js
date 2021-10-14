@@ -15,7 +15,7 @@ async function logLine(level, args) {
   switch (level) {
   case 'INFO':
     console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.blue(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}`, { flag: 'a' }, err => {
+    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
       if (err) {
         console.error(err);
         return;
@@ -25,7 +25,7 @@ async function logLine(level, args) {
 
   case 'TRACK':
     console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.green(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}`, { flag: 'a' }, err => {
+    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
       if (err) {
         console.error(err);
         return;
@@ -35,13 +35,13 @@ async function logLine(level, args) {
 
   case 'ERROR':
     console.error(`${chalk.yellow(currentDT())} - ${chalk.bold.red(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}`, { flag: 'a' }, err => {
+    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
       if (err) {
         console.error(err);
         return;
       }
     });
-    fs.writeFile('./logs/error.log', `${currentDT()} - ${level} - ${logStr}`, { flag: 'a' }, err => {
+    fs.writeFile('./logs/error.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
       if (err) {
         console.error(err);
         return;
@@ -51,7 +51,7 @@ async function logLine(level, args) {
 
   default:
     console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}`, { flag: 'a' }, err => {
+    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
       if (err) {
         console.error(err);
         return;

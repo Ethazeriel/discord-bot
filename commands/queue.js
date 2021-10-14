@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const utils = require('../utils.js');
-const { logLine } = require('../logger');
+const { logLine } = require('../logger.js');
 
 
 module.exports = {
@@ -26,7 +26,13 @@ module.exports = {
       .setDescription('Toggles queue looping'))
     .addSubcommand(subcommand => subcommand
       .setName('empty')
-      .setDescription('Empties the queue')),
+      .setDescription('Empties the queue'))
+    .addSubcommand(subcommand => subcommand
+      .setName('stash')
+      .setDescription('Stashes the current queue for later access'))
+    .addSubcommand(subcommand => subcommand
+      .setName('unstash')
+      .setDescription('Restores a stashed queue')),
 
 
   async execute(interaction) {
@@ -82,6 +88,19 @@ module.exports = {
       case 'empty': {
         music.emptyQueue();
         await interaction.followUp({ content:'Emptied Queue.', ephemeral: true });
+        break;
+      }
+
+      case 'stash': {
+        music.stashQueue();
+        await interaction.followUp({ content:'Stashed Queue.', ephemeral: true });
+        break;
+      }
+
+      case 'unstash': {
+        music.createVoiceConnection(interaction);
+        music.unstashQueue();
+        utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Restored Queue:', 1);
         break;
       }
 

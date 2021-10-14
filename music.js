@@ -1,6 +1,6 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
-const { logLine } = require('./logger');
+const { logLine } = require('./logger.js');
 
 // set things up
 let queue = [];
@@ -15,7 +15,7 @@ let client = null;
 
 player.on('error', error => {logLine('error', [ 'error:', error.message, 'with file', error.resource.metadata.title, 'full:', error ]);});
 player.on('stateChange', (oldState, newState) => {
-  logLine('info', `Player transitioned from ${oldState.status} to ${newState.status}`);
+  logLine('info', ['Player transitioned from', oldState.status, 'to', newState.status]);
   playerStatus = newState.status;
   if (newState.status == 'idle') { // Starts the next track in line when one finishes
     playTrack();
@@ -33,7 +33,7 @@ async function createVoiceConnection(interaction) { // join a voice channel
     connectionId = interaction.guild.id;
     client = interaction.client; // we need this so we can access our client instance in playtrack
     connection.on('stateChange', (oldState, newState) => {
-      logLine('info', `Connection transitioned from ${oldState.status} to ${newState.status}`);
+      logLine('info', ['Connection transitioned from', oldState.status, 'to', newState.status]);
       if (newState.status == 'destroyed') {
         stashQueue(); // store the current queue in a variable when the bot leaves chat
       }
@@ -46,6 +46,7 @@ async function createVoiceConnection(interaction) { // join a voice channel
 function stashQueue() { // if something fucks up, this lets us get the most recent queue back
   queuestash = queue;
   queuestash.unshift(currentTrack);
+  logLine('info', ['Stashed', queue.length + 1, 'items']);
   emptyQueue();
 }
 
@@ -87,7 +88,7 @@ function addToQueueSkip(track) { // start playing immediately
 
 async function playTrack() { // start the player
   const channel = client.channels.cache.get(getVoiceConnection(connectionId).joinConfig.channelId);
-  if (channel.members.size < 2) {
+  if (channel.members.size > 2) {
     if (queue.length > 0) {
       const track = queue[0];
       try {
@@ -123,11 +124,7 @@ async function leaveVoice() { // leave a voice channel
 }
 
 function getCurrentTrack() {
-  if (playerStatus == 'playing') {
-    return currentTrack;
-  } else {
-    return null;
-  }
+  return currentTrack;
 }
 
 function removeTrack(track) {

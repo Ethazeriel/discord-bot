@@ -3,7 +3,7 @@ const music = require('../music.js');
 const ytdl = require('ytdl-core');
 const utils = require('../utils.js');
 const playlists = require('../playlists.js');
-const { logLine } = require('../logger');
+const { logLine } = require('../logger.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
