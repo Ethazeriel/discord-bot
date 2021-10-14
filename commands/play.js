@@ -3,6 +3,7 @@ const music = require('../music.js');
 const ytdl = require('ytdl-core');
 const utils = require('../utils.js');
 const playlists = require('../playlists.js');
+const { logLine } = require('../logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,7 +20,16 @@ module.exports = {
 
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName} and options url: ${interaction.options.getString('url')}, type: ${interaction.options.getString('type')}`);
+    logLine('command',
+      ['Recieved command from ',
+        interaction.member,
+        'with name ',
+        interaction.commandName,
+        'and options url: ',
+        interaction.options.getString('url'),
+        'type: ',
+        interaction.options.getString('type')]);
+
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       let type = interaction.options.getString('type');
       if (type == null) { type = 'end';}
@@ -44,7 +54,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -74,7 +84,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -100,7 +110,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
+          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -119,7 +129,7 @@ module.exports = {
       }
 
       default: {
-        console.log('OH NO SOMETHING\'S FUCKED');
+        logLine('error', 'OH NO SOMETHING\'S FUCKED');
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

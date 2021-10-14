@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const utils = require('../utils.js');
+const { logLine } = require('../logger');
 
 
 module.exports = {
@@ -29,7 +30,18 @@ module.exports = {
 
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, subcommand ${interaction.options.getSubcommand()} and options page: ${interaction.options.getString('page')}, track: ${interaction.options.getString('track')}`);
+    logLine('command',
+      ['Recieved command from ',
+        interaction.member,
+        'with name ',
+        interaction.commandName,
+        'subcommand ',
+        interaction.options.getSubcommand(),
+        'and options page: ',
+        interaction.options.getString('page'),
+        'track: ',
+        interaction.options.getString('track')]);
+
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
@@ -74,7 +86,7 @@ module.exports = {
       }
 
       default: {
-        console.log('OH NO SOMETHING\'S FUCKED');
+        logLine('error', 'OH NO SOMETHING\'S FUCKED');
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

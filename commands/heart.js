@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment } = require('discord.js');
 const Canvas = require('canvas');
 const utils = require('../utils.js');
+const { logLine } = require('../logger');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -29,7 +30,13 @@ module.exports = {
         .addChoice('Poly', 'poly')),
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, type: ${interaction.options.getString('type')}`);
+    logLine('command',
+      ['Recieved command from ',
+        interaction.member,
+        'with name ',
+        interaction.commandName,
+        'type: ',
+        interaction.options.getString('type')]);
     const heartChoice = interaction.options.getString('type');
     if (heartChoice == 'random') { // do this if we've selected random hearts
 

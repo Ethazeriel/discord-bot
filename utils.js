@@ -1,5 +1,6 @@
 const { MessageAttachment } = require('discord.js');
 const music = require('./music.js');
+const { logLine } = require('../logger');
 
 function pickPride(type) {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
@@ -30,7 +31,7 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
   try {
     await interaction.followUp({ embeds: [npEmbed], files: [albumart] });
   } catch (error) {
-    console.error(error);
+    logLine('error', error);
   }
 }
 
@@ -66,7 +67,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
     try {
       await interaction.followUp({ embeds: [queueEmbed], files: [albumart] });
     } catch (error) {
-      console.error(error);
+      logLine('error', error);
     }
   }
 }

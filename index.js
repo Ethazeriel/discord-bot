@@ -3,7 +3,7 @@ const fs = require('fs');
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json');
-const logger = require('./logger.js');
+const { logLine } = require('./logger');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -21,7 +21,7 @@ for (const file of commandFiles) {
 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
-  logger.logLine('info', ['Ready!', `Node version: ${process.version}`]);
+  logLine('info', ['Ready!', `Node version: ${process.version}`]);
 });
 
 // actually run the commands
@@ -34,7 +34,7 @@ client.on('interactionCreate', async interaction => {
   try {
     await command.execute(interaction);
   } catch (error) {
-    console.error(error);
+    logLine('error', error);
     return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
   }
 });

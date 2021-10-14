@@ -1,5 +1,6 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+const { logLine } = require('./logger');
 
 // set things up
 let queue = [];
@@ -12,9 +13,9 @@ let loop = false;
 let queuestash = [];
 let client = null;
 
-player.on('error', error => {console.error('error:', error.message, 'with file', error.resource.metadata.title, 'full:', error);});
+player.on('error', error => {logLine('error', [ 'error:', error.message, 'with file', error.resource.metadata.title, 'full:', error ]);});
 player.on('stateChange', (oldState, newState) => {
-  console.log(`Player transitioned from ${oldState.status} to ${newState.status}`);
+  logLine('info', `Player transitioned from ${oldState.status} to ${newState.status}`);
   playerStatus = newState.status;
   if (newState.status == 'idle') { // Starts the next track in line when one finishes
     playTrack();
@@ -32,7 +33,7 @@ async function createVoiceConnection(interaction) { // join a voice channel
     connectionId = interaction.guild.id;
     client = interaction.client; // we need this so we can access our client instance in playtrack
     connection.on('stateChange', (oldState, newState) => {
-      console.log(`Connection transitioned from ${oldState.status} to ${newState.status}`);
+      logLine('info', `Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
         stashQueue(); // store the current queue in a variable when the bot leaves chat
       }
@@ -44,7 +45,7 @@ async function createVoiceConnection(interaction) { // join a voice channel
 
 function stashQueue() { // if something fucks up, this lets us get the most recent queue back
   queuestash = queue;
-  queue.unshift(currentTrack);
+  queuestash.unshift(currentTrack);
   emptyQueue();
 }
 
@@ -92,18 +93,19 @@ async function playTrack() { // start the player
       try {
         const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
         player.play(resource);
+        logLine('track', ['Playing track: ', track.artist, ':', track.title]);
       } catch (error) {
-        console.error(error);
+        logLine('error', error);
       }
       currentTrack = queue[0];
       queue.shift();
       if (loop == true) {queue.push(track);}
     } else {
-      console.log('queue finished');
+      logLine('info', 'queue finished');
     }
   } else {
     leaveVoice();
-    console.log('Alone in channel, leaving voice');
+    logLine('info', 'Alone in channel, leaving voice');
   }
 }
 
