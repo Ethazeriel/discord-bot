@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const utils = require('../utils.js');
+const { logLine } = require('../logger.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,37 +19,44 @@ module.exports = {
 
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, subcommand ${interaction.options.getSubcommand()}`);
+    logLine('command',
+      ['Recieved command from ',
+        interaction.member,
+        'with name ',
+        interaction.commandName,
+        'subcommand ',
+        interaction.options.getSubcommand()]);
+
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+      await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 
       case 'join': {
         music.createVoiceConnection(interaction);
-        await interaction.reply({ content:`Joined voice channel ${interaction.member.voice.channel}`, ephemeral: true });
+        await interaction.followUp({ content:`Joined voice channel ${interaction.member.voice.channel}`, ephemeral: true });
         break;
       }
 
       case 'leave': {
-        music.leaveVoice(interaction);
-        await interaction.reply({ content:'Left voice channel (if I was in one).', ephemeral: true });
+        music.leaveVoice();
+        await interaction.followUp({ content:'Left voice channel (if I was in one).', ephemeral: true });
         break;
       }
 
       case 'nowplaying': {
         const track = music.getCurrentTrack();
-        // console.log(track);
 
         if (track != null) {
           utils.generateTrackEmbed(interaction, track, 'Now Playing: ');
         } else {
-          await interaction.reply({ content:'unable to get the current track.', ephemeral: true });
+          await interaction.followUp({ content:'unable to get the current track.', ephemeral: true });
         }
         break;
       }
 
       default: {
-        console.log('OH NO SOMETHING\'S FUCKED');
-        await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
+        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 
       }

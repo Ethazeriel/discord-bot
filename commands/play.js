@@ -3,6 +3,7 @@ const music = require('../music.js');
 const ytdl = require('ytdl-core');
 const utils = require('../utils.js');
 const playlists = require('../playlists.js');
+const { logLine } = require('../logger.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,11 +20,21 @@ module.exports = {
 
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName} and options url: ${interaction.options.getString('url')}, type: ${interaction.options.getString('type')}`);
+    logLine('command',
+      ['Recieved command from ',
+        interaction.member,
+        'with name ',
+        interaction.commandName,
+        'and options url: ',
+        interaction.options.getString('url'),
+        'type: ',
+        interaction.options.getString('type')]);
+
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       let type = interaction.options.getString('type');
       if (type == null) { type = 'end';}
 
+      await interaction.deferReply({ ephemeral: true });
 
       switch (type) {
 
@@ -43,13 +54,17 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
+          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
         music.createVoiceConnection(interaction);
-        music.addToQueue(track);
-        utils.generateTrackEmbed(interaction, track, 'Added to Queue: ');
+        const length = music.addToQueue(track);
+        if (length == 0) {
+          utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
+        } else {
+          utils.generateTrackEmbed(interaction, track, `Added to queue at position ${length}:`);
+        }
         break;
       }
 
@@ -69,8 +84,8 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
+          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
         music.createVoiceConnection(interaction);
@@ -95,8 +110,8 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          console.error('Error parsing youtube string:', reqstr, '. Stacktrace:', error);
-          await interaction.reply({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error]);
+          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
         music.createVoiceConnection(interaction);
@@ -109,13 +124,13 @@ module.exports = {
         music.createVoiceConnection(interaction);
         await music.addMultipleToQueue(playlists.trainsong);
         // utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Queued Trainsong:', 1);
-        await interaction.reply({ content:'TRAINSONG' });
+        await interaction.followUp({ content:'TRAINSONG' });
         break;
       }
 
       default: {
-        console.log('OH NO SOMETHING\'S FUCKED');
-        await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
+        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 
       }

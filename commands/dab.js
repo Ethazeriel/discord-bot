@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment } = require('discord.js');
 const Canvas = require('canvas');
 const utils = require('../utils.js');
+const { logLine } = require('../logger.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -29,7 +30,13 @@ module.exports = {
         .addChoice('Poly', 'poly')),
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, type: ${interaction.options.getString('type')}`);
+    logLine('command',
+      ['Recieved command from',
+        interaction.member,
+        'with name',
+        interaction.commandName,
+        'type:',
+        interaction.options.getString('type')]);
     const dabChoice = interaction.options.getString('type');
     if (dabChoice == 'random') { // do this if we've selected random dabs
       // rendering with a canvas means we can control the image size

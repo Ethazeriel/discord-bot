@@ -13,6 +13,7 @@ echo "Cleaning up..."
 find . ! -name package.json ! -name package-lock.json ! -name .nvmrc ! -regex '^./node_modules\(/.*\)?' -delete
 }
 
+[ ! -d "./setup" ] && mkdir setup
 if cmp -s ./package.json ./setup/package.json
 then
 deploy

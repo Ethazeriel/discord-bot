@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const utils = require('../utils.js');
+const { logLine } = require('../logger.js');
 
 
 module.exports = {
@@ -22,29 +23,38 @@ module.exports = {
         option.setName('track').setDescription('Track to remove').setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('loop')
-      .setDescription('Toggles queue looping')),
+      .setDescription('Toggles queue looping'))
+    .addSubcommand(subcommand => subcommand
+      .setName('empty')
+      .setDescription('Empties the queue'))
+    .addSubcommand(subcommand => subcommand
+      .setName('stash')
+      .setDescription('Stashes the current queue for later access'))
+    .addSubcommand(subcommand => subcommand
+      .setName('unstash')
+      .setDescription('Restores a stashed queue')),
 
 
   async execute(interaction) {
-    console.log(`Recieved command from ${interaction.member} with name ${interaction.commandName}, subcommand ${interaction.options.getSubcommand()} and options page: ${interaction.options.getString('page')}, track: ${interaction.options.getString('track')}`);
+    logLine('command',
+      ['Recieved command from ',
+        interaction.member,
+        'with name ',
+        interaction.commandName,
+        'subcommand ',
+        interaction.options.getSubcommand(),
+        'and options page: ',
+        interaction.options.getString('page'),
+        'track: ',
+        interaction.options.getString('track')]);
+
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+      await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 
       case 'skip': {
-
-        let track = null;
-
-        track = {
-          title: 'Silence',
-          artist: 'Eth',
-          album: 'ethsound',
-          url: '../empty.mp3',
-          albumart: 'albumart/albumart.jpg',
-        };
-
-        music.createVoiceConnection(interaction);
-        music.playLocalTrack(track);
-        await interaction.reply({ content:'Skipped.' });
+        music.skipTrack();
+        await interaction.followUp({ content:'Skipped.' });
         break;
       }
 
@@ -56,28 +66,47 @@ module.exports = {
         if (track != null) {
           utils.generateQueueEmbed(interaction, track, music.queue, 'Current Queue:', page);
         } else {
-          await interaction.reply({ content:'unable to get the current queue.', ephemeral: true });
+          await interaction.followUp({ content:'unable to get the current queue.', ephemeral: true });
         }
         break;
       }
 
       case 'remove': {
         music.removeTrack(interaction.options.getInteger('track') - 1);
-        await interaction.reply(`Removed item ${interaction.options.getInteger('track')} from the queue.`);
+        await interaction.followUp(`Removed item ${interaction.options.getInteger('track')} from the queue.`);
         break;
       }
 
       case 'loop': {
         const status = music.toggleLoop();
         if (status == true) {
-          await interaction.reply({ content:'Enabled Queue Loop.' });
-        } else {await interaction.reply({ content:'Disabled Queue Loop.' });}
+          await interaction.followUp({ content:'Enabled Queue Loop.' });
+        } else {await interaction.followUp({ content:'Disabled Queue Loop.' });}
+        break;
+      }
+
+      case 'empty': {
+        music.emptyQueue();
+        await interaction.followUp({ content:'Emptied Queue.', ephemeral: true });
+        break;
+      }
+
+      case 'stash': {
+        music.stashQueue();
+        await interaction.followUp({ content:'Stashed Queue.', ephemeral: true });
+        break;
+      }
+
+      case 'unstash': {
+        music.createVoiceConnection(interaction);
+        music.unstashQueue();
+        utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Restored Queue:', 1);
         break;
       }
 
       default: {
-        console.log('OH NO SOMETHING\'S FUCKED');
-        await interaction.reply({ content:'Something broke. Please try again', ephemeral: true });
+        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 
       }

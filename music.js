@@ -1,17 +1,21 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+const { logLine } = require('./logger.js');
 
 // set things up
-const queue = [];
+let queue = [];
 let currentTrack = [];
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
+let connectionId = null;
 let loop = false;
+let queuestash = [];
+let client = null;
 
-player.on('error', error => {console.error('error:', error.message, 'with file', error.resource.metadata.title, 'full:', error);});
+player.on('error', error => {logLine('error', [ 'error:', error.message, 'with file', error.resource.metadata.title, 'full:', error ]);});
 player.on('stateChange', (oldState, newState) => {
-  console.log(`Player transitioned from ${oldState.status} to ${newState.status}`);
+  logLine('info', ['Player transitioned from', oldState.status, 'to', newState.status]);
   playerStatus = newState.status;
   if (newState.status == 'idle') { // Starts the next track in line when one finishes
     playTrack();
@@ -26,18 +30,37 @@ async function createVoiceConnection(interaction) { // join a voice channel
       guildId: interaction.member.voice.channel.guild.id,
       adapterCreator: interaction.member.voice.channel.guild.voiceAdapterCreator,
     });
-    connection.on('stateChange', (oldState, newState) => { console.log(`Connection transitioned from ${oldState.status} to ${newState.status}`); });
+    connectionId = interaction.guild.id;
+    client = interaction.client; // we need this so we can access our client instance in playtrack
+    connection.on('stateChange', (oldState, newState) => {
+      logLine('info', ['Connection transitioned from', oldState.status, 'to', newState.status]);
+      if (newState.status == 'destroyed') {
+        stashQueue(); // store the current queue in a variable when the bot leaves chat
+      }
+    });
     connection.subscribe(player);
     voiceConnected = true;
   }
 }
 
+function stashQueue() { // if something fucks up, this lets us get the most recent queue back
+  queuestash = queue;
+  queuestash.unshift(currentTrack);
+  logLine('info', ['Stashed', queue.length + 1, 'items']);
+  emptyQueue();
+}
+
+function unstashQueue() {
+  queue = queuestash;
+  playTrack();
+}
 
 function addToQueue(track) { // append things to the queue
   queue.push(track);
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
+  return queue.length;
 }
 
 function addMultipleToQueue(tracks) {
@@ -64,16 +87,26 @@ function addToQueueSkip(track) { // start playing immediately
 
 
 async function playTrack() { // start the player
-  if (queue.length > 0) {
-    const track = queue[0];
-    const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
-    // const connection = getVoiceConnection(id);
-    player.play(resource);
-    currentTrack = queue[0];
-    queue.shift();
-    if (loop == true) {queue.push(track);}
+  const channel = client.channels.cache.get(getVoiceConnection(connectionId).joinConfig.channelId);
+  if (channel.members.size > 2) {
+    if (queue.length > 0) {
+      const track = queue[0];
+      try {
+        const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
+        player.play(resource);
+        logLine('track', ['Playing track: ', track.artist, ':', track.title]);
+      } catch (error) {
+        logLine('error', error);
+      }
+      currentTrack = queue[0];
+      queue.shift();
+      if (loop == true) {queue.push(track);}
+    } else {
+      logLine('info', 'queue finished');
+    }
   } else {
-    console.log('queue finished');
+    leaveVoice();
+    logLine('info', 'Alone in channel, leaving voice');
   }
 }
 
@@ -82,18 +115,16 @@ async function playLocalTrack(track) { // play a locally stored track
   player.play(resource);
 }
 
-async function leaveVoice(interaction) { // leave a voice channel
-  const connection = getVoiceConnection(interaction.guild.id);
+async function leaveVoice() { // leave a voice channel
+  skipTrack();
+  const connection = getVoiceConnection(connectionId);
   connection.destroy();
+  stashQueue();
   voiceConnected = false;
 }
 
 function getCurrentTrack() {
-  if (playerStatus == 'playing') {
-    return currentTrack;
-  } else {
-    return null;
-  }
+  return currentTrack;
 }
 
 function removeTrack(track) {
@@ -113,10 +144,26 @@ function toggleLoop() {
   }
 }
 
-function getLoop() {
+function getLoop() { // this is really just for the showqueue command
   return loop;
 }
 
+function emptyQueue() {
+  queue = [];
+}
+
+function skipTrack() {
+
+  const track = {
+    title: 'Silence',
+    artist: 'Eth',
+    album: 'ethsound',
+    url: '../empty.mp3',
+    albumart: 'albumart/albumart.jpg',
+  };
+
+  playLocalTrack(track);
+}
 exports.createVoiceConnection = createVoiceConnection;
 exports.playTrack = playTrack;
 exports.leaveVoice = leaveVoice;
@@ -130,3 +177,7 @@ exports.addMultipleToQueue = addMultipleToQueue;
 exports.removeTrack = removeTrack;
 exports.toggleLoop = toggleLoop;
 exports.getLoop = getLoop;
+exports.emptyQueue = emptyQueue;
+exports.stashQueue = stashQueue;
+exports.unstashQueue = unstashQueue;
+exports.skipTrack = skipTrack;
