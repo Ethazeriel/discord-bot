@@ -22,7 +22,7 @@ module.exports = {
   async execute(interaction) {
     logLine('command',
       ['Recieved command from',
-        interaction.member,
+        interaction.member.displayName,
         'with name',
         interaction.commandName,
         'and options url:',
@@ -54,7 +54,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -84,7 +84,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -110,7 +110,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error]);
+          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error.stack]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 

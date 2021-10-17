@@ -31,7 +31,7 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
   try {
     await interaction.followUp({ embeds: [npEmbed], files: [albumart] });
   } catch (error) {
-    logLine('error', error);
+    logLine('error', [error.stack]);
   }
 }
 
@@ -67,7 +67,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
     try {
       await interaction.followUp({ embeds: [queueEmbed], files: [albumart] });
     } catch (error) {
-      logLine('error', error);
+      logLine('error', [error.stack]);
     }
   }
 }

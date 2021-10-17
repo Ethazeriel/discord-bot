@@ -13,7 +13,7 @@ let loop = false;
 let queuestash = [];
 let client = null;
 
-player.on('error', error => {logLine('error', [ 'error:', error.message, 'with file', error.resource.metadata.title, 'full:', error ]);});
+player.on('error', error => {logLine('error', [ 'error:', error.message, 'with file', error.resource.metadata.title, 'full:', error.stack ]);});
 player.on('stateChange', (oldState, newState) => {
   logLine('info', ['Player transitioned from', oldState.status, 'to', newState.status]);
   playerStatus = newState.status;
@@ -96,7 +96,7 @@ async function playTrack() { // start the player
         player.play(resource);
         logLine('track', ['Playing track: ', track.artist, ':', track.title]);
       } catch (error) {
-        logLine('error', error);
+        logLine('error', [error.stack]);
       }
       currentTrack = queue[0];
       queue.shift();

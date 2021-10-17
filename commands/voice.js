@@ -21,7 +21,7 @@ module.exports = {
   async execute(interaction) {
     logLine('command',
       ['Recieved command from ',
-        interaction.member,
+        interaction.member.displayName,
         'with name ',
         interaction.commandName,
         'subcommand ',
