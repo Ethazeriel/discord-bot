@@ -4,6 +4,7 @@ global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json');
 const { logLine } = require('./logger.js');
+const { leaveVoice } = require('./music');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -41,3 +42,9 @@ client.on('interactionCreate', async interaction => {
 
 // Login to Discord with your client's token
 client.login(token);
+
+process.on('SIGINT' || 'SIGTERM', () => {
+  logLine('info', ['received termination command, exiting']);
+  leaveVoice();
+  process.exit();
+});
