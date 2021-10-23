@@ -38,15 +38,15 @@ module.exports = {
   async execute(interaction) {
     logLine('command',
       ['Recieved command from ',
-        interaction.member,
-        'with name ',
+        interaction.member.displayName,
+        'with name',
         interaction.commandName,
-        'subcommand ',
+        'subcommand',
         interaction.options.getSubcommand(),
-        'and options page: ',
-        interaction.options.getString('page'),
-        'track: ',
-        interaction.options.getString('track')]);
+        'and options page:',
+        interaction.options.getInteger('page'),
+        'track:',
+        interaction.options.getInteger('track')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
@@ -105,7 +105,7 @@ module.exports = {
       }
 
       default: {
-        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

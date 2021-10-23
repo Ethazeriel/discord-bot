@@ -21,11 +21,11 @@ module.exports = {
 
   async execute(interaction) {
     logLine('command',
-      ['Recieved command from ',
-        interaction.member,
-        'with name ',
+      ['Recieved command from',
+        interaction.member.displayName,
+        'with name',
         interaction.commandName,
-        'and options url: ',
+        'and options url:',
         interaction.options.getString('url'),
         'type: ',
         interaction.options.getString('type')]);
@@ -54,7 +54,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -84,7 +84,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error]);
+          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -110,7 +110,7 @@ module.exports = {
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
-          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error]);
+          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error.stack]);
           await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
         }
 
@@ -129,7 +129,7 @@ module.exports = {
       }
 
       default: {
-        logLine('error', 'OH NO SOMETHING\'S FUCKED');
+        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 
