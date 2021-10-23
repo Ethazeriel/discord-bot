@@ -1,6 +1,6 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
 const { logLine } = require('./logger.js');
+const youtubedl = require('youtube-dl-exec').raw;
 
 // set things up
 let queue = [];
@@ -92,7 +92,12 @@ async function playTrack() { // start the player
     if (queue.length > 0) {
       const track = queue[0];
       try {
-        const resource = createAudioResource(ytdl(track.url), { metadata: { title: track.title } });
+        const resource = createAudioResource(youtubedl(track.url, {
+          o: '-',
+          q: '',
+          f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
+          r: '100K',
+        }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout);
         player.play(resource);
         logLine('track', ['Playing track: ', track.artist, ':', track.title]);
       } catch (error) {
