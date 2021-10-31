@@ -1,6 +1,7 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const { logLine } = require('./logger.js');
 const youtubedl = require('youtube-dl-exec').raw;
+const { useragent } = require('./config.json');
 
 // set things up
 let queue = [];
@@ -98,7 +99,7 @@ async function playTrack() { // start the player
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
           r: '100K',
           cookies: 'cookies.txt',
-          'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36',
+          'user-agent': useragent,
         }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout);
         player.play(resource);
         logLine('track', ['Playing track: ', track.artist, ':', track.title]);
