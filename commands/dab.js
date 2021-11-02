@@ -14,6 +14,8 @@ module.exports = {
         .setRequired(true)
         .addChoice('Random', 'random')
         .addChoice('Pride', 'pride')
+        .addChoice('Progress pride', 'progressive')
+        .addChoice('PoC pride', 'poc')
         .addChoice('Trans', 'trans')
         .addChoice('Agender', 'agender')
         .addChoice('Aromantic', 'aromantic')
