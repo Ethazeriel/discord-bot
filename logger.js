@@ -33,6 +33,16 @@ async function logLine(level, args) {
     });
     break;
 
+  case 'DATABASE':
+    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.cyan(level)} - ${logStr}`);
+    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
+    break;
+
   case 'ERROR':
     console.error(`${chalk.yellow(currentDT())} - ${chalk.bold.red(level)} - ${logStr}`);
     fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {

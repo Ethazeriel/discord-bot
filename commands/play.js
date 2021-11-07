@@ -50,7 +50,7 @@ module.exports = {
             title: trackInfo.videoDetails.title,
             artist: 'placeholder artist',
             album: 'placeholder album',
-            url: trackInfo.videoDetails.video_url,
+            youtubeURL: trackInfo.videoDetails.video_url,
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
@@ -80,7 +80,7 @@ module.exports = {
             title: trackInfo.videoDetails.title,
             artist: 'placeholder artist',
             album: 'placeholder album',
-            url: trackInfo.videoDetails.video_url,
+            youtubeURL: trackInfo.videoDetails.video_url,
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {
@@ -106,7 +106,7 @@ module.exports = {
             title: trackInfo.videoDetails.title,
             artist: 'placeholder artist',
             album: 'placeholder album',
-            url: trackInfo.videoDetails.video_url,
+            youtubeURL: trackInfo.videoDetails.video_url,
             albumart: 'albumart/albumart.jpg',
           };
         } catch (error) {

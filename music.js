@@ -93,7 +93,7 @@ async function playTrack() { // start the player
     if (queue.length > 0) {
       const track = queue[0];
       try {
-        const resource = createAudioResource(youtubedl(track.url, {
+        const resource = createAudioResource(youtubedl(track.youtubeURL, {
           o: '-',
           q: '',
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
