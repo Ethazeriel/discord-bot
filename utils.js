@@ -75,6 +75,43 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
     }
   }
 }
+
+
+async function generateListEmbed(interaction, queue, messagetitle, page) {
+  const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
+  const queuePart = queue.slice((page - 1) * 10, page * 10);
+  if (page > pages) {
+    await interaction.followUp({ content: `Invalid page number ${page}. Please try again.`, ephemeral: true });
+  } else {
+    let queueStr = '';
+    for (let i = 0; i < queuePart.length; i++) {
+      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + queuePart[i].artist + ' - ' + queuePart[i].title + '\n';
+      queueStr = queueStr.concat(part);
+    }
+    const queueEmbed = {
+      color: 0x3277a8,
+      author: {
+        name: messagetitle,
+        icon_url: pickPride('fish'),
+      },
+      thumbnail: {
+        url: pickPride('dab'),
+      },
+      fields: [
+        { name: 'Horse:', value: queueStr },
+        { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Playlist length: ${queue.length} tracks`, inline: true },
+      ],
+    };
+    try {
+      await interaction.followUp({ embeds: [queueEmbed] });
+    } catch (error) {
+      logLine('error', [error.stack]);
+    }
+  }
+}
+
+
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;
+exports.generateListEmbed = generateListEmbed;
