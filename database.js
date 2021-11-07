@@ -25,10 +25,7 @@ async function getTrack(query, keepAlive) {
 Usage examples:
 get track by youtubeURL: await getTrack({youtubeURL: 'mdh6upXZL6c'});
 spotifyURI: await getTrack({ spotifyURI: 'spotify:track:76nqR8hb279mkQLNkQMzK1' });
-key: await getTrack({ keys: { $in: ['haken%20celestial%20elixir'] } });
-also key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
-should be fairly self explanatory overall - the $in operator lets you query for any exact match in the array.
-some time later: having read further, apparently you don't need the $in operator and I'm not sure why you'd ever use it vs not given that the second also works? this documentation did a poor job explaining things
+key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
 generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
 */
 
@@ -63,7 +60,7 @@ async function addKey(query, newkey) {
     const database = client.db(dbname);
     const tracks = database.collection(collname);
     await tracks.updateOne(query, { $addToSet: { keys: newkey } });
-    logLine('database', [`Adding key ${chalk.blue(newkey)} to${chalk.green(query)}`]);
+    logLine('database', [`Adding key ${chalk.blue(newkey)} to ${chalk.green(query)}`]);
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
   } finally {
@@ -84,13 +81,16 @@ async function addPlaylist(trackarray, listname) {
       trackarray.forEach(async (element, index, array) => {
         const query = { 'youtubeURL': element.youtubeURL };
         await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
-        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to${chalk.green(element.title)} by ${chalk.green(element.artist)}`]);
+        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.title)} by ${chalk.green(element.artist)}`]);
         if (index == array.length - 1) {await client.close();}
       });
     } catch (error) {
       logLine('error', ['database error:', error.stack]);
     }
-  } else { return `Playlist ${listname} already exists.`; }
+  } else {
+    logLine('database', [`User attempted to add new playlist ${chalk.blue(listname)}, which already exists.`]);
+    return `Playlist ${listname} already exists.`;
+  }
 }
 
 async function getPlaylist(listname) {
