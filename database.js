@@ -1,53 +1,54 @@
 const MongoClient = require('mongodb').MongoClient;
-
+const { logLine } = require('./logger.js');
+const chalk = require('chalk');
 // Connection URL
 const url = 'mongodb://bot:assWord@localhost:27017/assWord?authSource=admin';
 const client = new MongoClient(url);
+const dbname = 'test';
+const collname = 'tracks';
 
 async function getTrack(query, keepAlive) {
   // returns the first track object that matches the query
   try {
     await client.connect();
-    const database = client.db('test');
-    const tracks = database.collection('tracks');
+    const database = client.db(dbname);
+    const tracks = database.collection(collname);
     const track = await tracks.findOne(query);
-    // console.log(track);
     return track;
   } catch (error) {
-    console.log('error with database: \n' + error.stack);
+    logLine('error', ['database error:', error.stack]);
   } finally {
     if (keepAlive != true) {await client.close();}
   }
 }
 /*
 Usage examples:
-get track by youtubeURL: await getTrack({youtubeURL: 'mdh6upXZL6c'});
-spotifyURI: await getTrack({ spotifyURI: 'spotify:track:76nqR8hb279mkQLNkQMzK1' });
-key: await getTrack({ keys: { $in: ['haken%20celestial%20elixir'] } });
-also key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
-should be fairly self explanatory overall - the $in operator lets you query for any exact match in the array.
-some time later: having read further, apparently you don't need the $in operator and I'm not sure why you'd ever use it vs not given that the second also works? this documentation did a poor job explaining things
+get track by youtubeID: await getTrack({youtubeID: 'mdh6upXZL6c'});
+spotifyID: await getTrack({ spotifyID: '76nqR8hb279mkQLNkQMzK1' });
+key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
 generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
 */
 
-async function insertTrack(track, query) {
+async function insertTrack(track, query, keepAlive) {
   // inserts a single track object into the database
-  if (query == null) {query = 'youtubeURL';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
+  if (query == null) {query = 'youtubeID';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
   try {
     await client.connect();
-    const database = client.db('test');
-    const tracks = database.collection('tracks');
+    const database = client.db(dbname);
+    const tracks = database.collection(collname);
     // check if we already have this url
     const test = await tracks.findOne({ [query]: track[query] });
     if (test == null || test[query] != track[query]) {
       // we don't have this in our database yet, so
-      await tracks.insertOne(track);
-    } else { throw new Error(`Track ${track.youtubeURL} already exists!`);}
+      const result = await tracks.insertOne(track);
+      logLine('database', [`Adding track ${chalk.green(track.title)} by ${chalk.green(track.artist)} to database`]);
+      return result;
+    } else { throw new Error(`Track ${track.youtubeID} already exists!`);}
     // console.log(track);
   } catch (error) {
-    console.log('error with database: \n' + error.stack);
+    logLine('error', ['database error:', error.message]);
   } finally {
-    await client.close();
+    if (keepAlive != true) {await client.close();}
   }
 }
 
@@ -56,16 +57,95 @@ async function addKey(query, newkey) {
   // silently fails if we don't have the track in the DB already
   try {
     await client.connect();
-    const database = client.db('test');
-    const tracks = database.collection('tracks');
+    const database = client.db(dbname);
+    const tracks = database.collection(collname);
     await tracks.updateOne(query, { $addToSet: { keys: newkey } });
+    logLine('database', [`Adding key ${chalk.blue(newkey)} to ${chalk.green(query)}`]);
   } catch (error) {
-    console.log('error with database: \n' + error.stack);
+    logLine('error', ['database error:', error.stack]);
   } finally {
     await client.close();
   }
 }
-// addKey({ spotifyURI: 'spotify:track:7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
+// addKey({ spotifyID: '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
+
+async function addPlaylist(trackarray, listname) {
+  // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
+  // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
+  const test = await getPlaylist(listname);
+  if (!test.length) {
+    try {
+      await client.connect();
+      const database = client.db(dbname);
+      const tracks = database.collection(collname);
+      trackarray.forEach(async (element, index, array) => {
+        const query = { 'youtubeID': element.youtubeID };
+        await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
+        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.title)} by ${chalk.green(element.artist)}`]);
+        if (index == array.length - 1) {await client.close();}
+      });
+    } catch (error) {
+      logLine('error', ['database error:', error.stack]);
+    }
+  } else {
+    logLine('database', [`User attempted to add new playlist ${chalk.blue(listname)}, which already exists.`]);
+    return `Playlist ${listname} already exists.`;
+  }
+}
+
+async function getPlaylist(listname) {
+  // returns a playlist as an array of tracks, ready for use
+  try {
+    await client.connect();
+    const database = client.db(dbname);
+    const tracks = database.collection(collname);
+    const qustr = `playlists.${listname}`;
+    const query = { [qustr]: { $exists: true } };
+    const options = { sort: { [qustr]:1 } };
+    const cursor = await tracks.find(query, options);
+    const everything = await cursor.toArray();
+    return everything;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  } finally {
+    await client.close();
+  }
+}
+
+async function removePlaylist(listname) {
+  try {
+    await client.connect();
+    const database = client.db(dbname);
+    const tracks = database.collection(collname);
+    const qustr = `playlists.${listname}`;
+    const query = { [qustr]: { $exists: true } };
+    const filt = { $pull:{ 'playlists': { [listname]: { $exists: true } } } };
+    const result = await tracks.updateMany(query, filt);
+    logLine('database', [`Removed playlist ${chalk.blue(listname)} from ${chalk.green(result.modifiedCount)} tracks.`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  } finally {
+    await client.close();
+  }
+}
+/*
+async function dootherthing() {
+  const trackarray = await getPlaylist('trainsong');
+  console.log(JSON.stringify(trackarray, null, '  '));
+}
+dootherthing();
+*/
+/*
+const playlists = require('./playlists.js');
+async function dothing() {
+   const result = await addPlaylist(playlists.trainsong, 'trainsong');
+   console.log(result);
+  //playlists.trainsong.forEach(async element => {
+  //  await insertTrack(element, null, true);
+  //});
+  // await removePlaylist('trainsong');
+}
+dothing();
 /*
 async function dothething() {
   const test = await getTrack({ spotifyURI: 'spotify:track:7BnKqNjGrXPtVmPkMNcsln' });
@@ -73,61 +153,11 @@ async function dothething() {
 }
 
 dothething();
-/*
-insertTrack({
-  "keys": [
-    "tng%20those%20arent%20muskets", "those%20arent%20muskets", "star%20trek%20rap"
-  ],
-  "playlists": [],
-  "title": "Star Trek Rap (feat. Prime Directive and Galaxy Class)",
-  "duration": 300,
-  "youtubeURL": "ClP8n6asn3w",
-  "youtubeArt": "https://i.ytimg.com/vi/ClP8n6asn3w/hqdefault.jpg",
-  "alternatives": [
-    {
-      "youtubeTitle": "Mike and Rich&#39;s Top 5 Star Trek TNG Episodes! - re:View (part 1)",
-      "youtubeURL": "m-hGLHOzvgs",
-      "youtubeArt": "https://i.ytimg.com/vi/m-hGLHOzvgs/hqdefault.jpg"
-    },
-    {
-      "youtubeTitle": "25 great commander riker quotes",
-      "youtubeURL": "sNhU-T7wSUE",
-      "youtubeArt": "https://i.ytimg.com/vi/sNhU-T7wSUE/hqdefault.jpg"
-    },
-    {
-      "youtubeTitle": "10 Creepiest Things Seen By Astronauts In Space.",
-      "youtubeURL": "YhsS0yLISuo",
-      "youtubeArt": "https://i.ytimg.com/vi/YhsS0yLISuo/hqdefault.jpg"
-    },
-    {
-      "youtubeTitle": "Let&#39;s Play! - SLUDGE by Metal King Studio",
-      "youtubeURL": "MWysgXfhIg0",
-      "youtubeArt": "https://i.ytimg.com/vi/MWysgXfhIg0/hqdefault.jpg"
-    }
-  ]
-}, 'youtubeURL');
-
-
-/*
-const track = [
-  {
-    keys: [],
-    playlists: [ { playlistName: name, playlistPosition: number } ],
-    title: 'The Path',
-    artist: 'Haken',
-    album: 'The Mountain',
-    trackNumber: 1,
-    duration: 240,
-    spotifyURI: 'totes real uri',
-    youtubeURL: 'https://www.youtube.com/watch?v=lBZ3gfaMQVI',
-    spotifyArt: 'uri:albumart/TheMountain.jpg',
-    youtubeArt: 'uri:youtube thumbnail here',
-    alternatives: [
-      // [n]: { youtubeURL, youtubeThumbnail, youtubeTitle }, ...
-    ],
-  },
-]
 */
+
 exports.getTrack = getTrack;
 exports.insertTrack = insertTrack;
 exports.addKey = addKey;
+exports.addPlaylist = addPlaylist;
+exports.getPlaylist = getPlaylist;
+exports.removePlaylist = removePlaylist;
