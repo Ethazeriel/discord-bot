@@ -93,7 +93,7 @@ async function playTrack() { // start the player
     if (queue.length > 0) {
       const track = queue[0];
       try {
-        const resource = createAudioResource(youtubedl(track.youtubeID, {
+        const resource = createAudioResource(youtubedl(track.youtube.id, {
           o: '-',
           q: '',
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
@@ -102,7 +102,7 @@ async function playTrack() { // start the player
           'user-agent': useragent,
         }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout);
         player.play(resource);
-        logLine('track', ['Playing track: ', track.artist, ':', track.title]);
+        logLine('track', ['Playing track: ', track.artist.name, ':', track.name]);
       } catch (error) {
         logLine('error', [error.stack]);
       }

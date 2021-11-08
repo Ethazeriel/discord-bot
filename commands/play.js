@@ -48,11 +48,11 @@ module.exports = {
         // handle direct youtube urls
           trackInfo = await ytdl.getInfo(reqstr);
           track = {
-            title: trackInfo.videoDetails.title,
-            artist: 'placeholder artist',
-            album: 'placeholder album',
-            youtubeID: trackInfo.videoDetails.video_url,
-            albumart: 'albumart/albumart.jpg',
+            name: trackInfo.videoDetails.title,
+            artist: { name:'placeholder artist' },
+            album: { name:'placeholder album' },
+            youtube: { id:trackInfo.videoDetails.video_url },
+            spotify: { art:'albumart/albumart.jpg' },
           };
         } catch (error) {
           logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
@@ -78,11 +78,11 @@ module.exports = {
         // handle direct youtube urls
           trackInfo = await ytdl.getInfo(reqstr);
           track = {
-            title: trackInfo.videoDetails.title,
-            artist: 'placeholder artist',
-            album: 'placeholder album',
-            youtubeID: trackInfo.videoDetails.video_url,
-            albumart: 'albumart/albumart.jpg',
+            name: trackInfo.videoDetails.title,
+            artist: { name:'placeholder artist' },
+            album: { name:'placeholder album' },
+            youtube: { id:trackInfo.videoDetails.video_url },
+            spotify: { art:'albumart/albumart.jpg' },
           };
         } catch (error) {
           logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
@@ -104,11 +104,11 @@ module.exports = {
         // handle direct youtube urls
           trackInfo = await ytdl.getInfo(reqstr);
           track = {
-            title: trackInfo.videoDetails.title,
-            artist: 'placeholder artist',
-            album: 'placeholder album',
-            youtubeID: trackInfo.videoDetails.video_url,
-            albumart: 'albumart/albumart.jpg',
+            name: trackInfo.videoDetails.title,
+            artist: { name:'placeholder artist' },
+            album: { name:'placeholder album' },
+            youtube: { id:trackInfo.videoDetails.video_url },
+            spotify: { art:'albumart/albumart.jpg' },
           };
         } catch (error) {
           logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error.stack]);

@@ -5,7 +5,7 @@ const chalk = require('chalk');
 const url = 'mongodb://bot:assWord@localhost:27017/assWord?authSource=admin';
 const client = new MongoClient(url);
 const dbname = 'test';
-const collname = 'tracks';
+const collname = 'tracks1';
 
 async function getTrack(query, keepAlive) {
   // returns the first track object that matches the query
@@ -23,15 +23,22 @@ async function getTrack(query, keepAlive) {
 }
 /*
 Usage examples:
-get track by youtubeID: await getTrack({youtubeID: 'mdh6upXZL6c'});
-spotifyID: await getTrack({ spotifyID: '76nqR8hb279mkQLNkQMzK1' });
+get track by youtubeID: await getTrack({youtube.id: 'mdh6upXZL6c'});
+spotifyID: await getTrack({ spotify.id: '76nqR8hb279mkQLNkQMzK1' });
 key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
 generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
 */
-
+async function closeDB() {
+  try {
+    await client.close();
+  } catch (error) {
+    logLine('error', ['database error:', error.message]);
+    return error;
+  }
+}
 async function insertTrack(track, query, keepAlive) {
   // inserts a single track object into the database
-  if (query == null) {query = 'youtubeID';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
+  if (query == null) {query = 'youtube.id';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
   try {
     await client.connect();
     const database = client.db(dbname);
@@ -41,9 +48,9 @@ async function insertTrack(track, query, keepAlive) {
     if (test == null || test[query] != track[query]) {
       // we don't have this in our database yet, so
       const result = await tracks.insertOne(track);
-      logLine('database', [`Adding track ${chalk.green(track.title)} by ${chalk.green(track.artist)} to database`]);
+      logLine('database', [`Adding track ${chalk.green(track.name)} by ${chalk.green(track.artist.name)} to database`]);
       return result;
-    } else { throw new Error(`Track ${track.youtubeID} already exists!`);}
+    } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
     // console.log(track);
   } catch (error) {
     logLine('error', ['database error:', error.message]);
@@ -67,7 +74,7 @@ async function addKey(query, newkey) {
     await client.close();
   }
 }
-// addKey({ spotifyID: '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
+// addKey({ spotify.id: '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
 async function addPlaylist(trackarray, listname) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
@@ -79,9 +86,9 @@ async function addPlaylist(trackarray, listname) {
       const database = client.db(dbname);
       const tracks = database.collection(collname);
       trackarray.forEach(async (element, index, array) => {
-        const query = { 'youtubeID': element.youtubeID };
+        const query = { 'youtube.id': element.youtube.id };
         await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
-        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.title)} by ${chalk.green(element.artist)}`]);
+        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.name)} by ${chalk.green(element.artist.name)}`]);
         if (index == array.length - 1) {await client.close();}
       });
     } catch (error) {
@@ -136,13 +143,13 @@ async function dootherthing() {
 dootherthing();
 */
 /*
-const playlists = require('./playlists.js');
+const playlists = require('./testing/playlists.js');
 async function dothing() {
-   const result = await addPlaylist(playlists.trainsong, 'trainsong');
-   console.log(result);
-  //playlists.trainsong.forEach(async element => {
+  const result = await addPlaylist(playlists.trainsong, 'trainsong');
+  console.log(result);
+  // playlists.trainsong.forEach(async element => {
   //  await insertTrack(element, null, true);
-  //});
+  // });
   // await removePlaylist('trainsong');
 }
 dothing();
@@ -161,3 +168,4 @@ exports.addKey = addKey;
 exports.addPlaylist = addPlaylist;
 exports.getPlaylist = getPlaylist;
 exports.removePlaylist = removePlaylist;
+exports.closeDB = closeDB;
