@@ -1,38 +1,38 @@
 {
-	"name" : string,
+	"name" : "string",
 	"album" : {
-		"id" : string,
-		"name" : string,
-		"trackNumber" : integer
+		"id" : "string",
+		"name" : "string",
+		"trackNumber" : "integer"
 	},
 	"artist" : {
-		"id" : string,
-		"name" : string,
+		"id" : "string",
+		"name" : "string"
 	},
 	"spotify" : {
-		"id" : string,
-		"art" : string,
-		"duration" : integer
+		"id" : "string",
+		"art" : "string",
+		"duration" : "integer"
 	},
 	"youtube" : {
-		"id" : string,
-		"art" string,
-		"duration" : integer
+		"id" : "string",
+		"art" : "string",
+		"duration" : "integer"
 	},
 	"keys" : [
-		string
+		"string"
 	],
 	"playlists": [
 		{ 
-			string : integer
+			"string" : "integer"
 		}
 	],
 	"alternates": [
 		{
-			"id": string,
-			"name": string,
-			"art": string,
-			"duration": integer
-		},
-	],
+			"id": "string",
+			"name": "string",
+			"art": "string",
+			"duration": "integer"
+		}
+	]
 }
