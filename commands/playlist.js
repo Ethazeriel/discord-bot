@@ -3,7 +3,7 @@ const songlist = require('../songlist.js');
 const utils = require('../utils.js');
 const { logLine } = require('../logger.js');
 const database = require('../database.js');
-
+const music = require('../music.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -53,7 +53,10 @@ module.exports = {
       .addIntegerOption(option =>
         option.setName('from-index').setDescription('Index to move from').setRequired(true))
       .addIntegerOption(option =>
-        option.setName('to-index').setDescription('Index to move to').setRequired(true))),
+        option.setName('to-index').setDescription('Index to move to').setRequired(true)))
+    .addSubcommand(subcommand => subcommand
+      .setName('play')
+      .setDescription('appends everything from the current workspace to the live queue')),
 
 
   async execute(interaction) {
@@ -137,6 +140,13 @@ module.exports = {
         const toindex = interaction.options.getInteger('to-index') - 1;
         const result = songlist.moveTrack(fromindex, toindex);
         interaction.followUp({ content:`Moved track ${result[0].title} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
+        break;
+      }
+
+      case 'play': {
+        music.createVoiceConnection(interaction);
+        await music.addMultipleToQueue(songlist.list);
+        utils.generateListEmbed(interaction, songlist.list, 'Now Playing:', 1);
         break;
       }
 

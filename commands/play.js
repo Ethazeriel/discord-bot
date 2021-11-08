@@ -2,21 +2,22 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
 const ytdl = require('ytdl-core');
 const utils = require('../utils.js');
-const playlists = require('../playlists.js');
+// const playlists = require('../playlists.js');
 const { logLine } = require('../logger.js');
+const database = require('../database.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
     .setDescription('Play something!')
     .addStringOption(option =>
-      option.setName('url').setDescription('Youtube URL').setRequired(true))
+      option.setName('search').setDescription('search term/youtube url/spotify uri/playlist name').setRequired(true))
     .addStringOption(option =>
       option.setName('type').setDescription('play type')
         .addChoice('End of queue', 'end')
         .addChoice('Top of queue', 'top')
         .addChoice('Skip current', 'skip')
-        .addChoice('Trainsong', 'trainsong')),
+        .addChoice('Playlist', 'playlist')),
 
 
   async execute(interaction) {
@@ -26,7 +27,7 @@ module.exports = {
         'with name',
         interaction.commandName,
         'and options url:',
-        interaction.options.getString('url'),
+        interaction.options.getString('search'),
         'type: ',
         interaction.options.getString('type')]);
 
@@ -39,7 +40,7 @@ module.exports = {
       switch (type) {
 
       case 'end': {
-        const reqstr = interaction.options.getString('url');
+        const reqstr = interaction.options.getString('search');
 
         let trackInfo = null;
         let track = null;
@@ -69,7 +70,7 @@ module.exports = {
       }
 
       case 'top': {
-        const reqstr = interaction.options.getString('url');
+        const reqstr = interaction.options.getString('search');
 
         let trackInfo = null;
         let track = null;
@@ -95,7 +96,7 @@ module.exports = {
       }
 
       case 'skip': {
-        const reqstr = interaction.options.getString('url');
+        const reqstr = interaction.options.getString('search');
 
         let trackInfo = null;
         let track = null;
@@ -120,11 +121,12 @@ module.exports = {
         break;
       }
 
-      case 'trainsong': {
+      case 'playlist': {
         music.createVoiceConnection(interaction);
-        await music.addMultipleToQueue(playlists.trainsong);
-        // utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Queued Trainsong:', 1);
-        await interaction.followUp({ content:'TRAINSONG' });
+        const listname = interaction.options.getString('search');
+        const result = await database.getPlaylist(listname);
+        await music.addMultipleToQueue(result);
+        utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
         break;
       }
 
