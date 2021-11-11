@@ -1,5 +1,12 @@
 {
-	"name" : "string",
+  "keys" : [
+		"string"
+	],
+	"playlists": [
+		{ 
+			"string" : "integer"
+		}
+	],
 	"album" : {
 		"id" : "string",
 		"name" : "string",
@@ -11,22 +18,16 @@
 	},
 	"spotify" : {
 		"id" : "string",
+    "name" : "string",
 		"art" : "string",
 		"duration" : "integer"
 	},
 	"youtube" : {
 		"id" : "string",
+    "name": "string",
 		"art" : "string",
 		"duration" : "integer"
 	},
-	"keys" : [
-		"string"
-	],
-	"playlists": [
-		{ 
-			"string" : "integer"
-		}
-	],
 	"alternates": [
 		{
 			"id": "string",
