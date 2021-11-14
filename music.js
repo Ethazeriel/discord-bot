@@ -1,7 +1,7 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const { logLine } = require('./logger.js');
 const youtubedl = require('youtube-dl-exec').raw;
-const { useragent } = require('./config.json');
+const { useragent } = require('./config.json').youtube;
 
 // set things up
 let queue = [];

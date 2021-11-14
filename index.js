@@ -2,7 +2,7 @@ const fs = require('fs');
 // Require the necessary discord.js classes
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
-const { token } = require('./config.json');
+const { token } = require('./config.json').discord;
 const { logLine } = require('./logger.js');
 const { leaveVoice } = require('./music');
 

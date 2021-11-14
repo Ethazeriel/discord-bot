@@ -39,14 +39,16 @@ async function closeDB() {
 }
 async function insertTrack(track, query, keepAlive) {
   // inserts a single track object into the database
-  if (query == null) {query = 'youtube.id';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
+  if (query == null) {query = 'youtube';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
+  const id = 'id';
+  const search = query + '.id';
   try {
     await client.connect();
     const database = client.db(dbname);
     const tracks = database.collection(collname);
     // check if we already have this url
-    const test = await tracks.findOne({ [query]: track[query] });
-    if (test == null || test[query] != track[query]) {
+    const test = await tracks.findOne({ [search]: track[query][id] });
+    if (test == null || test[query][id] != track[query][id]) {
       // we don't have this in our database yet, so
       const result = await tracks.insertOne(track);
       logLine('database', [`Adding track ${chalk.green(track.name)} by ${chalk.green(track.artist.name)} to database`]);
