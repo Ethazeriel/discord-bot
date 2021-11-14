@@ -1,11 +1,12 @@
 const MongoClient = require('mongodb').MongoClient;
 const { logLine } = require('./logger.js');
 const chalk = require('chalk');
+const { mongo } = require('./config.json');
 // Connection URL
-const url = 'mongodb://bot:assWord@localhost:27017/assWord?authSource=admin';
+const url = mongo.url;
 const client = new MongoClient(url);
-const dbname = 'test';
-const collname = 'tracks1';
+const dbname = mongo.database;
+const collname = mongo.collection;
 
 async function getTrack(query, keepAlive) {
   // returns the first track object that matches the query
@@ -135,14 +136,36 @@ async function removePlaylist(listname) {
     await client.close();
   }
 }
+
+async function getAlbum(request, type) {
+  // returns a playlist as an array of tracks, ready for use
+  // type can be id or name
+  const pattern = /^(?:id|name){1}$/g;
+  if (!pattern.test(type)) {return null;}
+  try {
+    await client.connect();
+    const database = client.db(dbname);
+    const tracks = database.collection(collname);
+    const qustr = `album.${type}`;
+    const query = { [qustr]: request };
+    const options = { sort: { 'album.trackNumber':1 } };
+    const cursor = await tracks.find(query, options);
+    const everything = await cursor.toArray();
+    return everything;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  } finally {
+    await client.close();
+  }
+}
 /*
 async function dootherthing() {
-  const trackarray = await getPlaylist('trainsong');
+  const trackarray = await getAlbum('The Mountain', 'name');
   console.log(JSON.stringify(trackarray, null, '  '));
 }
 dootherthing();
-*/
-/*
+
+
 const playlists = require('./testing/playlists.js');
 async function dothing() {
   const result = await addPlaylist(playlists.trainsong, 'trainsong');
@@ -169,3 +192,4 @@ exports.addPlaylist = addPlaylist;
 exports.getPlaylist = getPlaylist;
 exports.removePlaylist = removePlaylist;
 exports.closeDB = closeDB;
+exports.getAlbum = getAlbum;
