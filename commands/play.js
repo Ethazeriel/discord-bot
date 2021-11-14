@@ -17,7 +17,8 @@ module.exports = {
         .addChoice('End of queue', 'end')
         .addChoice('Top of queue', 'top')
         .addChoice('Skip current', 'skip')
-        .addChoice('Playlist', 'playlist')),
+        .addChoice('Playlist', 'playlist')
+        .addChoice('Album', 'album')),
 
 
   async execute(interaction) {
@@ -125,6 +126,15 @@ module.exports = {
         music.createVoiceConnection(interaction);
         const listname = interaction.options.getString('search');
         const result = await database.getPlaylist(listname);
+        await music.addMultipleToQueue(result);
+        utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
+        break;
+      }
+
+      case 'album': {
+        music.createVoiceConnection(interaction);
+        const listname = interaction.options.getString('search');
+        const result = await database.getAlbum(listname, 'name');
         await music.addMultipleToQueue(result);
         utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
         break;
