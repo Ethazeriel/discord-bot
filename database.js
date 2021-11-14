@@ -2,7 +2,7 @@ const MongoClient = require('mongodb').MongoClient;
 const { logLine } = require('./logger.js');
 const chalk = require('chalk');
 // Connection URL
-const url = 'mongodb://bot:assWord@localhost:27017/assWord?authSource=admin';
+const url = 'mongodb://bot:assWord@10.5.0.1:27017/assWord?authSource=admin';
 const client = new MongoClient(url);
 const dbname = 'test';
 const collname = 'tracks1';
