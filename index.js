@@ -5,6 +5,7 @@ const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json').discord;
 const { logLine } = require('./logger.js');
 const { leaveVoice } = require('./music');
+const database = require('./database.js');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -23,6 +24,7 @@ for (const file of commandFiles) {
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
   logLine('info', ['Ready!', `Node version: ${process.version}`]);
+  database.printCount();
 });
 
 // actually run the commands
@@ -43,8 +45,9 @@ client.on('interactionCreate', async interaction => {
 // Login to Discord with your client's token
 client.login(token);
 
-process.on('SIGINT' || 'SIGTERM', () => {
+process.on('SIGINT' || 'SIGTERM', async () => {
   logLine('info', ['received termination command, exiting']);
   leaveVoice();
+  await database.closeDB();
   process.exit();
 });

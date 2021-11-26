@@ -7,12 +7,24 @@ const url = mongo.url;
 const dbname = mongo.database;
 const collname = mongo.collection;
 let db;
-
+let con;
 MongoClient.connect(url, function(err, client) {
   if (err) throw err;
+  con = client;
   db = client.db(dbname);
   logLine('database', [`Connected to database: ${dbname}`]);
 });
+
+async function closeDB() {
+  // we should really only be doing this when the program exits
+  try {
+    logLine('database', [`Closing connection: ${dbname}`]);
+    await con.close();
+  } catch (error) {
+    logLine('error', ['database error:', error.message]);
+    return error;
+  }
+}
 
 async function getTrack(query) {
   // returns the first track object that matches the query
@@ -132,6 +144,18 @@ async function getAlbum(request, type) {
     logLine('error', ['database error:', error.stack]);
   }
 }
+
+async function printCount() {
+  // returns the number of tracks we have
+  try {
+    const tracks = db.collection(collname);
+    const number = await tracks.count();
+    logLine('database', [`We currently have ${chalk.green(number)} tracks in the ${dbname} database, collection ${collname}.`]);
+    return number;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
 /*
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 async function dootherthing() {
@@ -170,3 +194,5 @@ exports.addPlaylist = addPlaylist;
 exports.getPlaylist = getPlaylist;
 exports.removePlaylist = removePlaylist;
 exports.getAlbum = getAlbum;
+exports.printCount = printCount;
+exports.closeDB = closeDB;
