@@ -10,8 +10,8 @@ let db;
 
 MongoClient.connect(url, function(err, client) {
   if (err) throw err;
-
   db = client.db(dbname);
+  logLine('database', [`Connected to database: ${dbname}`]);
 });
 
 async function getTrack(query) {
