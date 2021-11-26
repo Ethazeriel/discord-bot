@@ -44,7 +44,7 @@ async function insertTrack(track, query) {
     if (test == null || test[query][id] != track[query][id]) {
       // we don't have this in our database yet, so
       const result = await tracks.insertOne(track);
-      logLine('database', [`Adding track ${chalk.green(track.name)} by ${chalk.green(track.artist.name)} to database`]);
+      logLine('database', [`Adding track ${chalk.green(track.spotify.name)} by ${chalk.green(track.artist.name)} to database`]);
       return result;
     } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
     // console.log(track);
