@@ -23,7 +23,7 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
       icon_url: pickPride('fish'),
     },
     fields: [
-      { name: track.name, value: '** **' },
+      { name: track.spotify.name, value: '** **' },
       { name: track.artist.name, value: '** **', inline: true },
       { name: '\u200b', value: '** **', inline: true },
       { name: track.album.name, value: '** **', inline: true },
@@ -49,7 +49,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + queuePart[i].artist.name + ' - ' + queuePart[i].name + '\n';
+      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + queuePart[i].artist.name + ' - ' + queuePart[i].spotify.name + '\n';
       queueStr = queueStr.concat(part);
     }
     const queueEmbed = {
@@ -62,7 +62,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
         url: 'attachment://art.jpg',
       },
       fields: [
-        { name: 'Current Track:', value: `${track.artist.name} - ${track.name}` },
+        { name: 'Current Track:', value: `${track.artist.name} - ${track.spotify.name}` },
         { name: 'Next Up:', value: queueStr },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
         { name: `Loop Status: ${music.getLoop()}`, value: '** **' },
@@ -85,7 +85,7 @@ async function generateListEmbed(interaction, queue, messagetitle, page) {
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + queuePart[i].artist.name + ' - ' + queuePart[i].name + '\n';
+      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + queuePart[i].artist.name + ' - ' + queuePart[i].spotify.name + '\n';
       queueStr = queueStr.concat(part);
     }
     const queueEmbed = {
