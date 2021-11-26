@@ -4,22 +4,24 @@ const chalk = require('chalk');
 const { mongo } = require('./config.json');
 // Connection URL
 const url = mongo.url;
-const client = new MongoClient(url);
 const dbname = mongo.database;
 const collname = mongo.collection;
+let db;
 
-async function getTrack(query, keepAlive) {
+MongoClient.connect(url, function(err, client) {
+  if (err) throw err;
+
+  db = client.db(dbname);
+});
+
+async function getTrack(query) {
   // returns the first track object that matches the query
   try {
-    await client.connect();
-    const database = client.db(dbname);
-    const tracks = database.collection(collname);
+    const tracks = db.collection(collname);
     const track = await tracks.findOne(query);
     return track;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
-  } finally {
-    if (keepAlive != true) {await client.close();}
   }
 }
 /*
@@ -29,23 +31,14 @@ spotifyID: await getTrack({ spotify.id: '76nqR8hb279mkQLNkQMzK1' });
 key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
 generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
 */
-async function closeDB() {
-  try {
-    await client.close();
-  } catch (error) {
-    logLine('error', ['database error:', error.message]);
-    return error;
-  }
-}
-async function insertTrack(track, query, keepAlive) {
+
+async function insertTrack(track, query) {
   // inserts a single track object into the database
   if (query == null) {query = 'youtube';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
   const id = 'id';
   const search = query + '.id';
   try {
-    await client.connect();
-    const database = client.db(dbname);
-    const tracks = database.collection(collname);
+    const tracks = db.collection(collname);
     // check if we already have this url
     const test = await tracks.findOne({ [search]: track[query][id] });
     if (test == null || test[query][id] != track[query][id]) {
@@ -57,8 +50,6 @@ async function insertTrack(track, query, keepAlive) {
     // console.log(track);
   } catch (error) {
     logLine('error', ['database error:', error.message]);
-  } finally {
-    if (keepAlive != true) {await client.close();}
   }
 }
 
@@ -66,15 +57,11 @@ async function addKey(query, newkey) {
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
   try {
-    await client.connect();
-    const database = client.db(dbname);
-    const tracks = database.collection(collname);
+    const tracks = db.collection(collname);
     await tracks.updateOne(query, { $addToSet: { keys: newkey } });
     logLine('database', [`Adding key ${chalk.blue(newkey)} to ${chalk.green(query)}`]);
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
-  } finally {
-    await client.close();
   }
 }
 // addKey({ spotify.id: '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
@@ -85,14 +72,11 @@ async function addPlaylist(trackarray, listname) {
   const test = await getPlaylist(listname);
   if (!test.length) {
     try {
-      await client.connect();
-      const database = client.db(dbname);
-      const tracks = database.collection(collname);
-      trackarray.forEach(async (element, index, array) => {
+      const tracks = db.collection(collname);
+      trackarray.forEach(async (element, index) => {
         const query = { 'youtube.id': element.youtube.id };
         await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
         logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.name)} by ${chalk.green(element.artist.name)}`]);
-        if (index == array.length - 1) {await client.close();}
       });
     } catch (error) {
       logLine('error', ['database error:', error.stack]);
@@ -106,9 +90,7 @@ async function addPlaylist(trackarray, listname) {
 async function getPlaylist(listname) {
   // returns a playlist as an array of tracks, ready for use
   try {
-    await client.connect();
-    const database = client.db(dbname);
-    const tracks = database.collection(collname);
+    const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
     const options = { sort: { [qustr]:1 } };
@@ -117,16 +99,12 @@ async function getPlaylist(listname) {
     return everything;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
-  } finally {
-    await client.close();
   }
 }
 
 async function removePlaylist(listname) {
   try {
-    await client.connect();
-    const database = client.db(dbname);
-    const tracks = database.collection(collname);
+    const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
     const filt = { $pull:{ 'playlists': { [listname]: { $exists: true } } } };
@@ -134,8 +112,6 @@ async function removePlaylist(listname) {
     logLine('database', [`Removed playlist ${chalk.blue(listname)} from ${chalk.green(result.modifiedCount)} tracks.`]);
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
-  } finally {
-    await client.close();
   }
 }
 
@@ -145,9 +121,7 @@ async function getAlbum(request, type) {
   const pattern = /^(?:id|name){1}$/g;
   if (!pattern.test(type)) {return null;}
   try {
-    await client.connect();
-    const database = client.db(dbname);
-    const tracks = database.collection(collname);
+    const tracks = db.collection(collname);
     const qustr = `album.${type}`;
     const query = { [qustr]: request };
     const options = { sort: { 'album.trackNumber':1 } };
@@ -156,18 +130,18 @@ async function getAlbum(request, type) {
     return everything;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
-  } finally {
-    await client.close();
   }
 }
 /*
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 async function dootherthing() {
+  await sleep(2000);
   const trackarray = await getAlbum('The Mountain', 'name');
   console.log(JSON.stringify(trackarray, null, '  '));
 }
 dootherthing();
 
-
+/*
 const playlists = require('./testing/playlists.js');
 async function dothing() {
   const result = await addPlaylist(playlists.trainsong, 'trainsong');
@@ -178,9 +152,11 @@ async function dothing() {
   // await removePlaylist('trainsong');
 }
 dothing();
-/*
+
+
 async function dothething() {
-  const test = await getTrack({ spotifyURI: 'spotify:track:7BnKqNjGrXPtVmPkMNcsln' });
+  await sleep(3000);
+  const test = await getTrack({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, true);
   console.log(test);
 }
 
@@ -193,5 +169,4 @@ exports.addKey = addKey;
 exports.addPlaylist = addPlaylist;
 exports.getPlaylist = getPlaylist;
 exports.removePlaylist = removePlaylist;
-exports.closeDB = closeDB;
 exports.getAlbum = getAlbum;
