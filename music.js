@@ -56,33 +56,31 @@ function unstashQueue() {
   playTrack();
 }
 
-function addToQueue(track) { // append things to the queue
-  queue.push(track);
-  if (playerStatus == 'idle') { // start playing if the player is idle
-    playTrack();
-  }
-  return queue.length;
-}
-
-function addMultipleToQueue(tracks) {
+function addToQueue(tracks) { // append things to the queue
   for (const track of tracks) {
     queue.push(track);
   }
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
-
+  return queue.length;
 }
 
-function addToQueueTop(track) { // prepend things to the queue
-  queue.unshift(track);
+function addToQueueTop(tracks) { // prepend things to the queue
+  tracks.reverse();
+  for (const track of tracks) {
+    queue.unshift(track);
+  }
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
 }
 
-function addToQueueSkip(track) { // start playing immediately
-  queue.unshift(track);
+function addToQueueSkip(tracks) { // start playing immediately
+  tracks.reverse();
+  for (const track of tracks) {
+    queue.unshift(track);
+  }
   playTrack();
 }
 
@@ -180,7 +178,6 @@ exports.getCurrentTrack = getCurrentTrack;
 exports.addToQueueTop = addToQueueTop;
 exports.addToQueueSkip = addToQueueSkip;
 exports.playLocalTrack = playLocalTrack;
-exports.addMultipleToQueue = addMultipleToQueue;
 exports.removeTrack = removeTrack;
 exports.toggleLoop = toggleLoop;
 exports.getLoop = getLoop;

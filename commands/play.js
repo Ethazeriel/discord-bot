@@ -61,7 +61,7 @@ module.exports = {
         }
 
         music.createVoiceConnection(interaction);
-        const length = music.addToQueue(track);
+        const length = music.addToQueue([track]);
         if (length == 0) {
           utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
         } else {
@@ -91,7 +91,7 @@ module.exports = {
         }
 
         music.createVoiceConnection(interaction);
-        music.addToQueueTop(track);
+        music.addToQueueTop([track]);
         utils.generateTrackEmbed(interaction, track, 'Added to top of queue: ');
         break;
       }
@@ -117,7 +117,7 @@ module.exports = {
         }
 
         music.createVoiceConnection(interaction);
-        music.addToQueueSkip(track);
+        music.addToQueueSkip([track]);
         utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
         break;
       }
@@ -126,7 +126,7 @@ module.exports = {
         music.createVoiceConnection(interaction);
         const listname = interaction.options.getString('search');
         const result = await database.getPlaylist(listname);
-        await music.addMultipleToQueue(result);
+        await music.addToQueue(result);
         utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
         break;
       }
@@ -135,7 +135,7 @@ module.exports = {
         music.createVoiceConnection(interaction);
         const listname = interaction.options.getString('search');
         const result = await database.getAlbum(listname, 'name');
-        await music.addMultipleToQueue(result);
+        await music.addToQueue(result);
         utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
         break;
       }
