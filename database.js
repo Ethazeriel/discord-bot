@@ -38,8 +38,8 @@ async function getTrack(query) {
 }
 /*
 Usage examples:
-get track by youtubeID: await getTrack({youtube.id: 'mdh6upXZL6c'});
-spotifyID: await getTrack({ spotify.id: '76nqR8hb279mkQLNkQMzK1' });
+get track by youtubeID: await getTrack({'youtube.id': 'mdh6upXZL6c'});
+spotifyID: await getTrack({ 'spotify.id': '76nqR8hb279mkQLNkQMzK1' });
 key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
 generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
 */
@@ -56,7 +56,7 @@ async function insertTrack(track, query) {
     if (test == null || test[query][id] != track[query][id]) {
       // we don't have this in our database yet, so
       const result = await tracks.insertOne(track);
-      logLine('database', [`Adding track ${chalk.green(track.spotify.name)} by ${chalk.green(track.artist.name)} to database`]);
+      logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
       return result;
     } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
     // console.log(track);
@@ -76,7 +76,7 @@ async function addKey(query, newkey) {
     logLine('error', ['database error:', error.stack]);
   }
 }
-// addKey({ spotify.id: '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
+// addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
 async function addPlaylist(trackarray, listname) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
@@ -88,7 +88,7 @@ async function addPlaylist(trackarray, listname) {
       trackarray.forEach(async (element, index) => {
         const query = { 'youtube.id': element.youtube.id };
         await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
-        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.name)} by ${chalk.green(element.artist.name)}`]);
+        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
       });
     } catch (error) {
       logLine('error', ['database error:', error.stack]);

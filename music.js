@@ -102,7 +102,7 @@ async function playTrack() { // start the player
           'user-agent': useragent,
         }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout);
         player.play(resource);
-        logLine('track', ['Playing track: ', track.artist.name, ':', track.spotify.name]);
+        logLine('track', ['Playing track:', (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
       } catch (error) {
         logLine('error', [error.stack]);
       }
