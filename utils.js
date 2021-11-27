@@ -19,14 +19,11 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
   const npEmbed = {
     color: 0x580087,
     author: {
-      name: messagetitle,
+      name: '\u200b',
       icon_url: pickPride('fish'),
     },
     fields: [
-      { name: (track.spotify.name || track.youtube.name), value: '** **' },
-      { name: (track.artist.name || '\u200b'), value: '** **', inline: true },
-      { name: '\u200b', value: '** **', inline: true },
-      { name: (track.album.name || '\u200b'), value: '** **', inline: true },
+      { name: messagetitle, value: `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})\nAlbum - ${track.album.name || '\u200b'}` },
     ],
     thumbnail: {
       url: 'attachment://art.jpg',
@@ -49,7 +46,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + (queuePart[i].artist.name || ' ') + ' - ' + (queuePart[i].spotify.name || queuePart[i].youtube.name) + '\n';
+      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + (queuePart[i].artist.name || ' ') + ' - [' + (queuePart[i].spotify.name || queuePart[i].youtube.name) + '](https://youtube.com/watch?v=' + queuePart[i].youtube.id + ')' + '\n';
       queueStr = queueStr.concat(part);
     }
     const queueEmbed = {
@@ -62,7 +59,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
         url: 'attachment://art.jpg',
       },
       fields: [
-        { name: 'Current Track:', value: `${(track.artist.name || ' ')} - ${(track.spotify.name || track.youtube.name)}` },
+        { name: 'Current Track:', value: `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` },
         { name: 'Next Up:', value: queueStr },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
         { name: `Loop Status: ${music.getLoop()}`, value: '** **' },
@@ -85,7 +82,7 @@ async function generateListEmbed(interaction, queue, messagetitle, page) {
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + (queuePart[i].artist.name || ' ') + ' - ' + (queuePart[i].spotify.name || queuePart[i].youtube.name) + '\n';
+      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + (queuePart[i].artist.name || ' ') + ' - [' + (queuePart[i].spotify.name || queuePart[i].youtube.name) + '](https://youtube.com/watch?v=' + queuePart[i].youtube.id + ')' + '\n';
       queueStr = queueStr.concat(part);
     }
     const queueEmbed = {
