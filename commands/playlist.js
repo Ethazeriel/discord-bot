@@ -4,6 +4,7 @@ const utils = require('../utils.js');
 const { logLine } = require('../logger.js');
 const database = require('../database.js');
 const music = require('../music.js');
+const { sanitize } = require('../regexes.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -71,11 +72,11 @@ module.exports = {
         'subcommand',
         interaction.options.getSubcommand(),
         'and options url:',
-        interaction.options.getString('url'),
+        interaction.options.getString('url')?.replace(sanitize, ''),
         'track:',
-        interaction.options.getString('track'),
+        interaction.options.getString('track')?.replace(sanitize, ''),
         'playlist:',
-        interaction.options.getString('playlist')]);
+        interaction.options.getString('playlist')?.replace(sanitize, '')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
@@ -88,16 +89,15 @@ module.exports = {
       }
 
       case 'show': {
-        let page = interaction.options.getInteger('page');
-        if (page == null) {page = 1;}
+        const page = Math.abs(interaction.options.getInteger('page')) || 1;
 
         utils.generateListEmbed(interaction, songlist.list, 'Current Playlist:', page);
         break;
       }
 
       case 'remove': {
-        songlist.removeTrack(interaction.options.getInteger('index') - 1);
-        await interaction.followUp(`Removed item ${interaction.options.getInteger('index')} from the playlist.`);
+        songlist.removeTrack(Math.abs(interaction.options.getInteger('index') - 1));
+        await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('index'))} from the playlist.`);
         break;
       }
 
@@ -114,7 +114,7 @@ module.exports = {
       }
 
       case 'save': {
-        const listname = interaction.options.getString('playlist');
+        const listname = interaction.options.getString('playlist')?.replace(sanitize, '');
         const result = await database.addPlaylist(songlist.list, listname);
         if (result) {
           interaction.followUp({ content:result, ephemeral: true });
@@ -131,16 +131,16 @@ module.exports = {
       }
 
       case 'load': {
-        const listname = interaction.options.getString('playlist');
+        const listname = interaction.options.getString('playlist')?.replace(sanitize, '');
         const result = await database.getPlaylist(listname);
         songlist.addTracks(result);
-        interaction.followUp({ content:`Loaded playlist ${listname} from the database: ${result.length} items.`, ephemeral: true });
+        interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
         break;
       }
 
       case 'move': {
-        const fromindex = interaction.options.getInteger('from-index') - 1;
-        const toindex = interaction.options.getInteger('to-index') - 1;
+        const fromindex = Math.abs(interaction.options.getInteger('from-index') - 1);
+        const toindex = Math.abs(interaction.options.getInteger('to-index') - 1);
         const result = songlist.moveTrack(fromindex, toindex);
         interaction.followUp({ content:`Moved track ${result[0].title} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
         break;
@@ -148,7 +148,7 @@ module.exports = {
 
       case 'play': {
         music.createVoiceConnection(interaction);
-        await music.addMultipleToQueue(songlist.list);
+        await music.addToQueue(songlist.list);
         utils.generateListEmbed(interaction, songlist.list, 'Now Playing:', 1);
         break;
       }

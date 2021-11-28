@@ -60,9 +60,7 @@ module.exports = {
 
       case 'show': {
         const track = music.getCurrentTrack();
-        let page = interaction.options.getInteger('page');
-        if (page == null) {page = 1;}
-
+        const page = Math.abs(interaction.options.getInteger('page')) || 1;
         if (track != null) {
           utils.generateQueueEmbed(interaction, track, music.queue, 'Current Queue:', page);
         } else {
@@ -72,8 +70,8 @@ module.exports = {
       }
 
       case 'remove': {
-        music.removeTrack(interaction.options.getInteger('track') - 1);
-        await interaction.followUp(`Removed item ${interaction.options.getInteger('track')} from the queue.`);
+        music.removeTrack(Math.abs(interaction.options.getInteger('track') - 1));
+        await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('track'))} from the queue.`);
         break;
       }
 
