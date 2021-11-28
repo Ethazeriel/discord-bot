@@ -13,12 +13,14 @@ module.exports = {
     .addStringOption(option =>
       option.setName('search').setDescription('search term/youtube url/spotify uri/playlist name').setRequired(true))
     .addStringOption(option =>
-      option.setName('type').setDescription('play type')
-        .addChoice('End of queue', 'end')
-        .addChoice('Top of queue', 'top')
-        .addChoice('Skip current', 'skip')
-        .addChoice('Playlist', 'playlist')
-        .addChoice('Album', 'album')),
+      option.setName('when').setDescription('Where in the queue should this go?')
+        .addChoice('Play Now', 'now')
+        .addChoice('Play Next', 'next')
+        .addChoice('Play Last', 'last'))
+    .addStringOption(option =>
+      option.setName('what').setDescription('Only use these for internal bot instructions, not external searches')
+        .addChoice('Internal bot playlist', 'playlist')
+        .addChoice('Internal bot album', 'album')),
 
 
   async execute(interaction) {
@@ -29,8 +31,10 @@ module.exports = {
         interaction.commandName,
         'and options url:',
         interaction.options.getString('search'),
-        'type: ',
-        interaction.options.getString('type')]);
+        'when: ',
+        interaction.options.getString('when'),
+        'what: ',
+        interaction.options.getString('what')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       let type = interaction.options.getString('type');
