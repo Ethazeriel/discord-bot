@@ -122,7 +122,7 @@ async function playLocalTrack(track) { // play a locally stored track
 }
 
 async function leaveVoice() { // leave a voice channel
-  skipTrack();
+  if (voiceConnected == true) { skipTrack(); }
   const connection = getVoiceConnection(connectionId);
   connection.destroy();
   voiceConnected = false;
