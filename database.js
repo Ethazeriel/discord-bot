@@ -156,12 +156,31 @@ async function printCount() {
     logLine('error', ['database error:', error.stack]);
   }
 }
+
+async function listPlaylists() {
+  // returns all the playlists we have as a set
+  // this may take a long time to return and a lot of cpu once we've got more than a few playlists; consider revising
+  try {
+    const tracks = db.collection(collname);
+    const list = await tracks.distinct('playlists');
+    const result = new Set();
+    list.forEach((element) => {
+      Object.keys(element).forEach((ohno) => {
+        result.add(ohno);
+      });
+    });
+    return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
 /*
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 async function dootherthing() {
   await sleep(2000);
-  const trackarray = await getAlbum('The Mountain', 'name');
-  console.log(JSON.stringify(trackarray, null, '  '));
+  // const trackarray = await getAlbum('The Mountain', 'name');
+  // console.log(JSON.stringify(trackarray, null, '  '));
+  listPlaylists();
 }
 dootherthing();
 
@@ -196,3 +215,4 @@ exports.removePlaylist = removePlaylist;
 exports.getAlbum = getAlbum;
 exports.printCount = printCount;
 exports.closeDB = closeDB;
+exports.listPlaylists = listPlaylists;

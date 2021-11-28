@@ -56,7 +56,10 @@ module.exports = {
         option.setName('to-index').setDescription('Index to move to').setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('play')
-      .setDescription('appends everything from the current workspace to the live queue')),
+      .setDescription('appends everything from the current workspace to the live queue'))
+    .addSubcommand(subcommand => subcommand
+      .setName('list')
+      .setDescription('lists all internal playlists')),
 
 
   async execute(interaction) {
@@ -150,6 +153,27 @@ module.exports = {
         break;
       }
 
+      case 'list': {
+        const lists = await database.listPlaylists();
+        let listStr = '```';
+        for (const list of lists) {
+          const part = '\n' + list;
+          listStr = listStr.concat(part);
+        }
+        listStr = listStr.concat('```');
+        const listEmbed = {
+          color: 0x3277a8,
+          author: { name: '\u200b', icon_url: utils.pickPride('fish') },
+          thumbnail: { url: utils.pickPride('dab') },
+          fields: [{ name: 'Playlists:', value: listStr }],
+        };
+        try {
+          await interaction.followUp({ embeds: [listEmbed] });
+        } catch (error) {
+          logLine('error', [error.stack]);
+        }
+        break;
+      }
       default: {
         logLine('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });

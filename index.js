@@ -38,11 +38,11 @@ client.on('interactionCreate', async interaction => {
     await command.execute(interaction);
   } catch (error) {
     logLine('error', [error.stack]);
-    return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+    return interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
   }
 });
 
-// Login to Discord with your client's token
+// Login to Discord
 client.login(token);
 
 process.on('SIGINT' || 'SIGTERM', async () => {
