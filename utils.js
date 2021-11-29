@@ -75,7 +75,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
 
 
 async function generateListEmbed(interaction, queue, messagetitle, page) {
-  const thumb = new MessageAttachment(pickPride('dab'), 'art.jpg');
+  const thumb = new MessageAttachment(pickPride('dab'), 'thumb.jpg');
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   if (page > pages) {

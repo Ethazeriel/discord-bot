@@ -1,10 +1,13 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const music = require('../music.js');
-const ytdl = require('ytdl-core');
 const utils = require('../utils.js');
 // const playlists = require('../playlists.js');
 const { logLine } = require('../logger.js');
 const database = require('../database.js');
+const { fetch } = require('../acquire.js');
+const { youtubePattern, spotifyPattern, sanitize } = require('../regexes.js');
+
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,137 +21,81 @@ module.exports = {
         .addChoice('Play Next', 'next')
         .addChoice('Play Last', 'last'))
     .addStringOption(option =>
-      option.setName('what').setDescription('Only use these for internal bot instructions, not external searches')
-        .addChoice('Internal bot playlist', 'playlist')
-        .addChoice('Internal bot album', 'album')),
-
+      option.setName('what').setDescription('Flag as internal playlist, not external search')
+        .addChoice('Internal bot playlist', 'playlist')),
 
   async execute(interaction) {
-    logLine('command',
-      ['Recieved command from',
-        interaction.member.displayName,
-        'with name',
-        interaction.commandName,
-        'and options url:',
-        interaction.options.getString('search'),
-        'when: ',
-        interaction.options.getString('when'),
-        'what: ',
-        interaction.options.getString('what')]);
+    const search = interaction.options.getString('search')?.replace(sanitize, '');
+    const when = interaction.options.getString('when') || 'last';
+    const what = interaction.options.getString('what') || null;
+
+    logLine('command', ['User: ', interaction.member.displayName, 'Command: ', interaction.commandName, 'Search: ', search, 'When: ', when, 'What: ', what]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
-      let type = interaction.options.getString('type');
-      if (type == null) { type = 'end';}
-
       await interaction.deferReply({ ephemeral: true });
 
-      switch (type) {
+      if (!search) {
+        await interaction.followUp({ content: 'Search can\'t be blank.', ephemeral: true });
+        return;
+      }
 
-      case 'end': {
-        const reqstr = interaction.options.getString('search');
+      let tracks = null;
 
-        let trackInfo = null;
-        let track = null;
-        try {
-        // handle direct youtube urls
-          trackInfo = await ytdl.getInfo(reqstr);
-          track = {
-            name: trackInfo.videoDetails.title,
-            artist: { name:'placeholder artist' },
-            album: { name:'placeholder album' },
-            youtube: { id:trackInfo.videoDetails.video_url },
-            spotify: { art:'albumart/albumart.jpg' },
-          };
-        } catch (error) {
-          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
-          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
-        }
-
-        music.createVoiceConnection(interaction);
-        const length = music.addToQueue([track]);
-        if (length == 0) {
-          utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
+      if (what) {
+        if ((spotifyPattern.test(search) || youtubePattern.test(search))) {
+          await interaction.followUp({ content: 'Omit playlist flag for external resources. See /help play or /help playlist for usage and interrelationship.', ephemeral: true });
         } else {
-          utils.generateTrackEmbed(interaction, track, `Added to queue at position ${length}:`);
+          tracks = await database.getPlaylist(search);
+          if (tracks.length == 0) {
+            logLine('error', [`No playlist exists by name '${search}'`]);
+            await interaction.followUp({ content: `No playlist exists by name '${search}'. See /playlist list or /playlist help.`, ephemeral: true });
+          }
         }
-        break;
-      }
-
-      case 'top': {
-        const reqstr = interaction.options.getString('search');
-
-        let trackInfo = null;
-        let track = null;
-        try {
-        // handle direct youtube urls
-          trackInfo = await ytdl.getInfo(reqstr);
-          track = {
-            name: trackInfo.videoDetails.title,
-            artist: { name:'placeholder artist' },
-            album: { name:'placeholder album' },
-            youtube: { id:trackInfo.videoDetails.video_url },
-            spotify: { art:'albumart/albumart.jpg' },
-          };
-        } catch (error) {
-          logLine('error', ['Error parsing youtube string:', reqstr, '. Stacktrace:', error.stack]);
-          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+      } else {
+        tracks = await fetch(search);
+        if (!tracks) {
+          await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
         }
-
-        music.createVoiceConnection(interaction);
-        music.addToQueueTop([track]);
-        utils.generateTrackEmbed(interaction, track, 'Added to top of queue: ');
-        break;
       }
 
-      case 'skip': {
-        const reqstr = interaction.options.getString('search');
+      if (tracks && tracks.length > 0) {
+        music.createVoiceConnection(interaction);
 
-        let trackInfo = null;
-        let track = null;
-        try {
-        // handle direct youtube urls
-          trackInfo = await ytdl.getInfo(reqstr);
-          track = {
-            name: trackInfo.videoDetails.title,
-            artist: { name:'placeholder artist' },
-            album: { name:'placeholder album' },
-            youtube: { id:trackInfo.videoDetails.video_url },
-            spotify: { art:'albumart/albumart.jpg' },
-          };
-        } catch (error) {
-          logLine('error', ['Error parsing youtube string: ', reqstr, '. Stacktrace: ', error.stack]);
-          await interaction.followUp({ content:`Error parsing youtube string: ${reqstr}`, ephemeral: true });
+        switch (when) {
+        case 'now': {
+          music.addToQueueSkip(tracks);
+          if (tracks.length == 1) {
+            utils.generateTrackEmbed(interaction, tracks[0], 'Playing Now: ');
+          } else {
+            utils.generateQueueEmbed(interaction, tracks[0], music.queue, 'Playing Now: ', 1);
+          }
+          break;
         }
+        case 'next': {
+          music.addToQueueTop(tracks);
+          await sleep(500);
+          if (tracks.length == 1) {
+            utils.generateTrackEmbed(interaction, tracks[0], 'Playing Next: ');
+          } else {
+            utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Playing Next: ', 1);
+          }
+          break;
+        }
+        case 'last': {
+          const length = music.addToQueue(tracks);
+          if (tracks.length == 1) {
+            utils.generateTrackEmbed(interaction, tracks[0], `Queued at position ${length}:`);
+          } else {
 
-        music.createVoiceConnection(interaction);
-        music.addToQueueSkip([track]);
-        utils.generateTrackEmbed(interaction, track, 'Playing Now: ');
-        break;
-      }
-
-      case 'playlist': {
-        music.createVoiceConnection(interaction);
-        const listname = interaction.options.getString('search');
-        const result = await database.getPlaylist(listname);
-        await music.addToQueue(result);
-        utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
-        break;
-      }
-
-      case 'album': {
-        music.createVoiceConnection(interaction);
-        const listname = interaction.options.getString('search');
-        const result = await database.getAlbum(listname, 'name');
-        await music.addToQueue(result);
-        utils.generateListEmbed(interaction, result, `Queued ${listname}:`, 1);
-        break;
-      }
-
-      default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
-        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
-      }
-
+            utils.generateListEmbed(interaction, music.queue, 'Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+          }
+          break;
+        }
+        default: {
+          logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+          await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
+        }
+        }
       }
     } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
   },
