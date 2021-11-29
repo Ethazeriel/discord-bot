@@ -1,6 +1,7 @@
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const { logLine } = require('./logger.js');
 const youtubedl = require('youtube-dl-exec').raw;
+const { useragent } = require('./config.json').youtube;
 
 // set things up
 let queue = [];
@@ -45,8 +46,8 @@ function createVoiceConnection(interaction) { // join a voice channel
 
 function stashQueue() { // if something fucks up, this lets us get the most recent queue back
   queuestash = queue;
-  queuestash.unshift(currentTrack);
-  logLine('info', ['Stashed', queue.length + 1, 'items']);
+  if (loop != true) { queuestash.unshift(currentTrack); }
+  logLine('info', ['Stashed', queuestash.length, 'items']);
   emptyQueue();
 }
 
@@ -55,34 +56,32 @@ function unstashQueue() {
   playTrack();
 }
 
-function addToQueue(track) { // append things to the queue
-  queue.push(track);
-  if (playerStatus == 'idle') { // start playing if the player is idle
-    playTrack();
-  }
-  return queue.length;
-}
-
-function addMultipleToQueue(tracks) {
+function addToQueue(tracks) { // append things to the queue
   for (const track of tracks) {
     queue.push(track);
   }
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
-
+  return queue.length;
 }
 
-function addToQueueTop(track) { // prepend things to the queue
-  queue.unshift(track);
+function addToQueueTop(tracks) { // prepend things to the queue
+  for (let i = tracks.length - 1; i >= 0; i--) {
+    queue.unshift(tracks[i]);
+  }
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
+  return queue.length;
 }
 
-function addToQueueSkip(track) { // start playing immediately
-  queue.unshift(track);
+function addToQueueSkip(tracks) { // start playing immediately
+  for (let i = tracks.length - 1; i >= 0; i--) {
+    queue.unshift(tracks[i]);
+  }
   playTrack();
+  return queue.length;
 }
 
 
@@ -92,14 +91,16 @@ async function playTrack() { // start the player
     if (queue.length > 0) {
       const track = queue[0];
       try {
-        const resource = createAudioResource(youtubedl(track.url, {
+        const resource = createAudioResource(youtubedl(track.youtube.id, {
           o: '-',
           q: '',
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
           r: '100K',
+          cookies: 'cookies.txt',
+          'user-agent': useragent,
         }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout);
         player.play(resource);
-        logLine('track', ['Playing track: ', track.artist, ':', track.title]);
+        logLine('track', ['Playing track:', (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
       } catch (error) {
         logLine('error', [error.stack]);
       }
@@ -121,7 +122,7 @@ async function playLocalTrack(track) { // play a locally stored track
 }
 
 async function leaveVoice() { // leave a voice channel
-  skipTrack();
+  if (voiceConnected == true) { skipTrack(); }
   const connection = getVoiceConnection(connectionId);
   connection.destroy();
   voiceConnected = false;
@@ -177,7 +178,6 @@ exports.getCurrentTrack = getCurrentTrack;
 exports.addToQueueTop = addToQueueTop;
 exports.addToQueueSkip = addToQueueSkip;
 exports.playLocalTrack = playLocalTrack;
-exports.addMultipleToQueue = addMultipleToQueue;
 exports.removeTrack = removeTrack;
 exports.toggleLoop = toggleLoop;
 exports.getLoop = getLoop;

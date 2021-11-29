@@ -2,9 +2,10 @@ const fs = require('fs');
 // Require the necessary discord.js classes
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
-const { token } = require('./config.json');
+const { token } = require('./config.json').discord;
 const { logLine } = require('./logger.js');
 const { leaveVoice } = require('./music');
+const database = require('./database.js');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -23,6 +24,7 @@ for (const file of commandFiles) {
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
   logLine('info', ['Ready!', `Node version: ${process.version}`]);
+  database.printCount();
 });
 
 // actually run the commands
@@ -36,15 +38,16 @@ client.on('interactionCreate', async interaction => {
     await command.execute(interaction);
   } catch (error) {
     logLine('error', [error.stack]);
-    return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+    return interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
   }
 });
 
-// Login to Discord with your client's token
+// Login to Discord
 client.login(token);
 
-process.on('SIGINT' || 'SIGTERM', () => {
+process.on('SIGINT' || 'SIGTERM', async () => {
   logLine('info', ['received termination command, exiting']);
   leaveVoice();
+  await database.closeDB();
   process.exit();
 });

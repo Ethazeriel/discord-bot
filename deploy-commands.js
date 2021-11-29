@@ -1,10 +1,11 @@
 const fs = require('fs');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
-const { clientId, guildId, token } = require('./config.json');
+const { clientId, guildId, token } = require('./config.json').discord;
 const launchArg = process.argv[2];
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+const database = require('./database.js');
 
 if (process.argv.length > 3) {
   console.log('Too many arguments');
@@ -43,4 +44,5 @@ const rest = new REST({ version: '9' }).setToken(token);
   } catch (error) {
     console.error(error);
   }
+  await database.closeDB();
 })();
