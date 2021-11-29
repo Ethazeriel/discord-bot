@@ -69,7 +69,7 @@ function addToQueue(tracks) { // append things to the queue
 function addToQueueTop(tracks) { // prepend things to the queue
   const reversearray = tracks;
   reversearray.reverse();
-  for (const track of tracks) {
+  for (const track of reversearray) {
     queue.unshift(track);
   }
   if (playerStatus == 'idle') { // start playing if the player is idle
@@ -81,7 +81,7 @@ function addToQueueTop(tracks) { // prepend things to the queue
 function addToQueueSkip(tracks) { // start playing immediately
   const reversearray = tracks;
   reversearray.reverse();
-  for (const track of tracks) {
+  for (const track of reversearray) {
     queue.unshift(track);
   }
   playTrack();
