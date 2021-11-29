@@ -74,6 +74,7 @@ function addToQueueTop(tracks) { // prepend things to the queue
   if (playerStatus == 'idle') { // start playing if the player is idle
     playTrack();
   }
+  return queue.length;
 }
 
 function addToQueueSkip(tracks) { // start playing immediately
@@ -82,6 +83,7 @@ function addToQueueSkip(tracks) { // start playing immediately
     queue.unshift(track);
   }
   playTrack();
+  return queue.length;
 }
 
 
