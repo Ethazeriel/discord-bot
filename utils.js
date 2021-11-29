@@ -75,6 +75,7 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
 
 
 async function generateListEmbed(interaction, queue, messagetitle, page) {
+  const thumb = new MessageAttachment(pickPride('dab'), 'art.jpg');
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   if (page > pages) {
@@ -92,7 +93,7 @@ async function generateListEmbed(interaction, queue, messagetitle, page) {
         icon_url: pickPride('fish'),
       },
       thumbnail: {
-        url: pickPride('dab'),
+        url: 'attachment://thumb.jpg',
       },
       fields: [
         { name: 'Horse:', value: queueStr },
@@ -100,7 +101,7 @@ async function generateListEmbed(interaction, queue, messagetitle, page) {
       ],
     };
     try {
-      await interaction.followUp({ embeds: [queueEmbed] });
+      await interaction.followUp({ embeds: [queueEmbed], files: [thumb] });
     } catch (error) {
       logLine('error', [error.stack]);
     }
