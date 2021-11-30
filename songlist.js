@@ -11,16 +11,21 @@ function emptyList() {
 }
 
 function importQueue() {
+  const first = music.getCurrentTrack();
   const songqueue = music.queue;
+  list.push(first);
   for (const track of songqueue) {
     list.push(track);
   }
 }
 
-function addTracks(tracks) {
+function addTracks(tracks, index) {
+  let where = index;
   for (const track of tracks) {
-    list.push(track);
+    list.splice(where, 0, track);
+    where++;
   }
+  return list.length;
 }
 
 function moveTrack(fromindex, toindex) {

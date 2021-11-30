@@ -415,7 +415,7 @@ async function spotifyPlaylist(search) { // assume already passed spotifyPattern
   await Promise.allSettled(promises).catch(error => {
     logLine('error', [error.stack]);
   });
-  console.log('exiting');
+  // console.log('exiting');
   return (tracks);
 }
 

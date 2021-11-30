@@ -5,16 +5,12 @@ const { logLine } = require('../logger.js');
 const database = require('../database.js');
 const music = require('../music.js');
 const { sanitize } = require('../regexes.js');
+const { fetch } = require('../acquire.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('playlist')
     .setDescription('functions related to internal playlists')
-    .addSubcommand(subcommand => subcommand
-      .setName('import')
-      .setDescription('Imports a playlist from spotify')
-      .addStringOption(option =>
-        option.setName('url').setDescription('Spotify URL').setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('show')
       .setDescription('Prints the current working playlist')
@@ -27,11 +23,11 @@ module.exports = {
         option.setName('index').setDescription('index to remove').setRequired(true)))
     .addSubcommand(subcommand => subcommand
       .setName('add')
-      .setDescription('adds a track to the current working playlist')
+      .setDescription('adds something to the current working playlist')
       .addStringOption(option =>
-        option.setName('track').setDescription('Track to add (youtube url, spotify url, text search)').setRequired(true))
+        option.setName('track').setDescription('What to add (youtube url, spotify url, text search)').setRequired(true))
       .addIntegerOption(option =>
-        option.setName('index').setDescription('index to add track at').setRequired(false)))
+        option.setName('index').setDescription('where to start add operation at (1-indexed). Defaults to end of playlist').setRequired(false)))
     .addSubcommand(subcommand => subcommand
       .setName('empty')
       .setDescription('Empties the current working playlist'))
@@ -82,12 +78,6 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 
-      case 'import': {
-        // TODO
-        // waiting on acquire code
-        break;
-      }
-
       case 'show': {
         const page = Math.abs(interaction.options.getInteger('page')) || 1;
 
@@ -102,8 +92,21 @@ module.exports = {
       }
 
       case 'add': {
-        // TODO
-        // mostly waiting on acquire code
+        let tracks = null;
+        const search = interaction.options.getString('track')?.replace(sanitize, '');
+        const input = Math.abs(interaction.options.getInteger('index') ?? songlist.list.length);
+        let index;
+        if (input > songlist.list.length) {index = songlist.list.length;} else {
+          index = input;
+          if (index && (index != songlist.list.length)) {index--;}
+        }// check if our index is non-zero and not the length of our songlist
+
+        tracks = await fetch(search);
+        if (!tracks) {
+          await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
+        }
+        songlist.addTracks(tracks, index);
+        utils.generateListEmbed(interaction, songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
         break;
       }
 
@@ -133,7 +136,7 @@ module.exports = {
       case 'load': {
         const listname = interaction.options.getString('playlist')?.replace(sanitize, '');
         const result = await database.getPlaylist(listname);
-        songlist.addTracks(result);
+        songlist.addTracks(result, (songlist.list.length - 1));
         interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
         break;
       }
