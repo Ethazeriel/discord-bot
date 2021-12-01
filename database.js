@@ -105,9 +105,10 @@ async function getPlaylist(listname) {
     const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
-    const options = { sort: { [qustr]:1 } };
+    const options = { sort: { [qustr]:-1 } };
     const cursor = await tracks.find(query, options);
     const everything = await cursor.toArray();
+    everything.reverse();
     return everything;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);

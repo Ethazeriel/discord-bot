@@ -138,7 +138,7 @@ module.exports = {
       case 'load': {
         const listname = interaction.options.getString('playlist')?.replace(sanitize, '');
         const result = await database.getPlaylist(listname);
-        songlist.addTracks(result, (songlist.list.length - 1));
+        songlist.addTracks(result, (songlist.list.length));
         interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
         break;
       }
