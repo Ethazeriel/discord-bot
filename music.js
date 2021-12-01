@@ -4,14 +4,14 @@ const youtubedl = require('youtube-dl-exec').raw;
 const { useragent } = require('./config.json').youtube;
 
 // set things up
-let queue = [];
+const queue = [];
 let currentTrack = [];
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
 let connectionId = null;
 let loop = false;
-let queuestash = [];
+const queuestash = [];
 let client = null;
 
 player.on('error', error => {logLine('error', [ 'error:', error.message, 'with file', error.resource.metadata.title, 'full:', error.stack ]);});
@@ -45,14 +45,19 @@ function createVoiceConnection(interaction) { // join a voice channel
 }
 
 function stashQueue() { // if something fucks up, this lets us get the most recent queue back
-  queuestash = queue;
+  for (const track of queue) {
+    queuestash.push(track);
+  }
   if (loop != true) { queuestash.unshift(currentTrack); }
   logLine('info', ['Stashed', queuestash.length, 'items']);
   emptyQueue();
 }
 
 function unstashQueue() {
-  queue = queuestash;
+  for (const track of queuestash) {
+    queue.push(track);
+  }
+  queuestash.length = 0;
   playTrack();
 }
 
@@ -154,7 +159,7 @@ function getLoop() { // this is really just for the showqueue command
 }
 
 function emptyQueue() {
-  queue = [];
+  queue.length = 0;
 }
 
 function skipTrack() {

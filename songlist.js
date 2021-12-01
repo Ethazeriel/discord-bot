@@ -1,13 +1,13 @@
 const music = require('./music.js');
 
-let list = [];
+const list = [];
 
 function removeTrack(track) {
   list.splice(track, 1);
 }
 
 function emptyList() {
-  list = [];
+  list.length = 0;
 }
 
 function importQueue() {
