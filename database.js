@@ -123,6 +123,7 @@ async function removePlaylist(listname) {
     const filt = { $pull:{ 'playlists': { [listname]: { $exists: true } } } };
     const result = await tracks.updateMany(query, filt);
     logLine('database', [`Removed playlist ${chalk.blue(listname)} from ${chalk.green(result.modifiedCount)} tracks.`]);
+    return result.modifiedCount;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
   }
