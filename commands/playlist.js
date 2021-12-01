@@ -105,8 +105,10 @@ module.exports = {
         if (!tracks) {
           await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
         }
-        songlist.addTracks(tracks, index);
-        utils.generateListEmbed(interaction, songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+        if (tracks && tracks.length > 0) {
+          songlist.addTracks(tracks, index);
+          utils.generateListEmbed(interaction, songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+        }
         break;
       }
 
