@@ -17,7 +17,7 @@
 		"name" : "string"
 	},
 	"spotify" : {
-		"id" : "string",
+		"id" : ["strings"],
     "name" : "string",
 		"art" : "string",
 		"duration" : "integer"
