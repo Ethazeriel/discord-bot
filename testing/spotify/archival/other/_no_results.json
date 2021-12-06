@@ -1,0 +1,11 @@
+{
+  "tracks": {
+    "href": "https://api.spotify.com/v1/search?query=tng+those+arent+muskets&type=track&offset=0&limit=1",
+    "items": [],
+    "limit": 1,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 0
+  }
+}
