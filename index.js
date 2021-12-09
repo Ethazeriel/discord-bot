@@ -43,10 +43,19 @@ client.on('interactionCreate', async interaction => {
   } else if (interaction.isSelectMenu()) {
     const selectMenu = client.commands.get(interaction.customId);
     try {
-      await selectMenu.processresponse(interaction);
+      await selectMenu.select(interaction);
     } catch (error) {
       logLine('error', [error.stack]);
       return interaction.update({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true });
+    }
+  } else if (interaction.isButton()) {
+    const match = interaction.customId.match(/([A-z]*)[-]([A-z]*)/);
+    const buttonPress = client.commands.get(match[1]);
+    try {
+      await buttonPress.button(interaction, match[2]);
+    } catch (error) {
+      logLine('error', [error.stack]);
+      return interaction.update({ content: 'There was an error while processing this button press!', components: [], ephemeral: true });
     }
   } else {return;}
 });
