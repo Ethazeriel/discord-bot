@@ -5,7 +5,7 @@ const { useragent } = require('./config.json').youtube;
 
 // set things up
 const queue = [];
-let currentTrack = [];
+let currentTrack = {};
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
