@@ -6,14 +6,15 @@ const { sanitize, youtubePattern } = require('../regexes.js');
 const db = require('../database.js');
 const utils = require('../utils.js');
 const Canvas = require('canvas');
+const music = require('../music.js');
 
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('remap')
     .setDescription('remap incorrect tracks')
-    .addStringOption(option =>
-      option.setName('track').setDescription('track to remap').setRequired(true)),
+    .addStringOption(option => option.setName('track').setDescription('takes a youtube url or "current" for the currently playing track').setRequired(true))
+    .addStringOption(option => option.setName('newtrack').setDescription('optional remap target')),
 
 
   async execute(interaction) {
@@ -28,9 +29,18 @@ module.exports = {
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
       const search = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
-      if (youtubePattern.test(search)) {
-        const match = search.match(youtubePattern);
-        const track = await db.getTrack({ 'youtube.id': match[2] });
+      if (youtubePattern.test(search) || search === 'current') {
+        let track;
+        if (search === 'current') {
+          track = music.getCurrentTrack();
+          if (!track.length) {
+            await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
+            return;
+          }
+        } else {
+          const match = search.match(youtubePattern);
+          track = await db.getTrack({ 'youtube.id': match[2] });
+        }
         const canvas = Canvas.createCanvas(960, 720);
         const context = canvas.getContext('2d');
         function drawtext(text, x, y) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
@@ -76,7 +86,7 @@ module.exports = {
                 url: 'attachment://combined.png',
               },
               footer: {
-                text: match[2],
+                text: track.youtube.id,
               },
             },
           ],
@@ -123,14 +133,12 @@ module.exports = {
           files: [combined] };
 
         await interaction.followUp(reply);
-      } else { await interaction.reply({ content:'Invalid track URL', ephemeral: true });}
+      } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
     } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
   },
 
   async select(interaction) { // dropdown selection function
     const choice = interaction.values[0];
-    console.log(choice);
-    console.log(interaction.message.embeds[0].footer.text);
     if (choice < 4) {
       const track = await db.getTrack({ 'youtube.id': interaction.message.embeds[0].footer.text });
       const reply = {
@@ -203,7 +211,8 @@ module.exports = {
   },
 
   async button(interaction, which) { // button selection function
-    console.log(which);
+    const match = interaction.message.embeds[0].footer.text.match(/([\w-]{11})([0-3])/);
+    console.log(match);
     switch (which) {
     case 'yes': {
       const reply = {
