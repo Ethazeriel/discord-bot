@@ -87,7 +87,8 @@ async function addPlaylist(trackarray, listname) {
       const tracks = db.collection(collname);
       trackarray.forEach(async (element, index) => {
         const query = { 'youtube.id': element.youtube.id };
-        await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
+        const field = `playlists.${listname}`;
+        await tracks.updateOne(query, { $set: { [field]:index } });
         logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
       });
     } catch (error) {
@@ -105,10 +106,9 @@ async function getPlaylist(listname) {
     const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
-    const options = { sort: { [qustr]:-1 } };
+    const options = { sort: { [qustr]:1 } };
     const cursor = await tracks.find(query, options);
     const everything = await cursor.toArray();
-    everything.reverse();
     return everything;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
@@ -120,7 +120,7 @@ async function removePlaylist(listname) {
     const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
-    const filt = { $pull:{ 'playlists': { [listname]: { $exists: true } } } };
+    const filt = { $unset:{ [qustr]: '' } };
     const result = await tracks.updateMany(query, filt);
     logLine('database', [`Removed playlist ${chalk.blue(listname)} from ${chalk.green(result.modifiedCount)} tracks.`]);
     return result.modifiedCount;
@@ -129,8 +129,26 @@ async function removePlaylist(listname) {
   }
 }
 
+async function removeTrack(query) {
+  // removes the track with the specified youtube id - USE WITH CAUTION
+  // returns 1 if successful, 0 otherwise
+  try {
+    const tracks = db.collection(collname);
+    const track = await tracks.deleteOne({ 'youtube.id':query });
+    if (track.deletedCount === 1) {
+      logLine('database', [`Removed track ${chalk.red(query)} from DB.`]);
+    } else {
+      logLine('database', [`Removing track ${chalk.red(query)} failed - was not in the DB or something else went wrong`]);
+    }
+    return track.deletedCount;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+// usage: await db.removeTrack('DjaE3w8j6vY');
+
 async function getAlbum(request, type) {
-  // returns a playlist as an array of tracks, ready for use
+  // returns an album as an array of tracks, ready for use
   // type can be id or name
   const pattern = /^(?:id|name){1}$/g;
   if (!pattern.test(type)) {return null;}
@@ -218,3 +236,4 @@ exports.getAlbum = getAlbum;
 exports.printCount = printCount;
 exports.closeDB = closeDB;
 exports.listPlaylists = listPlaylists;
+exports.removeTrack = removeTrack;
