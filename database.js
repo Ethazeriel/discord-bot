@@ -147,6 +147,28 @@ async function removeTrack(query) {
 }
 // usage: await db.removeTrack('DjaE3w8j6vY');
 
+async function switchAlternate(query, alternate) {
+  // returns the first track object that matches the query
+  try {
+    const tracks = db.collection(collname);
+    const search = { 'youtube.id':query };
+    const track = await tracks.findOne(search);
+    if (track) {
+      const newmain = track.alternates.splice(alternate, 1, track.youtube);
+      const update = {
+        $set: { 'youtube':newmain[0], 'alternates':track.alternates },
+      };
+      const result = await tracks.updateOne(search, update);
+      if (result.modifiedCount == 1) {
+        logLine('database', [`Remapped track ${chalk.green(track.youtube.id)} to alternate ${chalk.green(alternate)}`]);
+      } else {logLine('database', [`Failed to remap ${chalk.red(track.youtube.id)} - is this a valid ID?`]);}
+      return result.modifiedCount;
+    } else {return 0;}
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 async function getAlbum(request, type) {
   // returns an album as an array of tracks, ready for use
   // type can be id or name
@@ -237,3 +259,4 @@ exports.printCount = printCount;
 exports.closeDB = closeDB;
 exports.listPlaylists = listPlaylists;
 exports.removeTrack = removeTrack;
+exports.switchAlternate = switchAlternate;

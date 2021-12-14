@@ -212,11 +212,12 @@ module.exports = {
 
   async button(interaction, which) { // button selection function
     const match = interaction.message.embeds[0].footer.text.match(/([\w-]{11})([0-3])/);
-    console.log(match);
     switch (which) {
     case 'yes': {
-      const reply = {
-        embeds:
+      const result = await db.switchAlternate(match[1], match[2]);
+      if (result) {
+        const reply = {
+          embeds:
         [
           {
             color: 0xd64004,
@@ -225,7 +226,7 @@ module.exports = {
               icon_url: utils.pickPride('fish'),
             },
             fields: [
-              { name: 'Remapping!', value: 'Things' },
+              { name: 'Track Remapped.', value: '** **' },
             ],
             image: {
               url: 'attachment://combined.png',
@@ -234,8 +235,31 @@ module.exports = {
             },
           },
         ],
-        components:[] };
-      await interaction.update(reply);
+          components:[] };
+        await interaction.update(reply);
+      } else {
+        const reply = {
+          embeds:
+        [
+          {
+            color: 0xd64004,
+            author: {
+              name: 'Failure:',
+              icon_url: utils.pickPride('fish'),
+            },
+            fields: [
+              { name: 'Something went wrong;', value: 'please try again.' },
+            ],
+            image: {
+              url: 'attachment://combined.png',
+              height: 0,
+              width: 0,
+            },
+          },
+        ],
+          components:[] };
+        await interaction.update(reply);
+      }
       break;
     }
 
