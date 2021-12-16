@@ -52,14 +52,16 @@ async function insertTrack(track, query) {
   try {
     const tracks = db.collection(collname);
     // check if we already have this url
-    const test = await tracks.findOne({ [search]: track[query][id] });
-    if (test == null || test[query][id] != track[query][id]) {
+    if (!track.ephemeral) {
+      const test = await tracks.findOne({ [search]: track[query][id] });
+      if (test == null || test[query][id] != track[query][id]) {
       // we don't have this in our database yet, so
-      const result = await tracks.insertOne(track);
-      logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
-      return result;
-    } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
+        const result = await tracks.insertOne(track);
+        logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
+        return result;
+      } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
     // console.log(track);
+    } else { throw new Error('This track is ephemeral!');}
   } catch (error) {
     logLine('error', ['database error:', error.message]);
   }
@@ -128,6 +130,18 @@ async function removePlaylist(listname) {
     logLine('error', ['database error:', error.stack]);
   }
 }
+
+async function updateTrack(query, update) {
+  // generic update function; basically just a wrapper for updateOne
+  try {
+    const tracks = db.collection(collname);
+    await tracks.updateOne(query, update);
+    logLine('database', [`Updating track ${chalk.blue(query)} with data ${chalk.green(update)}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+// addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
 async function removeTrack(query) {
   // removes the track with the specified youtube id - USE WITH CAUTION
@@ -216,37 +230,7 @@ async function listPlaylists() {
     logLine('error', ['database error:', error.stack]);
   }
 }
-/*
-const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
-async function dootherthing() {
-  await sleep(2000);
-  // const trackarray = await getAlbum('The Mountain', 'name');
-  // console.log(JSON.stringify(trackarray, null, '  '));
-  listPlaylists();
-}
-dootherthing();
 
-/*
-const playlists = require('./testing/playlists.js');
-async function dothing() {
-  const result = await addPlaylist(playlists.trainsong, 'trainsong');
-  console.log(result);
-  // playlists.trainsong.forEach(async element => {
-  //  await insertTrack(element, null, true);
-  // });
-  // await removePlaylist('trainsong');
-}
-dothing();
-
-
-async function dothething() {
-  await sleep(3000);
-  const test = await getTrack({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, true);
-  console.log(test);
-}
-
-dothething();
-*/
 
 exports.getTrack = getTrack;
 exports.insertTrack = insertTrack;
@@ -260,3 +244,4 @@ exports.closeDB = closeDB;
 exports.listPlaylists = listPlaylists;
 exports.removeTrack = removeTrack;
 exports.switchAlternate = switchAlternate;
+exports.updateTrack = updateTrack;
