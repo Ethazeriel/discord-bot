@@ -29,18 +29,37 @@ client.once('ready', () => {
 
 // actually run the commands
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isCommand()) return;
+  // if (!interaction.isCommand() || !interaction.isSelectMenu()) return;
+  if (interaction.isCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
 
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    logLine('error', [error.stack]);
-    return interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-  }
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      logLine('error', [error.stack]);
+      return interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+    }
+  } else if (interaction.isSelectMenu()) {
+    const selectMenu = client.commands.get(interaction.customId);
+    try {
+      await selectMenu.select(interaction);
+    } catch (error) {
+      logLine('error', [error.stack]);
+      return interaction.update({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true });
+    }
+  } else if (interaction.isButton()) {
+    const match = interaction.customId.match(/([A-z]*)[-]([A-z]*)/);
+    const buttonPress = client.commands.get(match[1]);
+    try {
+      await buttonPress.button(interaction, match[2]);
+    } catch (error) {
+      logLine('error', [error.stack]);
+      return interaction.update({ content: 'There was an error while processing this button press!', components: [], ephemeral: true });
+    }
+  } else {return;}
 });
+
 
 // Login to Discord
 client.login(token);
