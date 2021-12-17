@@ -136,12 +136,11 @@ async function updateTrack(query, update) {
   try {
     const tracks = db.collection(collname);
     await tracks.updateOne(query, update);
-    logLine('database', [`Updating track ${chalk.blue(query)} with data ${chalk.green(update)}`]);
+    logLine('database', [`Updating track ${chalk.blue(JSON.stringify(query, '', 2))} with data ${chalk.green(JSON.stringify(update, '', 2))}`]);
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
   }
 }
-// addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
 async function removeTrack(query) {
   // removes the track with the specified youtube id - USE WITH CAUTION

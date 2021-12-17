@@ -7,6 +7,7 @@ const db = require('../database.js');
 const utils = require('../utils.js');
 const Canvas = require('canvas');
 const music = require('../music.js');
+const { fetch } = require('../acquire.js');
 
 
 module.exports = {
@@ -29,43 +30,145 @@ module.exports = {
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
       const search = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
+      const replace = interaction.options.getString('newtrack')?.replace(sanitize, '')?.trim();
       if (youtubePattern.test(search) || search === 'current') {
-        let track;
-        if (search === 'current') {
-          track = music.getCurrentTrack();
-          if (!track.length) {
-            await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
-            return;
-          }
+        if (replace) {
+          if (youtubePattern.test(replace)) {
+            const match = search.match(youtubePattern);
+            const track = await db.getTrack({ 'youtube.id': match[2] });
+            if (!Object.keys(track).length) {
+              await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
+              return;
+            }
+            const newtrack = await fetch(replace);
+            if (!newtrack.length) {
+              await interaction.followUp({ content:'Invalid newtrack URL', ephemeral: true });
+              return;
+            }
+
+            if (newtrack[0].ephemeral) { // ephemeral track - we can just do an update by spotify ID
+              const query = { 'spotify.id':newtrack[0].spotify.id };
+              const update = { $set: { 'youtube':newtrack[0].youtube } };
+              if (track.keys.length && (track.keys != newtrack[0].keys)) {
+                const newkeys = track.keys.concat(newtrack[0].keys);
+                update['$set']['keys'] = newkeys;
+              }
+              if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
+                const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
+                update['$set']['playlists'] = newplaylists;
+              }
+              if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
+                const newid = track.spotify.id.concat(newtrack[0].spotify.id);
+                update['$set']['spotify.id'] = newid;
+              }
+
+              await db.updateTrack(query, update);
+              await db.removeTrack(track.youtube.id);
+            } else {
+              const query = { 'youtube.id':newtrack[0].youtube.id };
+              const update = { $set: {} };
+              if (track.keys.length && (track.keys != newtrack[0].keys)) {
+                const newkeys = track.keys.concat(newtrack[0].keys);
+                console.log(newkeys);
+                update['$set']['keys'] = newkeys;
+              }
+              if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
+                const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
+                console.log(newplaylists);
+                update['$set']['playlists'] = newplaylists;
+              }
+              if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
+                const newid = track.spotify.id.concat(newtrack[0].spotify.id);
+                console.log(newid);
+                update['$set']['spotify.id'] = newid;
+              }
+              console.log(update);
+              if (Object.keys(update.$set).length > 0) {
+                await db.updateTrack(query, update);
+              }
+              await db.removeTrack(track.youtube.id);
+            }
+            const canvas = Canvas.createCanvas(960, 360);
+            const context = canvas.getContext('2d');
+            function drawtext(text, x, y) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
+              context.font = '80px Sans-serif';
+              context.strokeStyle = 'black';
+              context.lineWidth = 8;
+              context.strokeText(text, x, y);
+              context.fillStyle = 'white';
+              context.fillText(text, x, y);
+            }
+            const alt0 = await Canvas.loadImage(track.youtube.art);
+            const alt1 = await Canvas.loadImage(newtrack[0].youtube.art);
+            context.drawImage(alt0, 0, 0, 480, 360);
+            context.drawImage(alt1, 480, 0, 480, 360);
+            drawtext('From', 15, 70);
+            drawtext('To', 500, 70);
+            const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
+            const reply = {
+              embeds:
+            [
+              {
+                color: 0xd64004,
+                author: {
+                  name: 'Remapped:',
+                  icon_url: utils.pickPride('fish'),
+                },
+                fields: [
+                  { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'To:', value: `[${newtrack[0].youtube.name}](https://youtube.com/watch?v=${newtrack[0].youtube.id}) - ${new Date(newtrack[0].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                ],
+                image: {
+                  url: 'attachment://combined.png',
+                },
+              },
+            ],
+              files: [combined] };
+            await interaction.followUp(reply);
+
+
+          } else { await interaction.followUp({ content:'Invalid newtrack URL', ephemeral: true });}
         } else {
-          const match = search.match(youtubePattern);
-          track = await db.getTrack({ 'youtube.id': match[2] });
-        }
-        const canvas = Canvas.createCanvas(960, 720);
-        const context = canvas.getContext('2d');
-        function drawtext(text, x, y) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
-          context.font = '80px Sans-serif';
-          context.strokeStyle = 'black';
-          context.lineWidth = 8;
-          context.strokeText(text, x, y);
-          context.fillStyle = 'white';
-          context.fillText(text, x, y);
-        }
-        const alt0 = await Canvas.loadImage(track.alternates[0].art);
-        const alt1 = await Canvas.loadImage(track.alternates[1].art);
-        const alt2 = await Canvas.loadImage(track.alternates[2].art);
-        const alt3 = await Canvas.loadImage(track.alternates[3].art);
-        context.drawImage(alt0, 0, 0, 480, 360);
-        context.drawImage(alt1, 480, 0, 480, 360);
-        context.drawImage(alt2, 0, 360, 480, 360);
-        context.drawImage(alt3, 480, 360, 480, 360);
-        drawtext('1', 15, 70);
-        drawtext('2', 900, 70);
-        drawtext('3', 15, 705);
-        drawtext('4', 900, 705);
-        const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
-        const reply = {
-          embeds:
+          let track;
+          if (search === 'current') {
+            track = music.getCurrentTrack();
+            if (!Object.keys(track).length) {
+              await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
+              return;
+            }
+          } else {
+            const match = search.match(youtubePattern);
+            track = await db.getTrack({ 'youtube.id': match[2] });
+            if (!Object.keys(track).length) {
+              await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
+              return;
+            }
+          }
+          const canvas = Canvas.createCanvas(960, 720);
+          const context = canvas.getContext('2d');
+          function drawtext(text, x, y) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
+            context.font = '80px Sans-serif';
+            context.strokeStyle = 'black';
+            context.lineWidth = 8;
+            context.strokeText(text, x, y);
+            context.fillStyle = 'white';
+            context.fillText(text, x, y);
+          }
+          const alt0 = await Canvas.loadImage(track.alternates[0].art);
+          const alt1 = await Canvas.loadImage(track.alternates[1].art);
+          const alt2 = await Canvas.loadImage(track.alternates[2].art);
+          const alt3 = await Canvas.loadImage(track.alternates[3].art);
+          context.drawImage(alt0, 0, 0, 480, 360);
+          context.drawImage(alt1, 480, 0, 480, 360);
+          context.drawImage(alt2, 0, 360, 480, 360);
+          context.drawImage(alt3, 480, 360, 480, 360);
+          drawtext('1', 15, 70);
+          drawtext('2', 900, 70);
+          drawtext('3', 15, 705);
+          drawtext('4', 900, 705);
+          const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
+          const reply = {
+            embeds:
           [
             {
               color: 0xd64004,
@@ -90,7 +193,7 @@ module.exports = {
               },
             },
           ],
-          components:
+            components:
       [
         {
           'type': 1,
@@ -130,9 +233,10 @@ module.exports = {
           ],
         },
       ],
-          files: [combined] };
+            files: [combined] };
 
-        await interaction.followUp(reply);
+          await interaction.followUp(reply);
+        }
       } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
     } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
   },
