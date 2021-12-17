@@ -69,20 +69,16 @@ module.exports = {
               const update = { $set: {} };
               if (track.keys.length && (track.keys != newtrack[0].keys)) {
                 const newkeys = track.keys.concat(newtrack[0].keys);
-                console.log(newkeys);
                 update['$set']['keys'] = newkeys;
               }
               if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
                 const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
-                console.log(newplaylists);
                 update['$set']['playlists'] = newplaylists;
               }
               if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
                 const newid = track.spotify.id.concat(newtrack[0].spotify.id);
-                console.log(newid);
                 update['$set']['spotify.id'] = newid;
               }
-              console.log(update);
               if (Object.keys(update.$set).length > 0) {
                 await db.updateTrack(query, update);
               }
