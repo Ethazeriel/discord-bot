@@ -8,6 +8,7 @@ const utils = require('../utils.js');
 const Canvas = require('canvas');
 const music = require('../music.js');
 const { fetch } = require('../acquire.js');
+const ytdl = require('ytdl-core');
 
 
 module.exports = {
@@ -25,7 +26,9 @@ module.exports = {
         'with name ',
         interaction.commandName,
         'track ',
-        interaction.options.getString('track')?.replace(sanitize, '')]);
+        interaction.options.getString('track')?.replace(sanitize, ''),
+        'newtrack ',
+        interaction.options.getString('newtrack')?.replace(sanitize, '')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
@@ -40,49 +43,11 @@ module.exports = {
               await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
               return;
             }
-            const newtrack = await fetch(replace);
-            if (!newtrack.length) {
-              await interaction.followUp({ content:'Invalid newtrack URL', ephemeral: true });
+            const match2 = replace.match(youtubePattern);
+            const newtrack = await ytdl.getBasicInfo(match2[2]);
+            if (!Object.keys(newtrack).length) {
+              await interaction.followUp({ content:'That new track doesn\'t appear to be valid', ephemeral: true });
               return;
-            }
-
-            if (newtrack[0].ephemeral) { // ephemeral track - we can just do an update by spotify ID
-              const query = { 'spotify.id':newtrack[0].spotify.id };
-              const update = { $set: { 'youtube':newtrack[0].youtube } };
-              if (track.keys.length && (track.keys != newtrack[0].keys)) {
-                const newkeys = track.keys.concat(newtrack[0].keys);
-                update['$set']['keys'] = newkeys;
-              }
-              if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
-                const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
-                update['$set']['playlists'] = newplaylists;
-              }
-              if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
-                const newid = track.spotify.id.concat(newtrack[0].spotify.id);
-                update['$set']['spotify.id'] = newid;
-              }
-
-              await db.updateTrack(query, update);
-              await db.removeTrack(track.youtube.id);
-            } else {
-              const query = { 'youtube.id':newtrack[0].youtube.id };
-              const update = { $set: {} };
-              if (track.keys.length && (track.keys != newtrack[0].keys)) {
-                const newkeys = track.keys.concat(newtrack[0].keys);
-                update['$set']['keys'] = newkeys;
-              }
-              if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
-                const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
-                update['$set']['playlists'] = newplaylists;
-              }
-              if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
-                const newid = track.spotify.id.concat(newtrack[0].spotify.id);
-                update['$set']['spotify.id'] = newid;
-              }
-              if (Object.keys(update.$set).length > 0) {
-                await db.updateTrack(query, update);
-              }
-              await db.removeTrack(track.youtube.id);
             }
             const canvas = Canvas.createCanvas(960, 360);
             const context = canvas.getContext('2d');
@@ -95,7 +60,7 @@ module.exports = {
               context.fillText(text, x, y);
             }
             const alt0 = await Canvas.loadImage(track.youtube.art);
-            const alt1 = await Canvas.loadImage(newtrack[0].youtube.art);
+            const alt1 = await Canvas.loadImage(`https://i.ytimg.com/vi/${newtrack.videoDetails.videoId}/hqdefault.jpg`);
             context.drawImage(alt0, 0, 0, 480, 360);
             context.drawImage(alt1, 480, 0, 480, 360);
             drawtext('From', 15, 70);
@@ -112,13 +77,36 @@ module.exports = {
                 },
                 fields: [
                   { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                  { name: 'To:', value: `[${newtrack[0].youtube.name}](https://youtube.com/watch?v=${newtrack[0].youtube.id}) - ${new Date(newtrack[0].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(newtrack.videoDetails.lengthSeconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 ],
                 image: {
                   url: 'attachment://combined.png',
                 },
+                footer: {
+                  text: `${track.youtube.id}${newtrack.videoDetails.videoId}`,
+                },
               },
             ],
+              components:
+  [
+    {
+      'type': 1,
+      'components': [
+        {
+          'type': 2,
+          'custom_id': 'remap-new',
+          'style':3,
+          'label':'Confirm',
+        },
+        {
+          'type': 2,
+          'custom_id': 'remap-no',
+          'style':4,
+          'label':'Cancel',
+        },
+      ],
+    },
+  ],
               files: [combined] };
             await interaction.followUp(reply);
 
@@ -271,7 +259,7 @@ module.exports = {
       'components': [
         {
           'type': 2,
-          'custom_id': 'remap-yes',
+          'custom_id': 'remap-db',
           'style':3,
           'label':'Confirm',
         },
@@ -311,9 +299,10 @@ module.exports = {
   },
 
   async button(interaction, which) { // button selection function
-    const match = interaction.message.embeds[0].footer.text.match(/([\w-]{11})([0-3])/);
     switch (which) {
-    case 'yes': {
+
+    case 'db': {
+      const match = interaction.message.embeds[0].footer.text.match(/([\w-]{11})([0-3])/);
       const result = await db.switchAlternate(match[1], match[2]);
       if (result) {
         const reply = {
@@ -360,6 +349,83 @@ module.exports = {
           components:[] };
         await interaction.update(reply);
       }
+      break;
+    }
+
+    case 'new': {
+      const match = interaction.message.embeds[0].footer.text.match(/([\w-]{11})([\w-]{11})/);
+      const track = await db.getTrack({ 'youtube.id': match[1] });
+      if (!Object.keys(track).length) {
+        await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
+        return;
+      }
+      const newtrack = await fetch(`https://www.youtube.com/watch?v=${match[2]}`);
+      if (!newtrack.length) {
+        await interaction.update({ content:'Invalid newtrack URL', ephemeral: true });
+        return;
+      }
+
+      if (newtrack[0].ephemeral) { // ephemeral track - we can just do an update by spotify ID
+        const query = { 'spotify.id':newtrack[0].spotify.id };
+        const update = { $set: { 'youtube':newtrack[0].youtube } };
+        if (track.keys.length && (track.keys != newtrack[0].keys)) {
+          const newkeys = track.keys.concat(newtrack[0].keys);
+          update['$set']['keys'] = newkeys;
+        }
+        if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
+          const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
+          update['$set']['playlists'] = newplaylists;
+        }
+        if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
+          const newid = track.spotify.id.concat(newtrack[0].spotify.id);
+          update['$set']['spotify.id'] = newid;
+        }
+
+        await db.updateTrack(query, update);
+        await db.removeTrack(track.youtube.id);
+      } else {
+        const query = { 'youtube.id':newtrack[0].youtube.id };
+        const update = { $set: {} };
+        if (track.keys.length && (track.keys != newtrack[0].keys)) {
+          const newkeys = track.keys.concat(newtrack[0].keys);
+          update['$set']['keys'] = newkeys;
+        }
+        if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
+          const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
+          update['$set']['playlists'] = newplaylists;
+        }
+        if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
+          const newid = track.spotify.id.concat(newtrack[0].spotify.id);
+          update['$set']['spotify.id'] = newid;
+        }
+        if (Object.keys(update.$set).length > 0) {
+          await db.updateTrack(query, update);
+        }
+        await db.removeTrack(track.youtube.id);
+      }
+      const reply = {
+        embeds:
+      [
+        {
+          color: 0xd64004,
+          author: {
+            name: 'Remapped:',
+            icon_url: utils.pickPride('fish'),
+          },
+          fields: [
+            { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+            { name: 'To:', value: `[${newtrack[0].youtube.name}](https://youtube.com/watch?v=${newtrack[0].youtube.id}) - ${new Date(newtrack[0].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+          ],
+          image: {
+            url: 'attachment://combined.png',
+            height: 0,
+            width: 0,
+          },
+        },
+      ],
+        components:[],
+        files: [] };
+      await interaction.update(reply);
       break;
     }
 
