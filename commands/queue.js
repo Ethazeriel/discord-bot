@@ -36,17 +36,6 @@ module.exports = {
 
 
   async execute(interaction) {
-    logLine('command',
-      ['Recieved command from ',
-        interaction.member.displayName,
-        'with name',
-        interaction.commandName,
-        'subcommand',
-        interaction.options.getSubcommand(),
-        'and options page:',
-        interaction.options.getInteger('page'),
-        'track:',
-        interaction.options.getInteger('track')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });

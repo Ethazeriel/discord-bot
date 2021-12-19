@@ -3,7 +3,7 @@ const fs = require('fs');
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json').discord;
-const { logLine } = require('./logger.js');
+const { logLine, logCommand, logComponent } = require('./logger.js');
 const { leaveVoice } = require('./music');
 const database = require('./database.js');
 
@@ -35,12 +35,14 @@ client.on('interactionCreate', async interaction => {
     if (!command) return;
 
     try {
+      logCommand(interaction);
       await command.execute(interaction);
     } catch (error) {
       logLine('error', [error.stack]);
       return interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
     }
   } else if (interaction.isSelectMenu()) {
+    logComponent(interaction);
     const selectMenu = client.commands.get(interaction.customId);
     try {
       await selectMenu.select(interaction);
@@ -49,6 +51,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.update({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true });
     }
   } else if (interaction.isButton()) {
+    logComponent(interaction);
     const match = interaction.customId.match(/([A-z]*)[-]([A-z]*)/);
     const buttonPress = client.commands.get(match[1]);
     try {

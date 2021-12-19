@@ -29,7 +29,6 @@ module.exports = {
     const when = interaction.options.getString('when') || 'last';
     const what = interaction.options.getString('what') || null;
 
-    logLine('command', ['User: ', interaction.member.displayName, 'Command: ', interaction.commandName, 'Search: ', search, 'When: ', when, 'What: ', what]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });

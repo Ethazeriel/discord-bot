@@ -60,19 +60,6 @@ module.exports = {
 
 
   async execute(interaction) {
-    logLine('command',
-      ['Recieved command from ',
-        interaction.member.displayName,
-        'with name',
-        interaction.commandName,
-        'subcommand',
-        interaction.options.getSubcommand(),
-        'and options url:',
-        interaction.options.getString('url')?.replace(sanitize, ''),
-        'track:',
-        interaction.options.getString('track')?.replace(sanitize, ''),
-        'playlist:',
-        interaction.options.getString('playlist')?.replace(sanitize, '')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
@@ -147,7 +134,7 @@ module.exports = {
         const fromindex = Math.abs(interaction.options.getInteger('from-index') - 1);
         const toindex = Math.abs(interaction.options.getInteger('to-index') - 1);
         const result = songlist.moveTrack(fromindex, toindex);
-        interaction.followUp({ content:`Moved track ${result[0].title} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
+        interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
         break;
       }
 

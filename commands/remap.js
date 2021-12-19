@@ -1,7 +1,6 @@
 /* eslint-disable no-inner-declarations */
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageAttachment } = require('discord.js');
-const { logLine } = require('../logger.js');
 const { sanitize, youtubePattern } = require('../regexes.js');
 const db = require('../database.js');
 const utils = require('../utils.js');
@@ -20,15 +19,6 @@ module.exports = {
 
 
   async execute(interaction) {
-    logLine('command',
-      ['Recieved command from ',
-        interaction.member.displayName,
-        'with name ',
-        interaction.commandName,
-        'track ',
-        interaction.options.getString('track')?.replace(sanitize, ''),
-        'newtrack ',
-        interaction.options.getString('newtrack')?.replace(sanitize, '')]);
 
     if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
