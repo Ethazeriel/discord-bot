@@ -78,7 +78,7 @@ async function logCommand(interaction) {
   // for console
   let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Command: ${chalk.cyan(interaction.commandName)}`;
   if (interaction.options._subcommand) {
-    conStr = conStr.concat(`Subcommand: ${chalk.green(interaction.options._subcommand)}, `);
+    conStr = conStr.concat(`, Subcommand: ${chalk.green(interaction.options._subcommand)}, `);
   }
   if (interaction.options._hoistedOptions.length) {
     conStr = conStr.concat(', Options: ');
