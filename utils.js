@@ -41,7 +41,7 @@ async function prideSticker(interaction, type) {
   const prideimg = await Canvas.loadImage(result.url);
   context.drawImage(prideimg, 0, 0, canvas.width, canvas.height);
   const attachment = new MessageAttachment(canvas.toBuffer(), `${type}_${result.name}.png`).setDescription(`${result.name} ${type}`);
-  console.log(attachment.description);
+  // console.log(attachment.description);
   await interaction.reply({ files: [attachment] });
 
 }

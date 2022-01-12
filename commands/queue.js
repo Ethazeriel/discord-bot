@@ -37,7 +37,7 @@ module.exports = {
 
   async execute(interaction) {
 
-    if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+    if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 

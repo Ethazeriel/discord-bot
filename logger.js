@@ -76,7 +76,7 @@ async function logLine(level, args) {
 async function logCommand(interaction) {
   // takes an interaction, logs relevant details to file and console
   // for console
-  let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Command: ${chalk.cyan(interaction.commandName)}`;
+  let conStr = `Guild: ${chalk.blue(interaction.guildId ? interaction.member.guild.name.replace(sanitize, '').trim() : 'DM')}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Command: ${chalk.cyan(interaction.commandName)}`;
   if (interaction.options._subcommand) {
     conStr = conStr.concat(`, Subcommand: ${chalk.green(interaction.options._subcommand)}, `);
   }
@@ -89,7 +89,7 @@ async function logCommand(interaction) {
     }
   }
   // for file
-  let logStr = `Guild: ${interaction.member.guild.name.replace(sanitize, '').trim()}(${interaction.guildId}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Command: ${interaction.commandName}, ID: ${interaction.id}`;
+  let logStr = `Guild: ${interaction.guildId ? interaction.member.guild.name.replace(sanitize, '').trim() : 'DM'}(${interaction.guildId ? interaction.guildId : 'no id'}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Command: ${interaction.commandName}, ID: ${interaction.id}`;
   if (interaction.options._subcommand) {
     logStr = logStr.concat(`Subcommand: ${interaction.options._subcommand}, `);
   }

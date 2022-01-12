@@ -20,7 +20,7 @@ module.exports = {
 
   async execute(interaction) {
 
-    if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+    if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
       const search = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
       const replace = interaction.options.getString('newtrack')?.replace(sanitize, '')?.trim();

@@ -21,7 +21,7 @@ module.exports = {
 
   async execute(interaction) {
 
-    if (interaction.member.roles.cache.some(role => role.name === 'Admin')) {
+    if (interaction.member?.roles?.cache?.some(role => role.name === 'Admin')) {
       await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 

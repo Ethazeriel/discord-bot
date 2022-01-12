@@ -29,6 +29,7 @@ client.once('ready', () => {
 
 // actually run the commands
 client.on('interactionCreate', async interaction => {
+  console.log(interaction);
   // if (!interaction.isCommand() || !interaction.isSelectMenu()) return;
   if (interaction.isCommand()) {
     const command = client.commands.get(interaction.commandName);
