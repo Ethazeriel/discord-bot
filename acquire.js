@@ -1,4 +1,4 @@
-const { logLine } = require('./logger.js');
+const { logLine, logSpace } = require('./logger.js');
 const db = require('./database.js');
 const { youtubePattern, spotifyPattern, sanitize } = require('./regexes.js');
 const ytdl = require('ytdl-core');
@@ -257,7 +257,7 @@ async function spotifyPlaylist(search) { // assume already passed spotifyPattern
     promises[i] = db.getTrack({ 'spotify.id': spotifyResult.tracks.items[i].track.id });
   }
 
-  console.log();
+  logSpace();
   const tracks = [];
   await Promise.allSettled(promises).then(values => {
     for (let i = 0; i < spotifyResult.tracks.items.length; i++) {
@@ -278,7 +278,7 @@ async function spotifyPlaylist(search) { // assume already passed spotifyPattern
     throw (error);
   });
 
-  console.log();
+  logSpace();
   promises = [];
   for (let i = 0; i < spotifyResult.tracks.items.length; i++) {
     if (!tracks[i]) {
@@ -296,7 +296,7 @@ async function spotifyPlaylist(search) { // assume already passed spotifyPattern
     }
   }
 
-  console.log();
+  logSpace();
   const youtubeResults = [];
   await Promise.allSettled(promises).then(values => {
     // console.log(`youtube settled, values.length= ${values.length}`); //
@@ -321,7 +321,7 @@ async function spotifyPlaylist(search) { // assume already passed spotifyPattern
     }
   }
 
-  console.log();
+  logSpace();
   await Promise.allSettled(promises).then(values => {
     for (let i = 0; i < promises.length; i++) {
       if (values[i]) {
@@ -405,7 +405,7 @@ async function spotifyPlaylist(search) { // assume already passed spotifyPattern
         tracks[i] = track;
         promises[i] = db.insertTrack(track, 'youtube');
       } catch (error) {
-        console.log(`[${i}] failing assignment; ${youtubeResults[i]}`);
+        logLine('error', [`[${i}] failing assignment; ${youtubeResults[i]}`]);
       }
     } else {
       // logLine('track', [`[${i}] already exists`]);

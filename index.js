@@ -3,9 +3,10 @@ const fs = require('fs');
 global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json').discord;
-const { logLine, logCommand, logComponent } = require('./logger.js');
+const { logLine, logCommand, logComponent, logDebug } = require('./logger.js');
 const { leaveVoice } = require('./music');
 const database = require('./database.js');
+const chalk = require('chalk');
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -23,6 +24,7 @@ for (const file of commandFiles) {
 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
+  logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));
   logLine('info', ['Ready!', `Node version: ${process.version}`]);
   database.printCount();
 });
