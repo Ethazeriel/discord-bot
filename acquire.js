@@ -336,13 +336,4 @@ async function fromYoutube(search) {
   }
 }
 
-const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
-
-(async () => {
-  await sleep(2000);
-  const search = 'https://www.youtube.com/watch?v=rSyfvnF5pps';
-  const track = await fetch(search);
-  logDebug(`${ track[0].spotify.name || track[0].youtube.name }`);
-})();
-
 exports.fetch = fetch;
