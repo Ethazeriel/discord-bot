@@ -2,11 +2,9 @@
   "keys" : [
 		"string"
 	],
-	"playlists": [
-		{ 
-			"string" : "integer"
-		}
-	],
+	"playlists": { 
+		"name" : "position"
+	},
 	"album" : {
 		"id" : "string",
 		"name" : "string",
