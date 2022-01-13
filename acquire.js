@@ -1,524 +1,348 @@
-const { logLine, logSpace } = require('./logger.js');
-const db = require('./database.js');
-const { youtubePattern, spotifyPattern, sanitize } = require('./regexes.js');
+const axios = require('axios').default;
 const ytdl = require('ytdl-core');
 
-const request = require('request');
+const db = require('./database.js');
+const { logLine, logSpace, logDebug } = require('./logger.js');
+const { spotify, youtube } = require('./config.json');
+const { youtubePattern, spotifyPattern, sanitize } = require('./regexes.js');
 
-const auth = require('./config.json');
-auth.spotify.authOptions = {
-  'url': 'https://accounts.spotify.com/api/token',
-  'headers': {
-    'Authorization': 'Basic ' + (Buffer.from(auth.spotify.client_id + ':' + auth.spotify.client_secret).toString('base64')),
+spotify.auth = {
+  url: 'https://accounts.spotify.com/api/token',
+  method: 'post',
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Authorization': 'Basic ' + (Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')),
   },
-  'form': {
-    'grant_type': 'client_credentials',
-  },
-  'json': true,
+  data: 'grant_type=client_credentials',
+  timeout: 1000,
 };
 
-const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
-
-function youtubeGet(options) {
-  return (new Promise((resolve, reject) => request.get(options, (error, response, body) => {
-    if (!error) {
-      // console.log('youtubeget, no error');
-      if (response.statusCode === 200) {
-        // console.log('youtubeget, status good, return body');
-        resolve(body);
-      } else if (response.statusCode === 403) {
-        if (response.headers['quotaExceeded']) {
-          // do things about the quota being exceeded
-        }
-        reject(new Error('youtubeGet failing', { cause: { options: options, error: error, response: response, body:body } }));
-      }
-    } else {
-      reject(new Error('youtubeGet failing', { cause: { options: options, error: error, response: response, body:body } }));
-    }
-  })));
-}
-
-function spotifyGet(options) {
-  return (new Promise((resolve, reject) => request.get(options, (error, response, body) => {
-    if (!error) {
-      if (response.statusCode === 200) {
-        resolve(body);
-      } else {
-        reject(new Error('spotifyGet failing', { cause: { options: options, error: error, response: response, body:body } }));
-      }
-    } else {
-      reject(new Error('spotifyGet failing', { cause: { options: options, error: error, response: response, body:body } }));
-    }
-  })));
-}
-
-function spotifyPost(options) {
-  return (new Promise((resolve, reject) => request.post(options, async (error, response, body) => {
-    if (!error) {
-      if (response.statusCode === 200) {
-        resolve(body);
-      } else if (response.statusCode === 429) {
-        const delayInSeconds = response.headers['Retry-After'];
-        if (delayInSeconds) {
-          await sleep((delayInSeconds * 1000));
-          resolve(spotifyPost(options));
-        } else {
-          reject(new Error('spotifyPost failing', { cause: { options: options, error: error, response: response, body:body } }));
-        }
-      }
-    } else {
-      reject(new Error('spotifyPost failing', { cause: { options: options, error: error, response: response, body:body } }));
-    }
-  })));
-}
-
-/* this whole thing is fairly horrid. will fix later
-*/
 async function fetch(search) {
   search = search.replace(sanitize, ''); // destructive removal of invalid symbols
   search = search.trim(); // remove leading and trailing spaces
 
   if (youtubePattern.test(search)) {
-    const track = await fromYoutube(search);
-    return ((track) ? Array(track) : null);
-  } else if (spotifyPattern.test(search)) {
-    const match = search.match(spotifyPattern);
-    if (match[1] == 'playlist') { // crude, temporary bandaid for playlist of entirely songs we don't have, where youtube 100% fails to return retults
-      const tracks = await spotifyPlaylist(search);
-      return ((tracks.length > 0) ? tracks : null);
-    } else { // crude, temporary bandaid
-      logLine('error', [`search: ${search} failing, because you still haven't fixed spotify stack/album searches`]);
-      return (null);
-    }
+    return (await fromYoutube(search));
   } else {
-    search = search.toLowerCase();
-    const track = await fromText(search);
-    return ((track) ? Array(track) : null);
+    return (await fromSpotify(search));
   }
 }
 
-/*
-currently if spotify requests fail, this fails. longer term intending to change this to use track.ephemeral and go ahead with the search */
-async function fromText(search) {
-  logLine('info', [`fromText search= '${search}'`]);
+// search will be sanitized
+async function fromSpotify(search) {
+  logLine('info', [`fromSpotify search= '${search}'`]);
 
-  let track = await db.getTrack({ keys: search });
-  if (track) {
-    logLine('track', [`have track '${track.spotify.name}' by key: '${search}'`]);
-    return (track);
-  } else {
-    const spotifyCredentials = await spotifyPost(auth.spotify.authOptions).catch(error => {
-      logLine('error', ['spotifyPost failing:', JSON.stringify(error.cause)]);
-    });
-    if (!spotifyCredentials) { return null; } // is return; the same as return null? do check
+  const is = {
+    playlist : undefined,
+    album : undefined,
+    track : undefined,
+  };
+  let match;
+  if (spotifyPattern.test(search)) {
+    match = search.match(spotifyPattern);
+    is[match[1]] = true;
+  }
 
-    const spotifyOptions = {
-      url: `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`,
-      headers: {
-        'Authorization': 'Bearer ' + spotifyCredentials.access_token,
-      },
-      json: true,
-    };
-
-    const spotifyResult = await spotifyGet(spotifyOptions).catch(error => {
-      logLine('error', ['spotifyGet failing:', JSON.stringify(error.cause, '', 2)]);
-    });
-    if (!spotifyResult) { return; }
-
-    if (spotifyResult.tracks.items?.[0]) {
-      track = await db.getTrack({ 'spotify.id': spotifyResult.tracks.items[0].id });
+  {
+    let track;
+    if (!match) {
+      track = await db.getTrack({ keys: search });
+    } else if (is.track) {
+      track = await db.getTrack({ 'spotify.id': match[2] });
     }
+
     if (track) {
-      logLine('track', [`have track '${track.spotify.name}' by spotify id, adding key: '${search}'`]); // rewrite to not be name null when no spotify
-      await db.addKey({ 'spotify.id' : track.spotify.id }, search);
-      return (track);
-    } else {
-      let query = (spotifyResult.tracks.items?.[0]) ? `${spotifyResult.tracks.items[0].artists[0].name} ${spotifyResult.tracks.items[0].name}` : search;
-      query = await query.replace(sanitize, '');
-      const youtubeOptions = {
-        url: 'https://youtube.googleapis.com/youtube/v3/search?q=' + query + '&type=video&part=id%2Csnippet&fields%3Ditems%28id%2FvideoId%2Csnippet%28title%2Cthumbnails%29%29&maxResults=5&safeSearch=none&key=' + auth.youtube.apiKey,
-        json: true,
-      };
-      logLine('info', [` youtube query: ${query}`]);
-      const youtubeResult = await youtubeGet(youtubeOptions).catch(error => {
-        logLine('error', ['youtubeGet failing:', JSON.stringify(error.cause, '', 2)]);
-      });
-
-      track = await db.getTrack({ 'youtube.id': youtubeResult?.items?.[0]?.id?.videoId });
-      if (track) {
-        if (spotifyResult.tracks.items?.[0]) {
-          logLine('error', [`have track '${track.spotify.name}' by youtube.id: '${youtubeResult.items[0].id.videoId}' for track lacking spotify details. manually update:`, `${JSON.stringify(spotifyResult.tracks.items[0], '', 2)}`]);
-        }
-        await db.addKey({ 'youtube.id' : track.youtube.id }, search);
-        return (track);
-      } else {
-        track = {
-          'keys' : [search],
-          'playlists': [
-            {
-            },
-          ],
-          'album' : {
-            'id' : spotifyResult.tracks.items?.[0]?.album?.id || null,
-            'name' : spotifyResult.tracks.items?.[0]?.album?.name,
-            'trackNumber' : spotifyResult.tracks.items?.[0]?.track_number,
-          },
-          'artist' : {
-            'id' : spotifyResult.tracks.items?.[0]?.artists?.[0]?.id,
-            'name' : spotifyResult.tracks.items?.[0]?.artists?.[0]?.name,
-          },
-          'spotify' : {
-            'id' : spotifyResult.tracks.items?.[0]?.id,
-            'name' : spotifyResult.tracks.items?.[0]?.name,
-            'art' : spotifyResult.tracks.items?.[0]?.album?.images?.[0]?.url,
-            'duration' : (Number.isNaN(spotifyResult.tracks.items?.[0]?.duration_ms)) ? null : spotifyResult.tracks.items?.[0]?.duration_ms / 1000,
-          },
-          'youtube' : {
-            'id' : youtubeResult.items[0].id.videoId,
-            'name' : youtubeResult.items[0].snippet.title,
-            'art' : youtubeResult.items[0].snippet.thumbnails.high.url,
-            'duration' : null,
-          },
-          'alternates': [],
-        };
-
-        for (let i = 1; i < youtubeResult.items.length; i++) {
-          track.alternates.push({
-            'id': youtubeResult.items[i].id.videoId,
-            'name': youtubeResult.items[i].snippet.title,
-            'art': youtubeResult.items[i].snippet.thumbnails.high.url,
-            'duration': null,
-          });
-        }
-
-        const promises = [];
-        for (let j = 0; j < youtubeResult.items.length; j++) {
-          promises.push(ytdl.getBasicInfo(youtubeResult.items[j].id.videoId));
-        }
-        await Promise.allSettled(promises).then(values => {
-          for (let k = 0; k < promises.length; k++) {
-            if (values[k].status == 'fulfilled') {
-              if (k == 0) {
-                track.youtube.duration = Number(values[k].value.player_response.videoDetails.lengthSeconds);
-                if (values[k].value.videoDetails.media?.song) {
-                  track.youtube.name = values[k].value.videoDetails.media.song;
-                }
-              } else {
-                track.alternates[k - 1].duration = Number(values[k].value.player_response.videoDetails.lengthSeconds);
-                if (values[k].value.videoDetails.media?.song) {
-                  track.alternates[k - 1].name = values[k].value.videoDetails.media.song;
-                }
-              }
-            }
-          }
-        });
-
-        await db.insertTrack(track, 'youtube');
-
-        return (track);
-      }
+      logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
+      return (Array(track));
     }
   }
-}
 
-/*
-this will fail badly in some cases, like if all youtube result sets are empty, null, or all throw errors.
-my intended rewrite of this to better use promises should fix this
-*/
-async function spotifyPlaylist(search) { // assume already passed spotifyPattern.test
-  const match = search.match(spotifyPattern);
-
-  const spotifyCredentials = await spotifyPost(auth.spotify.authOptions).catch(error => {
-    logLine('error', ['spotifyPost failing:', JSON.stringify(error.cause)]);
+  const { data : spotifyCredentials } = await axios(spotify.auth).catch(error => {
+    logLine('error', ['spotifyAuth: ', JSON.stringify(error, '', 2)]);
+    return (null);
   });
-  if (!spotifyCredentials) { return null; }
 
   const fields = {
     playlist : '?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,duration_ms))',
     album : '', // is ignored, but should be '?fields=id,name,artists(id,name),images,tracks.items(track_number,id,name,duration_ms)',
     track : '', // is ignored, but should be '?fields=track_number,id,name,duration_ms,album(id,name,images),artists(id,name)',
+    query : '', // is ignored, but should be '?fields=tracks.items(album(id,name,images),artists(id,name),track_number,id,name,duration_ms)',
   };
-  const spotifyOptions = {
-    url: `https://api.spotify.com/v1/${match[1]}s/${match[2]}${fields[match[1]]}`,
+
+  const spotifyQuery = {
+    url: `${(match) ? `https://api.spotify.com/v1/${match[1]}s/${match[2]}${fields[match[1]]}` : `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`}`,
+    method: 'get',
     headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
       'Authorization': 'Bearer ' + spotifyCredentials.access_token,
     },
-    json: true,
+    timeout: 1000,
   };
-  logLine('info', [`spotifyPlaylist search= '${search}''`]);
 
-  const spotifyResult = await spotifyGet(spotifyOptions).catch(error => {
-    logLine('error', ['spotifyGet failing:', JSON.stringify(error.cause, '', 2)]);
+  const { data : spotifyResult } = await axios(spotifyQuery).catch(error => {
+    logLine('error', ['spotifyQuery: ', JSON.stringify(error, '', 2)]);
+    return (null);
   });
-  if (!(spotifyResult?.tracks?.items?.[0])) { return null; }
-
-  let promises = [];
-  for (let i = 0; i < spotifyResult.tracks.items.length; i++) {
-    promises[i] = db.getTrack({ 'spotify.id': spotifyResult.tracks.items[i].track.id });
-  }
 
   logSpace();
+
+  let i = 0;
+  let promises = [];
+  const tracksInfo = [];
+  do {
+    let id;
+    tracksInfo[i] = {};
+    if (is.track) {
+      id = match[2];
+      // and we know we don't have it, cause we'd have returned it at the beginning
+    } else {
+      //   playlist                                 || album, text                       || track. spotifyResult.id collides on album and track, so goes last
+      id = spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
+      if (id) { promises[i] = db.getTrack({ 'spotify.id': id }); }
+    }
+    tracksInfo[i] = {
+      id: id,
+    };
+    i++;
+  } while (i < spotifyResult?.tracks?.items?.length);
+
+  i = 0;
   const tracks = [];
   await Promise.allSettled(promises).then(values => {
-    for (let i = 0; i < spotifyResult.tracks.items.length; i++) {
-      if (values[i].status == 'fulfilled') {
-        if (values[i].value) {
-          logLine('track', [`[${i}] have '${spotifyResult.tracks.items[i].track.name}'`]);
-          tracks[i] = values[i].value;
-        } else {
-          logLine('info', [` [${i}] lack '${spotifyResult.tracks.items[i].track.name}'`]);
-        }
+    do {
+      const title =
+        (is.playlist) ? `${spotifyResult.tracks?.items?.[i]?.track?.name}` :
+          (is.album) ? `${spotifyResult.tracks?.items?.[i]?.name}` :
+            (is.track) ? `${spotifyResult.name}` :
+              (spotifyResult.tracks?.items?.[0]) ? spotifyResult.tracks?.items?.[0]?.name : search;
+      tracksInfo[i].title = title;
+
+      if (values[i]?.status == 'rejected') {
+        logLine('error', ['spotify.id db.getTrack promise rejected,', `from search: ${search}`, `for [${i}]= ${title}`]);
+      } else if (values[i]?.value) {
+        // if it is a key and we had it, we'd have returned it at the beginning
+        if (!match) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
+        logLine('track', [`[${i}] have '${title}'`]);
+        tracks[i] = values[i].value;
       } else {
-        logLine('error', ['db.getTrack by spotify.id promise reject,', `from search: ${search}`, `for element ${JSON.stringify(spotifyResult.tracks.items[i], '', 2)}`]);
+        logLine('info', [` [${i}] lack '${title}'`]);
       }
-    }
-  }).catch(err => {
-    const error = new Error('get track by spotify.id exception', { cause: err });
-    logLine('error', ['db.getTrack exception and full abort: ', JSON.stringify(error.cause, '', 2)]);
-    throw (error);
+      i++;
+    } while (i < spotifyResult?.tracks?.items?.length);
   });
 
   logSpace();
+
+  i = 0;
   promises = [];
-  for (let i = 0; i < spotifyResult.tracks.items.length; i++) {
-    if (!tracks[i]) {
-      const query = `${spotifyResult.tracks.items[i].track.artists[0].name} ${spotifyResult.tracks.items[i].track.name}`;
-      const youtubeOptions = {
-        url: 'https://youtube.googleapis.com/youtube/v3/search?q=' + query + '&type=video&part=id%2Csnippet&fields%3Ditems%28id%2FvideoId%2Csnippet%28title%2Cthumbnails%29%29&maxResults=5&safeSearch=none&key=' + auth.youtube.apiKey,
-        json: true,
-      };
-      logLine('info', [` [${i}] youtube query: ${query}`]);
-      promises[i] = youtubeGet(youtubeOptions).catch(error => {
-        logLine('error', ['youtubeGet failing:', JSON.stringify(error.cause, '', 2)]);
-      });
-    } else {
+  do {
+    if (tracks[i]) {
       logLine('track', [`[${i}] youtube skip`]);
+    } else {
+      let query =
+        (is.playlist) ? `${spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.track?.name}` :
+          (is.album) ? `${spotifyResult.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.name}` :
+            (is.track) ? `${spotifyResult.artists?.[0]?.name} ${spotifyResult.name}` :
+              (spotifyResult.tracks?.items?.[0]) ? `${spotifyResult.tracks?.items?.[0]?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[0]?.name}` : search;
+      query = query.replace(sanitize, '');
+      query = query.replace(/(-)+/, ' ');
+      tracksInfo[i].query = query;
+      logLine('info', [` [${i}] youtube query: ${query}`]);
+
+      const youtubeQuery = {
+        url: 'https://youtube.googleapis.com/youtube/v3/search?q=' + query + '&type=video&part=id%2Csnippet&fields%3Ditems%28id%2FvideoId%2Csnippet%28title%2Cthumbnails%29%29&maxResults=5&safeSearch=none&key=' + youtube.apiKey,
+        method: 'get',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        timeout: 1000,
+      };
+
+      promises[i] = axios(youtubeQuery).catch(error => {
+        logLine('error', [`[${i}] youtube query: ${query}`, JSON.stringify(error, '', 2)]);
+      });
     }
-  }
+    i++;
+  } while (i < spotifyResult?.tracks?.items?.length);
 
   logSpace();
+
   const youtubeResults = [];
   await Promise.allSettled(promises).then(values => {
-    // console.log(`youtube settled, values.length= ${values.length}`); //
-    for (let i = 0; i < promises.length; i++) {
-      if (values[i]) {
+    for (i = 0; i < values.length; i++) {
+      if (values[i].value) {
         if (values[i].status == 'fulfilled') {
-          if (values[i].value) {
-            logLine('info', [`[${i}] ${spotifyResult.tracks.items[i].track.name} retrieved, id= '${values[i].value?.items?.[0]?.id?.videoId}'`]);
-            youtubeResults[i] = values[i].value;
-          }
+          logLine('info', [` [${i}] ${tracksInfo[i].title} retrieved, id= '${values[i].value?.data?.items?.[0]?.id?.videoId}'`]);
+          youtubeResults[i] = values[i].value.data;
         } else {
-          logLine('error', [`[${i}] youtube promise rejected`, `query was presumably '${spotifyResult.tracks.items[i].track.artists[0].name} ${spotifyResult.tracks.items[i].track.name}'`]);
+          logLine('error', [`[${i}] youtube promise rejected`, `for query '${tracksInfo[i].query}'`]);
         }
       }
     }
   });
 
+  logSpace();
+
   promises = [];
-  for (let i = 0; i < youtubeResults.length; i++) {
+  for (i = 0; i < youtubeResults.length; i++) {
     if (youtubeResults[i]) {
       promises[i] = db.getTrack({ 'youtube.id': youtubeResults[i]?.items?.[0]?.id?.videoId });
     }
   }
 
-  logSpace();
   await Promise.allSettled(promises).then(values => {
-    for (let i = 0; i < promises.length; i++) {
+    for (i = 0; i < values.length; i++) {
       if (values[i]) {
         if (values[i].status == 'fulfilled') {
           if (values[i].value) {
-            logLine('error', [`[${i}] have track '${spotifyResult.tracks.items[i].track.name}' by youtube.id for track lacking spotify details. manually update:`, `${JSON.stringify(spotifyResult.tracks.items[i], '', 2)}`]);
+            if (tracksInfo[i].id) { db.addSpotifyId({ 'youtube.id': values[i].value.youtube.id }, tracksInfo[i].id); }
+            if (!match) { db.addKey({ 'youtube.id': values[i].value.youtube.id }, search); }
             tracks[i] = values[i].value;
           }
         } else {
-          logLine('error', ['db.getTrack by youtube.id promise rejected,', `youtubeResult: ${JSON.stringify(youtubeResults[i], '', 2)}`, `spotifyResult: ${JSON.stringify(spotifyResult.tracks.items[i], '', 2)}`]);
+          logLine('error', ['db.getTrack by youtube.id promise rejected,', `***\nyoutubeResult: ${JSON.stringify(youtubeResults[i], '', 2)}`, `spotifyResult: ${JSON.stringify(spotifyResult.tracks.items[i], '', 2)}\n***`]);
         }
       }
     }
   });
 
+  i = 0;
   promises = [];
-  for (let i = 0; i < spotifyResult.tracks.items.length; i++) {
+  do {
     if (!tracks[i]) {
-      try {
-        const track = {
-          'keys' : [],
-          'playlists': [
-            {
-            },
-          ],
-          'album' : {
-            'id' : spotifyResult.tracks.items[i].track.album.id,
-            'name' : spotifyResult.tracks.items[i].track.album.name,
-            'trackNumber' : spotifyResult.tracks.items[i].track.track_number,
-          },
-          'artist' : {
-            'id' : spotifyResult.tracks.items[i].track.artists[0].id,
-            'name' : spotifyResult.tracks.items[i].track.artists[0].name,
-          },
-          'spotify' : {
-            'id' : spotifyResult.tracks.items[i].track.id,
-            'name' : spotifyResult.tracks.items[i].track.name,
-            'art' : spotifyResult.tracks.items[i].track.album.images[0].url,
-            'duration' : spotifyResult.tracks.items[i].track.duration_ms / 1000,
-          },
-          'youtube' : {
-            'id' : youtubeResults[i].items[0].id.videoId,
-            'name' : youtubeResults[i].items[0].snippet.title,
-            'art' : youtubeResults[i].items[0].snippet.thumbnails.high.url,
-            'duration' : null,
-          },
-          'alternates': [],
-        };
+      const track = {
+        'keys' : (match) ? [] : [search],
+        'playlists': {},
+        'album' : {
+          'id' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.id : (is.album) ? spotifyResult.id : (is.track) ? spotifyResult.album?.id : spotifyResult.tracks?.items?.[0]?.album?.id || null,
+          'name' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.name : (is.album) ? spotifyResult.name : (is.track) ? spotifyResult.album?.name : spotifyResult.tracks?.items?.[0]?.album?.name || null,
+          'trackNumber' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.track_number : (is.album) ? spotifyResult.tracks?.items?.[i]?.track_number : (is.track) ? spotifyResult.track_number : spotifyResult.tracks?.items?.[0]?.track_number || null,
+        },
+        'artist' : {
+          'id' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.id : (is.album) ? spotifyResult.artists?.[0]?.id : (is.track) ? spotifyResult.artists?.[0]?.id : spotifyResult.tracks?.items?.[0]?.artists?.[0]?.id || null,
+          'name' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name : (is.album) ? spotifyResult.artists?.[0]?.name : (is.track) ? spotifyResult.artists?.[0]?.name : spotifyResult.tracks?.items?.[0]?.artists?.[0]?.name || null,
+        },
+        'spotify' : {
+          'id' : (tracksInfo[i].id) ? [tracksInfo[i].id] : [],
+          'name' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.name : (is.album) ? spotifyResult.tracks?.items?.[i]?.name : (is.track) ? spotifyResult.name : spotifyResult.tracks?.items?.[0]?.name || null,
+          'art' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.images?.[0]?.url : (is.album) ? spotifyResult.images?.[0]?.url : (is.track) ? spotifyResult.album?.images?.[0]?.url : spotifyResult.tracks?.items?.[0]?.album?.images?.[0]?.url || null,
+          'duration' : undefined, // defined just below
+        },
+        'youtube' : {
+          'id' : youtubeResults[i].items[0].id.videoId,
+          'name' : youtubeResults[i].items[0].snippet.title,
+          'art' : youtubeResults[i].items[0].snippet.thumbnails.high.url,
+          'duration' : undefined, // defined below
+        },
+        'alternates': [],
+      };
+      const duration_ms = (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.duration_ms : (is.album) ? spotifyResult.tracks?.items?.[i]?.duration_ms : (is.track) ? spotifyResult.duration_ms : spotifyResult.tracks?.items?.[0]?.duration_ms || null;
+      track.spotify.duration = (duration_ms) ? duration_ms / 1000 : null;
 
-        for (let k = 1; k < youtubeResults[i].items.length; k++) {
-          track.alternates.push({
-            'id': youtubeResults[i].items[k].id.videoId,
-            'name': youtubeResults[i].items[k].snippet.title,
-            'art': youtubeResults[i].items[k].snippet.thumbnails.high.url,
-            'duration': null,
-          });
-        }
-
-        const internalPromises = [];
-        for (let j = 0; j < youtubeResults[i].items.length; j++) {
-          internalPromises.push(ytdl.getBasicInfo(youtubeResults[i].items[j].id.videoId));
-        }
-        await Promise.allSettled(internalPromises).then(values => {
-          for (let q = 0; q < internalPromises.length; q++) {
-            if (values[q].status == 'fulfilled') {
-              if (q == 0) {
-                track.youtube.duration = Number(values[q].value.videoDetails.lengthSeconds);
-                if (values[q].value.videoDetails.media?.song) {
-                  track.youtube.name = values[q].value.videoDetails.media.song;
-                }
-              } else {
-                track.alternates[q - 1].duration = Number(values[q].value.videoDetails.lengthSeconds);
-                if (values[q].value.videoDetails.media?.song) {
-                  track.alternates[q - 1].name = values[q].value.videoDetails.media.song;
-                }
-              }
-            }
-          }
+      for (let k = 1; k < youtubeResults[i].items.length; k++) {
+        track.alternates.push({
+          'id': youtubeResults[i].items[k].id.videoId,
+          'name': youtubeResults[i].items[k].snippet.title,
+          'art': youtubeResults[i].items[k].snippet.thumbnails.high.url,
+          'duration': null,
         });
-
-        tracks[i] = track;
-        promises[i] = db.insertTrack(track, 'youtube');
-      } catch (error) {
-        logLine('error', [`[${i}] failing assignment; ${youtubeResults[i]}`]);
       }
-    } else {
-      // logLine('track', [`[${i}] already exists`]);
+      const internalPromises = [];
+      try {
+        promises.push((async () => {
+          const l = i;
+          for (let j = 0; j < youtubeResults[i].items.length; j++) {
+            internalPromises.push((async () => {
+              const ytdlResult = await ytdl.getBasicInfo(youtubeResults[l].items[j].id.videoId);
+              if (j == 0) {
+                track.youtube.duration = Number(ytdlResult.videoDetails.lengthSeconds);
+              } else {
+                track.alternates[j - 1].duration = Number(ytdlResult.videoDetails.lengthSeconds);
+              }
+              // return;
+            })());
+          }
+          await Promise.allSettled(internalPromises);
+          tracks[l] = track;
+          await db.insertTrack(track, 'youtube');
+        })());
+      } catch (error) {
+        logLine('error', ['ytdl, likely track not inserted', `***\n[${i}] ${tracksInfo[i].title}:\n${JSON.stringify(youtubeResults, '', 2)}\n***`]);
+      }
     }
-  }
+    i++;
+  } while (i < spotifyResult?.tracks?.items?.length);
 
-  await Promise.allSettled(promises).catch(error => {
-    logLine('error', [error.stack]);
-  });
-  // console.log('exiting');
+  await Promise.allSettled(promises);
+
   return (tracks);
 }
 
-/* if ytdl returns nothing or an empty set, like on a private video? potential for this to fail and be handled poorly */
-async function fromYoutube(search) { // assume already passed youtubePattern.test
+// search will be sanitized, and have passed youtubePattern.test();
+async function fromYoutube(search) {
   logLine('info', [`fromYoutube search= '${search}'`]);
 
   const match = search.match(youtubePattern);
-  let track = await db.getTrack({ 'youtube.id': match[2] });
+  const track = await db.getTrack({ 'youtube.id': match[2] });
+
   if (track) {
-    logLine('track', [`have track '${track.youtube.name}' by youtube id`]);
-    return (track);
+    logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
+    return (Array(track));
   } else {
-    const ytdlResult = await ytdl.getBasicInfo(match[2]);
-    if (!ytdlResult) { // test private/unlisted video, see if failure returns null or an empty set we have to check
-      logLine('error', [`ytdlResult nullish: ${ytdlResult}`]);
-      return (null);
-    }
-    let query = (ytdlResult.videoDetails.media?.song && ytdlResult.videoDetails.media?.artist) ? `${ytdlResult.videoDetails.media.song} ${ytdlResult.videoDetails.media?.artist}` : ytdlResult.videoDetails.title;
+    const ytdlResult = await ytdl.getBasicInfo(match[2]).catch(err => {
+      // const error = new Error('message to user', { cause: err });
+      logLine('error', ['fromYoutube, ytdl', JSON.stringify(err, '', 2)]);
+      throw err;
+    });
+    let query = ytdlResult.videoDetails.title;
     query = query.replace(sanitize, '');
-    const spotifyCredentials = await spotifyPost(auth.spotify.authOptions).catch(error => {
-      logLine('error', ['spotifyPost failing:', JSON.stringify(error.cause)]);
-    });
-    if (!spotifyCredentials) { // don't think I like this failure path, so leaving this to remind me
-      logLine('error', [`spotifyCredentials nullish: ${JSON.stringify(spotifyCredentials, '', 2)} for query: ${query} and search: ${search}`]);
-      return (null);
+
+    const tracks = await fromSpotify(query);
+
+    if (tracks[0].youtube.id != match[2]) {
+      tracks[0].ephemeral = `mismatch between provided ${match[2]} and found/ created id ${tracks[0].youtube.id}. prompt user for remap`;
     }
-    const spotifyOptions = {
-      url: `https://api.spotify.com/v1/search?type=track&limit=1&q=${query}`,
-      headers: {
-        'Authorization': 'Bearer ' + spotifyCredentials.access_token,
-      },
-      json: true,
+
+    const replacementYoutube = {
+      id: match[2],
+      name: query,
+      art: ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url,
+      duration: ytdlResult.videoDetails.lengthSeconds,
     };
+    tracks[0].youtube = replacementYoutube;
 
-    logLine('info', [` spotify query: ${query}`]);
-    const spotifyResult = await spotifyGet(spotifyOptions).catch(error => {
-      logLine('error', ['spotifyGet failing:', JSON.stringify(error.cause, '', 2)]);
-    });
-
-    if (spotifyResult.tracks.items?.[0]) {
-      track = await db.getTrack({ 'spotify.id': spotifyResult.tracks.items[0].id });
+    if (tracks[0].spotify.duration) {
+      const difference = Math.trunc(Math.abs(tracks[0].spotify.duration - tracks[0].youtube.duration));
+      const percentage = Math.trunc(100 * ((tracks[0].spotify.duration < tracks[0].youtube.duration) ? (tracks[0].spotify.duration / tracks[0].youtube.duration) : (tracks[0].youtube.duration / tracks[0].spotify.duration)));
+      if (difference > 10 || percentage < 95) {
+        const message = 'duration discrepancy, voiding spotify details in return';
+        tracks[0].ephemeral = (tracks[0].ephemeral) ? tracks[0].ephemeral += `\n                              ${message}` : message;
+        logDebug(`duration difference of ${difference}s, or ${percentage}%`);
+        const replacementSpotify = {
+          id: [],
+          name: null,
+          art: null,
+          duration: null,
+        };
+        tracks[0].spotify = replacementSpotify;
+      }
     }
-    if (track) {
-      logLine('track', [`track '${track.spotify.name}' is tied to '${track.youtube.id}', not '${match[2]}'. will be ephemeral`]);
-      track.ephemeral = `track '${track.spotify.name}' is tied to '${track.youtube.id}', not '${match[2]}'. manual overwrite necessary if preferred`;
-    } else {
-      track = {};
-    }
+    if (tracks[0].ephemeral) {logLine('info', [tracks[0].ephemeral]); }
 
-    track.keys = track.keys || [],
-    track.playlists = track.playlists || [],
-    track.album = {
-      'id' : spotifyResult.tracks.items?.[0]?.album?.id || null,
-      'name' : spotifyResult.tracks.items?.[0]?.album?.name || null,
-      'trackNumber' : spotifyResult.tracks.items?.[0]?.track_number || null,
-    },
-    track.artist = {
-      'id' : spotifyResult.tracks.items?.[0]?.artists?.[0]?.id || null,
-      'name' : spotifyResult.tracks.items?.[0]?.artists?.[0]?.name || (ytdlResult.videoDetails.media?.artist?.replace(sanitize, '')) || null,
-    },
-    track.spotify = {
-      'id' : spotifyResult.tracks.items?.[0]?.id || null,
-      'name' : spotifyResult.tracks.items?.[0]?.name || null,
-      'art' : spotifyResult.tracks.items?.[0]?.album?.images?.[0]?.url || null,
-      'duration' : (spotifyResult.tracks.items?.[0]?.duration_ms / 1000) || null,
-    },
-    track.youtube = {
-      'id' : ytdlResult.videoDetails.videoId.replace(sanitize, ''),
-      'name' : (ytdlResult.videoDetails.media?.song || ytdlResult.videoDetails.title).replace(sanitize, ''),
-      'art' : (ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url).replace(sanitize, ''),
-      'duration' : ytdlResult.videoDetails.lengthSeconds,
-    },
-    track.alternates = track.alternates || [];
-
-    if (!track.ephemeral) {
-      await db.insertTrack(track, 'youtube');
-    }
-
-    return (track);
+    return (tracks);
   }
 }
 
-/* (async () => {
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+
+(async () => {
   await sleep(2000);
-  const prompt = require('prompt-sync')({ sigint: true });
-  let exit = false;
-
-  while (!exit) {
-    const input = prompt('add, clear, quit: ');
-
-    if (input == 'add') {
-      const search = prompt('search for: ');
-      await fetch(search);
-    } else if (input == 'clear') {
-      console.clear();
-    } else if (input == 'quit') {
-      db.closeDB();
-      exit = true;
-    } else {
-      console.log('\ninvalid input');
-    }
-  }
-})(); */
+  const search = 'https://www.youtube.com/watch?v=rSyfvnF5pps';
+  const track = await fetch(search);
+  logDebug(`${ track[0].spotify.name || track[0].youtube.name }`);
+})();
 
 exports.fetch = fetch;

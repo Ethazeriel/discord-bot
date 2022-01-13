@@ -51,9 +51,13 @@ module.exports = {
           }
         }
       } else {
-        tracks = await fetch(search);
-        if (!tracks) {
-          await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
+        try {
+          tracks = await fetch(search);
+          if (!tracks || tracks.length == 0) {
+            await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
+          }
+        } catch (error) {
+          await interaction.followUp({ content: `OH NO SOMETHING'S FUCKED. Error: ${error.message}`, ephemeral: true });
         }
       }
 

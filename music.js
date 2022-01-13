@@ -45,6 +45,7 @@ function createVoiceConnection(interaction) { // join a voice channel
 }
 
 function stashQueue() { // if something fucks up, this lets us get the most recent queue back
+  queuestash.length = 0;// we need to empty this before we add more things
   for (const track of queue) {
     queuestash.push(track);
   }
