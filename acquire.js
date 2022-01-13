@@ -2,7 +2,7 @@ const axios = require('axios').default;
 const ytdl = require('ytdl-core');
 
 const db = require('./database.js');
-const { logLine } = require('./logger.js');
+const { logLine, logSpace, logDebug } = require('./logger.js');
 const { spotify, youtube } = require('./config.json');
 const { youtubePattern, spotifyPattern, sanitize } = require('./regexes.js');
 
@@ -86,7 +86,7 @@ async function fromSpotify(search) {
     return (null);
   });
 
-  console.log();
+  logSpace();
 
   let i = 0;
   let promises = [];
@@ -133,7 +133,7 @@ async function fromSpotify(search) {
     } while (i < spotifyResult?.tracks?.items?.length);
   });
 
-  console.log();
+  logSpace();
 
   i = 0;
   promises = [];
@@ -168,14 +168,14 @@ async function fromSpotify(search) {
     i++;
   } while (i < spotifyResult?.tracks?.items?.length);
 
-  console.log();
+  logSpace();
 
   const youtubeResults = [];
   await Promise.allSettled(promises).then(values => {
     for (i = 0; i < values.length; i++) {
       if (values[i].value) {
         if (values[i].status == 'fulfilled') {
-          logLine('info', [`[${i}] ${tracksInfo[i].title} retrieved, id= '${values[i].value?.data?.items?.[0]?.id?.videoId}'`]);
+          logLine('info', [` [${i}] ${tracksInfo[i].title} retrieved, id= '${values[i].value?.data?.items?.[0]?.id?.videoId}'`]);
           youtubeResults[i] = values[i].value.data;
         } else {
           logLine('error', [`[${i}] youtube promise rejected`, `for query '${tracksInfo[i].query}'`]);
@@ -184,7 +184,7 @@ async function fromSpotify(search) {
     }
   });
 
-  console.log();
+  logSpace();
 
   promises = [];
   for (i = 0; i < youtubeResults.length; i++) {
@@ -240,7 +240,7 @@ async function fromSpotify(search) {
         'alternates': [],
       };
       const duration_ms = (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.duration_ms : (is.album) ? spotifyResult.tracks?.items?.[i]?.duration_ms : (is.track) ? spotifyResult.duration_ms : spotifyResult.tracks?.items?.[0]?.duration_ms || null;
-      track.spotify.duration = Number.isNaN(duration_ms) ? null : duration_ms / 1000;
+      track.spotify.duration = (duration_ms) ? duration_ms / 1000 : null;
 
       for (let k = 1; k < youtubeResults[i].items.length; k++) {
         track.alternates.push({
@@ -286,7 +286,7 @@ async function fromYoutube(search) {
   logLine('info', [`fromYoutube search= '${search}'`]);
 
   const match = search.match(youtubePattern);
-  let track = await db.getTrack({ 'youtube.id': match[2] });
+  const track = await db.getTrack({ 'youtube.id': match[2] });
 
   if (track) {
     logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
@@ -300,28 +300,49 @@ async function fromYoutube(search) {
     let query = ytdlResult.videoDetails.title;
     query = query.replace(sanitize, '');
 
-    track = await fromSpotify(query);
+    const tracks = await fromSpotify(query);
 
-    track.youtube.id = match[2];
-    track.youtube.name = query;
-    track.youtube.art = ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url;
-    track.youtube.duration = ytdlResult.videoDetails.lengthSeconds;
-
-    if (!Number.isNaN(track.spotify.duration)) {
-      const difference = Math.abs(track.spotify.duration - track.youtube.duration);
-      const percentage = Math.trunc(100 * (track.spotify.duration < track.youtube.duration) ? (track.spotify.duration / track.youtube.duration) : (track.youtube.duration / track.spotify.duration));
-      console.log(`difference= ${difference}, percentage= ${percentage}`);
-      if (difference > 10 || percentage < 5) {
-        logLine('info', ['fromYoutube', 'duration discrepancy, voiding spotify details']);
-        track.spotify.id = null;
-        track.spotify.name = null;
-        track.spotify.art = null;
-        track.spotify.duration = null;
-      }
+    if (tracks[0].youtube.id != match[2]) {
+      tracks[0].ephemeral = `mismatch between provided ${match[2]} and found/ created id ${tracks[0].youtube.id}. prompt user for remap`;
     }
 
-    return (track);
+    const replacementYoutube = {
+      id: match[2],
+      name: query,
+      art: ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url,
+      duration: ytdlResult.videoDetails.lengthSeconds,
+    };
+    tracks[0].youtube = replacementYoutube;
+
+    if (tracks[0].spotify.duration) {
+      const difference = Math.trunc(Math.abs(tracks[0].spotify.duration - tracks[0].youtube.duration));
+      const percentage = Math.trunc(100 * ((tracks[0].spotify.duration < tracks[0].youtube.duration) ? (tracks[0].spotify.duration / tracks[0].youtube.duration) : (tracks[0].youtube.duration / tracks[0].spotify.duration)));
+      if (difference > 10 || percentage < 95) {
+        const message = 'duration discrepancy, voiding spotify details in return';
+        tracks[0].ephemeral = (tracks[0].ephemeral) ? tracks[0].ephemeral += `\n                              ${message}` : message;
+        logDebug(`duration difference of ${difference}s, or ${percentage}%`);
+        const replacementSpotify = {
+          id: [],
+          name: null,
+          art: null,
+          duration: null,
+        };
+        tracks[0].spotify = replacementSpotify;
+      }
+    }
+    if (tracks[0].ephemeral) {logLine('info', [tracks[0].ephemeral]); }
+
+    return (tracks);
   }
 }
+
+const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+
+(async () => {
+  await sleep(2000);
+  const search = 'https://www.youtube.com/watch?v=rSyfvnF5pps';
+  const track = await fetch(search);
+  logDebug(`${ track[0].spotify.name || track[0].youtube.name }`);
+})();
 
 exports.fetch = fetch;
