@@ -52,14 +52,16 @@ async function insertTrack(track, query) {
   try {
     const tracks = db.collection(collname);
     // check if we already have this url
-    const test = await tracks.findOne({ [search]: track[query][id] });
-    if (test == null || test[query][id] != track[query][id]) {
+    if (!track.ephemeral) {
+      const test = await tracks.findOne({ [search]: track[query][id] });
+      if (test == null || test[query][id] != track[query][id]) {
       // we don't have this in our database yet, so
-      const result = await tracks.insertOne(track);
-      logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
-      return result;
-    } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
+        const result = await tracks.insertOne(track);
+        logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
+        return result;
+      } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
     // console.log(track);
+    } else { throw new Error('This track is ephemeral!');}
   } catch (error) {
     logLine('error', ['database error:', error.message]);
   }
@@ -78,6 +80,19 @@ async function addKey(query, newkey) {
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
+async function addSpotifyId(query, newid) {
+  // adds a new spotify id to a track we already have
+  // silently fails if we don't have the track in the DB already
+  try {
+    const tracks = db.collection(collname);
+    await tracks.updateOne(query, { $addToSet: { 'spotify.id': newid } });
+    logLine('database', [`Adding spotify id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+// addSpotifyId({ 'youtube.id': 'WMZTxhEPRhA' }, '6i71OngJrJDr6hQIFmzYI0');
+
 async function addPlaylist(trackarray, listname) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
@@ -87,7 +102,8 @@ async function addPlaylist(trackarray, listname) {
       const tracks = db.collection(collname);
       trackarray.forEach(async (element, index) => {
         const query = { 'youtube.id': element.youtube.id };
-        await tracks.updateOne(query, { $addToSet: { playlists:{ [listname]:index } } });
+        const field = `playlists.${listname}`;
+        await tracks.updateOne(query, { $set: { [field]:index } });
         logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
       });
     } catch (error) {
@@ -105,10 +121,9 @@ async function getPlaylist(listname) {
     const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
-    const options = { sort: { [qustr]:-1 } };
+    const options = { sort: { [qustr]:1 } };
     const cursor = await tracks.find(query, options);
     const everything = await cursor.toArray();
-    everything.reverse();
     return everything;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
@@ -120,7 +135,7 @@ async function removePlaylist(listname) {
     const tracks = db.collection(collname);
     const qustr = `playlists.${listname}`;
     const query = { [qustr]: { $exists: true } };
-    const filt = { $pull:{ 'playlists': { [listname]: { $exists: true } } } };
+    const filt = { $unset:{ [qustr]: '' } };
     const result = await tracks.updateMany(query, filt);
     logLine('database', [`Removed playlist ${chalk.blue(listname)} from ${chalk.green(result.modifiedCount)} tracks.`]);
     return result.modifiedCount;
@@ -129,8 +144,59 @@ async function removePlaylist(listname) {
   }
 }
 
+async function updateTrack(query, update) {
+  // generic update function; basically just a wrapper for updateOne
+  try {
+    const tracks = db.collection(collname);
+    await tracks.updateOne(query, update);
+    logLine('database', [`Updating track ${chalk.blue(JSON.stringify(query, '', 2))} with data ${chalk.green(JSON.stringify(update, '', 2))}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
+async function removeTrack(query) {
+  // removes the track with the specified youtube id - USE WITH CAUTION
+  // returns 1 if successful, 0 otherwise
+  try {
+    const tracks = db.collection(collname);
+    const track = await tracks.deleteOne({ 'youtube.id':query });
+    if (track.deletedCount === 1) {
+      logLine('database', [`Removed track ${chalk.red(query)} from DB.`]);
+    } else {
+      logLine('database', [`Removing track ${chalk.red(query)} failed - was not in the DB or something else went wrong`]);
+    }
+    return track.deletedCount;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+// usage: await db.removeTrack('DjaE3w8j6vY');
+
+async function switchAlternate(query, alternate) {
+  // returns the first track object that matches the query
+  try {
+    const tracks = db.collection(collname);
+    const search = { 'youtube.id':query };
+    const track = await tracks.findOne(search);
+    if (track) {
+      const newmain = track.alternates.splice(alternate, 1, track.youtube);
+      const update = {
+        $set: { 'youtube':newmain[0], 'alternates':track.alternates },
+      };
+      const result = await tracks.updateOne(search, update);
+      if (result.modifiedCount == 1) {
+        logLine('database', [`Remapped track ${chalk.green(track.youtube.id)} to alternate ${chalk.green(alternate)}`]);
+      } else {logLine('database', [`Failed to remap ${chalk.red(track.youtube.id)} - is this a valid ID?`]);}
+      return result.modifiedCount;
+    } else {return 0;}
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 async function getAlbum(request, type) {
-  // returns a playlist as an array of tracks, ready for use
+  // returns an album as an array of tracks, ready for use
   // type can be id or name
   const pattern = /^(?:id|name){1}$/g;
   if (!pattern.test(type)) {return null;}
@@ -176,37 +242,7 @@ async function listPlaylists() {
     logLine('error', ['database error:', error.stack]);
   }
 }
-/*
-const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
-async function dootherthing() {
-  await sleep(2000);
-  // const trackarray = await getAlbum('The Mountain', 'name');
-  // console.log(JSON.stringify(trackarray, null, '  '));
-  listPlaylists();
-}
-dootherthing();
 
-/*
-const playlists = require('./testing/playlists.js');
-async function dothing() {
-  const result = await addPlaylist(playlists.trainsong, 'trainsong');
-  console.log(result);
-  // playlists.trainsong.forEach(async element => {
-  //  await insertTrack(element, null, true);
-  // });
-  // await removePlaylist('trainsong');
-}
-dothing();
-
-
-async function dothething() {
-  await sleep(3000);
-  const test = await getTrack({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, true);
-  console.log(test);
-}
-
-dothething();
-*/
 
 exports.getTrack = getTrack;
 exports.insertTrack = insertTrack;
@@ -218,3 +254,7 @@ exports.getAlbum = getAlbum;
 exports.printCount = printCount;
 exports.closeDB = closeDB;
 exports.listPlaylists = listPlaylists;
+exports.removeTrack = removeTrack;
+exports.switchAlternate = switchAlternate;
+exports.updateTrack = updateTrack;
+exports.addSpotifyId = addSpotifyId;

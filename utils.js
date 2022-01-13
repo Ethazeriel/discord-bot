@@ -1,8 +1,9 @@
 const { MessageAttachment } = require('discord.js');
 const music = require('./music.js');
 const { logLine } = require('./logger.js');
+const Canvas = require('canvas');
 
-function pickPride(type) {
+function pickPride(type, detail) {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
   let ranpride = pridearray[Math.floor(Math.random() * pridearray.length)];
   if (ranpride == 'pride') {
@@ -10,9 +11,40 @@ function pickPride(type) {
     ranpride = pridearray2[Math.floor(Math.random() * pridearray2.length)];
   }
   const prideStr = 'https://ethazeriel.net/pride/sprites/' + type + '_' + ranpride + '.png';
+  if (detail === true) {
+    return {
+      url:prideStr,
+      name:ranpride,
+    };
+  }
   return prideStr;
 }
 
+async function prideSticker(interaction, type) {
+  const size = {
+    heart:{ width:160, height:160 },
+    dab:{ width:160, height:100 },
+    fish:{ width:160, height:160 },
+  };
+  const prideChoice = interaction.options.getString('type');
+  const canvas = Canvas.createCanvas(size[type].width, size[type].height);
+  const context = canvas.getContext('2d');
+  let result;
+  if (prideChoice == 'random') {
+    result = pickPride(type, true);
+  } else {
+    result = {
+      url:`https://ethazeriel.net/pride/sprites/${type}_${prideChoice}.png`,
+      name:prideChoice,
+    };
+  }
+  const prideimg = await Canvas.loadImage(result.url);
+  context.drawImage(prideimg, 0, 0, canvas.width, canvas.height);
+  const attachment = new MessageAttachment(canvas.toBuffer(), `${type}_${result.name}.png`).setDescription(`${result.name} ${type}`);
+  // console.log(attachment.description);
+  await interaction.reply({ files: [attachment] });
+
+}
 
 async function generateTrackEmbed(interaction, track, messagetitle) {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
@@ -113,3 +145,4 @@ exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;
 exports.generateListEmbed = generateListEmbed;
+exports.prideSticker = prideSticker;

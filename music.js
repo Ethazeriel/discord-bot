@@ -5,7 +5,7 @@ const { useragent } = require('./config.json').youtube;
 
 // set things up
 const queue = [];
-let currentTrack = [];
+let currentTrack = {};
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
@@ -45,6 +45,7 @@ function createVoiceConnection(interaction) { // join a voice channel
 }
 
 function stashQueue() { // if something fucks up, this lets us get the most recent queue back
+  queuestash.length = 0;// we need to empty this before we add more things
   for (const track of queue) {
     queuestash.push(track);
   }
@@ -99,6 +100,7 @@ async function playTrack() { // start the player
         const resource = createAudioResource(youtubedl(track.youtube.id, {
           o: '-',
           q: '',
+          'force-ipv4': '',
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
           r: '100K',
           cookies: 'cookies.txt',

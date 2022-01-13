@@ -29,9 +29,8 @@ module.exports = {
     const when = interaction.options.getString('when') || 'last';
     const what = interaction.options.getString('what') || null;
 
-    logLine('command', ['User: ', interaction.member.displayName, 'Command: ', interaction.commandName, 'Search: ', search, 'When: ', when, 'What: ', what]);
 
-    if (interaction.member.roles.cache.some(role => role.name === 'DJ')) {
+    if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
 
       if (!search) {
@@ -52,9 +51,13 @@ module.exports = {
           }
         }
       } else {
-        tracks = await fetch(search);
-        if (!tracks) {
-          await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
+        try {
+          tracks = await fetch(search);
+          if (!tracks || tracks.length == 0) {
+            await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
+          }
+        } catch (error) {
+          await interaction.followUp({ content: `OH NO SOMETHING'S FUCKED. Error: ${error.message}`, ephemeral: true });
         }
       }
 
