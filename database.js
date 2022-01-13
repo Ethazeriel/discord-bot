@@ -80,6 +80,19 @@ async function addKey(query, newkey) {
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
+async function addSpotifyId(query, newid) {
+  // adds a new spotify id to a track we already have
+  // silently fails if we don't have the track in the DB already
+  try {
+    const tracks = db.collection(collname);
+    await tracks.updateOne(query, { $addToSet: { 'spotify.id': newid } });
+    logLine('database', [`Adding spotify id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+// addSpotifyId({ 'youtube.id': 'WMZTxhEPRhA' }, '6i71OngJrJDr6hQIFmzYI0');
+
 async function addPlaylist(trackarray, listname) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
@@ -244,3 +257,4 @@ exports.listPlaylists = listPlaylists;
 exports.removeTrack = removeTrack;
 exports.switchAlternate = switchAlternate;
 exports.updateTrack = updateTrack;
+exports.addSpotifyId = addSpotifyId;
