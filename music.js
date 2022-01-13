@@ -5,7 +5,7 @@ const { useragent } = require('./config.json').youtube;
 
 // set things up
 const queue = [];
-let currentTrack = [];
+let currentTrack = {};
 const player = createAudioPlayer();
 let playerStatus = 'idle';
 let voiceConnected = false;
@@ -100,6 +100,7 @@ async function playTrack() { // start the player
         const resource = createAudioResource(youtubedl(track.youtube.id, {
           o: '-',
           q: '',
+          'force-ipv4': '',
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
           r: '100K',
           cookies: 'cookies.txt',
