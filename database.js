@@ -2,6 +2,7 @@ const MongoClient = require('mongodb').MongoClient;
 const { logLine } = require('./logger.js');
 const chalk = require('chalk');
 const { mongo } = require('./config.json');
+const { sanitizePlaylists } = require('./regexes.js');
 // Connection URL
 const url = mongo.url;
 const dbname = mongo.database;
@@ -96,15 +97,16 @@ async function addSpotifyId(query, newid) {
 async function addPlaylist(trackarray, listname) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
-  const test = await getPlaylist(listname);
+  const name = listname.replace(sanitizePlaylists, '');
+  const test = await getPlaylist(name);
   if (!test.length) {
     try {
       const tracks = db.collection(collname);
       trackarray.forEach(async (element, index) => {
         const query = { 'youtube.id': element.youtube.id };
-        const field = `playlists.${listname}`;
+        const field = `playlists.${name}`;
         await tracks.updateOne(query, { $set: { [field]:index } });
-        logLine('database', [`Adding playlist entry ${chalk.blue(listname + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
+        logLine('database', [`Adding playlist entry ${chalk.blue(name + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
       });
     } catch (error) {
       logLine('error', ['database error:', error.stack]);
@@ -118,8 +120,9 @@ async function addPlaylist(trackarray, listname) {
 async function getPlaylist(listname) {
   // returns a playlist as an array of tracks, ready for use
   try {
+    const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection(collname);
-    const qustr = `playlists.${listname}`;
+    const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
     const options = { sort: { [qustr]:1 } };
     const cursor = await tracks.find(query, options);
@@ -132,12 +135,13 @@ async function getPlaylist(listname) {
 
 async function removePlaylist(listname) {
   try {
+    const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection(collname);
-    const qustr = `playlists.${listname}`;
+    const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
     const filt = { $unset:{ [qustr]: '' } };
     const result = await tracks.updateMany(query, filt);
-    logLine('database', [`Removed playlist ${chalk.blue(listname)} from ${chalk.green(result.modifiedCount)} tracks.`]);
+    logLine('database', [`Removed playlist ${chalk.blue(name)} from ${chalk.green(result.modifiedCount)} tracks.`]);
     return result.modifiedCount;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);

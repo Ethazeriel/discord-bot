@@ -5,7 +5,7 @@ const utils = require('../utils.js');
 const { logLine } = require('../logger.js');
 const database = require('../database.js');
 const { fetch } = require('../acquire.js');
-const { youtubePattern, spotifyPattern, sanitize } = require('../regexes.js');
+const { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } = require('../regexes.js');
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -44,6 +44,7 @@ module.exports = {
         if ((spotifyPattern.test(search) || youtubePattern.test(search))) {
           await interaction.followUp({ content: 'Omit playlist flag for external resources. See /help play or /help playlist for usage and interrelationship.', ephemeral: true });
         } else {
+          search.replace(sanitizePlaylists, '');
           tracks = await database.getPlaylist(search);
           if (tracks.length == 0) {
             logLine('error', [`No playlist exists by name '${search}'`]);
