@@ -1,5 +1,6 @@
 const axios = require('axios').default;
 const ytdl = require('ytdl-core');
+const crypto = require('crypto');
 
 const db = require('./database.js');
 const { logLine, logSpace, logDebug } = require('./logger.js');
@@ -47,6 +48,7 @@ async function fromSpotify(search) {
   {
     let track;
     if (!match) {
+      search = String(search).toLowerCase();
       track = await db.getTrack({ keys: search });
     } else if (is.track) {
       track = await db.getTrack({ 'spotify.id': match[2] });
@@ -262,10 +264,17 @@ async function fromSpotify(search) {
               } else {
                 track.alternates[j - 1].duration = Number(ytdlResult.videoDetails.lengthSeconds);
               }
-              // return;
             })());
           }
           await Promise.allSettled(internalPromises);
+          let id = crypto.randomBytes(5).toString('hex');
+          while (await db.getTrack({ 'goose.id': id })) {
+            id = crypto.randomBytes(5).toString('hex');
+          }
+          track.goose = {
+            id: id,
+          };
+          logDebug(`[${l}] assigned id: ${id}`);
           tracks[l] = track;
           await db.insertTrack(track, 'youtube');
         })());
@@ -297,7 +306,8 @@ async function fromYoutube(search) {
       logLine('error', ['fromYoutube, ytdl', JSON.stringify(err, '', 2)]);
       throw err;
     });
-    let query = ytdlResult.videoDetails.title;
+    logDebug(`length: ${Object.keys(ytdlResult.videoDetails.media).length}, song: ${ytdlResult.videoDetails.media.song}, artist: ${ytdlResult.videoDetails.media.artist}`);
+    let query = (Object.keys(ytdlResult.videoDetails.media).length) ? `${ytdlResult.videoDetails.media.song} ${ytdlResult.videoDetails.media.artist}` : ytdlResult.videoDetails.title;
     query = query.replace(sanitize, '');
 
     const tracks = await fromSpotify(query);
