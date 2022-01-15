@@ -73,8 +73,8 @@ async function addKey(query, newkey) {
   // silently fails if we don't have the track in the DB already
   try {
     const tracks = db.collection(collname);
-    await tracks.updateOne(query, { $addToSet: { keys: newkey } });
-    logLine('database', [`Adding key ${chalk.blue(newkey)} to ${chalk.green(query)}`]);
+    await tracks.updateOne(query, { $addToSet: { keys: newkey.toLowerCase() } });
+    logLine('database', [`Adding key ${chalk.blue(newkey.toLowerCase())} to ${chalk.green(query)}`]);
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
   }
