@@ -1,4 +1,7 @@
 {
+	"goose": {
+		"id":"string"
+	},
   "keys" : [
 		"string"
 	],
