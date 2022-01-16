@@ -247,6 +247,31 @@ async function listPlaylists() {
   }
 }
 
+// *****************
+// generic functions
+// *****************
+
+async function genericUpdate(query, changes, collection) {
+  // generic update function; basically just a wrapper for updateOne
+  try {
+    const coll = db.collection(collection);
+    await coll.updateOne(query, changes);
+    logLine('database', [`Updating ${collection}: ${chalk.blue(JSON.stringify(query, '', 2))} with data ${chalk.green(JSON.stringify(changes, '', 2))}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
+async function genericGet(query, collection) { // arc v1
+  // returns the first item that matches the query
+  try {
+    const coll = db.collection(collection);
+    const result = await coll.findOne(query);
+    return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
 
 exports.getTrack = getTrack;
 exports.insertTrack = insertTrack;
@@ -262,3 +287,5 @@ exports.removeTrack = removeTrack;
 exports.switchAlternate = switchAlternate;
 exports.updateTrack = updateTrack;
 exports.addSpotifyId = addSpotifyId;
+exports.genericUpdate = genericUpdate;
+exports.genericGet = genericGet;
