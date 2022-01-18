@@ -1,6 +1,5 @@
 const fs = require('fs');
 // Require the necessary discord.js classes
-global.AbortController = require('abort-controller');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json').discord;
 const { logLine, logCommand, logComponent, logDebug } = require('./logger.js');
