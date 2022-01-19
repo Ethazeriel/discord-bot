@@ -258,7 +258,7 @@ async function fromSpotify(search) {
           const l = i;
           for (let j = 0; j < youtubeResults[i].items.length; j++) {
             internalPromises.push((async () => {
-              const ytdlResult = await ytdl.getBasicInfo(youtubeResults[l].items[j].id.videoId);
+              const ytdlResult = await ytdl.getBasicInfo(youtubeResults[l].items[j].id.videoId, { requestOptions: { family:4 } });
               if (j == 0) {
                 track.youtube.duration = Number(ytdlResult.videoDetails.lengthSeconds);
               } else {
@@ -301,7 +301,7 @@ async function fromYoutube(search) {
     logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
     return (Array(track));
   } else {
-    const ytdlResult = await ytdl.getBasicInfo(match[2]).catch(err => {
+    const ytdlResult = await ytdl.getBasicInfo(match[2], { requestOptions: { family:4 } }).catch(err => {
       // const error = new Error('message to user', { cause: err });
       logLine('error', ['fromYoutube, ytdl', err.stack]);
       throw err;
