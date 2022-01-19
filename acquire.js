@@ -61,7 +61,7 @@ async function fromSpotify(search) {
   }
 
   const { data : spotifyCredentials } = await axios(spotify.auth).catch(error => {
-    logLine('error', ['spotifyAuth: ', JSON.stringify(error, '', 2)]);
+    logLine('error', ['spotifyAuth: ', error.message, JSON.stringify(error.stack, '', 2)]);
     return (null);
   });
 
@@ -84,7 +84,7 @@ async function fromSpotify(search) {
   };
 
   const { data : spotifyResult } = await axios(spotifyQuery).catch(error => {
-    logLine('error', ['spotifyQuery: ', JSON.stringify(error, '', 2)]);
+    logLine('error', ['spotifyQuery: ', error.message, JSON.stringify(error.stack, '', 2)]);
     return (null);
   });
 
@@ -164,7 +164,7 @@ async function fromSpotify(search) {
       };
 
       promises[i] = axios(youtubeQuery).catch(error => {
-        logLine('error', [`[${i}] youtube query: ${query}`, JSON.stringify(error, '', 2)]);
+        logLine('error', [`[${i}] youtube query: ${query}`, error.message, JSON.stringify(error.stack, '', 2)]);
       });
     }
     i++;
@@ -303,7 +303,7 @@ async function fromYoutube(search) {
   } else {
     const ytdlResult = await ytdl.getBasicInfo(match[2]).catch(err => {
       // const error = new Error('message to user', { cause: err });
-      logLine('error', ['fromYoutube, ytdl', JSON.stringify(err, '', 2)]);
+      logLine('error', ['fromYoutube, ytdl', err.message, JSON.stringify(err.stack, '', 2)]);
       throw err;
     });
     logDebug(`length: ${Object.keys(ytdlResult.videoDetails.media).length}, song: ${ytdlResult.videoDetails.media.song}, artist: ${ytdlResult.videoDetails.media.artist}`);
