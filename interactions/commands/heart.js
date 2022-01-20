@@ -1,14 +1,14 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const utils = require('../utils.js');
+const utils = require('../../utils.js');
 
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('dab')
-    .setDescription('Sends a dab')
+    .setName('heart')
+    .setDescription('Sends a heart')
     .addStringOption(option =>
       option.setName('type')
-        .setDescription('Dab type')
+        .setDescription('heart type')
         .setRequired(true)
         .addChoice('Random', 'random')
         .addChoice('Pride', 'pride')
@@ -30,7 +30,7 @@ module.exports = {
         .addChoice('Poly', 'poly')),
 
   async execute(interaction) {
-    utils.prideSticker(interaction, 'dab');
+    utils.prideSticker(interaction, 'heart');
   },
 
 };

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const music = require('../music.js');
-const utils = require('../utils.js');
-const { logLine } = require('../logger.js');
+const music = require('../../music.js');
+const utils = require('../../utils.js');
+const { logLine } = require('../../logger.js');
 
 
 module.exports = {
@@ -51,7 +51,8 @@ module.exports = {
         const track = music.getCurrentTrack();
         const page = Math.abs(interaction.options.getInteger('page')) || 1;
         if (track != null) {
-          utils.generateQueueEmbed(interaction, track, music.queue, 'Current Queue:', page);
+          const message = await utils.generateQueueEmbed(track, music.queue, 'Current Queue:', page);
+          await interaction.followUp(message);
         } else {
           await interaction.followUp({ content:'unable to get the current queue.', ephemeral: true });
         }
@@ -87,7 +88,8 @@ module.exports = {
       case 'unstash': {
         music.createVoiceConnection(interaction);
         music.unstashQueue();
-        utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Restored Queue:', 1);
+        const message = await utils.generateQueueEmbed(music.getCurrentTrack(), music.queue, 'Restored Queue:', 1);
+        await interaction.followUp(message);
         break;
       }
 

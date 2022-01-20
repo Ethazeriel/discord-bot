@@ -1,11 +1,11 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const music = require('../music.js');
-const utils = require('../utils.js');
+const music = require('../../music.js');
+const utils = require('../../utils.js');
 // const playlists = require('../playlists.js');
-const { logLine } = require('../logger.js');
-const database = require('../database.js');
-const { fetch } = require('../acquire.js');
-const { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } = require('../regexes.js');
+const { logLine } = require('../../logger.js');
+const database = require('../../database.js');
+const { fetch } = require('../../acquire.js');
+const { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } = require('../../regexes.js');
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -69,9 +69,11 @@ module.exports = {
         case 'now': {
           music.addToQueueSkip(tracks);
           if (tracks.length == 1) {
-            utils.generateTrackEmbed(interaction, tracks[0], 'Playing Now: ');
+            const message = await utils.generateTrackEmbed(tracks[0], 'Playing Now: ');
+            await interaction.followUp(message);
           } else {
-            utils.generateQueueEmbed(interaction, tracks[0], music.queue, 'Playing Now: ', 1);
+            const message = await utils.generateQueueEmbed(tracks[0], music.queue, 'Playing Now: ', 1);
+            await interaction.followUp(message);
           }
           break;
         }
@@ -79,19 +81,23 @@ module.exports = {
           music.addToQueueTop(tracks);
           await sleep(500);
           if (tracks.length == 1) {
-            utils.generateTrackEmbed(interaction, tracks[0], 'Playing Next: ');
+            const message = await utils.generateTrackEmbed(tracks[0], 'Playing Next: ');
+            await interaction.followUp(message);
           } else {
-            utils.generateQueueEmbed(interaction, music.getCurrentTrack(), music.queue, 'Playing Next: ', 1);
+            const message = await utils.generateQueueEmbed(music.getCurrentTrack(), music.queue, 'Playing Next: ', 1);
+            await interaction.followUp(message);
           }
           break;
         }
         case 'last': {
           const length = music.addToQueue(tracks);
           if (tracks.length == 1) {
-            utils.generateTrackEmbed(interaction, tracks[0], `Queued at position ${length}:`);
+            const message = await utils.generateTrackEmbed(tracks[0], `Queued at position ${length}:`);
+            await interaction.followUp(message);
           } else {
 
-            utils.generateListEmbed(interaction, music.queue, 'Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+            const message = await utils.generateListEmbed(music.queue, 'Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+            await interaction.followUp(message);
           }
           break;
         }

@@ -46,7 +46,7 @@ async function prideSticker(interaction, type) {
 
 }
 
-async function generateTrackEmbed(interaction, track, messagetitle) {
+async function generateTrackEmbed(track, messagetitle) {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
   const npEmbed = {
     color: 0x580087,
@@ -62,19 +62,19 @@ async function generateTrackEmbed(interaction, track, messagetitle) {
     },
   };
   try {
-    await interaction.followUp({ embeds: [npEmbed], files: [albumart] });
+    return { embeds: [npEmbed], files: [albumart] };
   } catch (error) {
     logLine('error', [error.stack]);
   }
 }
 
 
-async function generateQueueEmbed(interaction, track, queue, messagetitle, page) {
+async function generateQueueEmbed(track, queue, messagetitle, page) {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   if (page > pages) {
-    await interaction.followUp({ content: `Invalid page number ${page}. Please try again.`, ephemeral: true });
+    return { content: `Invalid page number ${page}. Please try again.`, ephemeral: true };
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
@@ -97,21 +97,17 @@ async function generateQueueEmbed(interaction, track, queue, messagetitle, page)
         { name: `Loop Status: ${music.getLoop()}`, value: '** **' },
       ],
     };
-    try {
-      await interaction.followUp({ embeds: [queueEmbed], files: [albumart] });
-    } catch (error) {
-      logLine('error', [error.stack]);
-    }
+    return { embeds: [queueEmbed], files: [albumart] };
   }
 }
 
 
-async function generateListEmbed(interaction, queue, messagetitle, page) {
+async function generateListEmbed(queue, messagetitle, page) {
   const thumb = new MessageAttachment(pickPride('dab'), 'thumb.jpg');
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   if (page > pages) {
-    await interaction.followUp({ content: `Invalid page number ${page}. Please try again.`, ephemeral: true });
+    return { content: `Invalid page number ${page}. Please try again.`, ephemeral: true };
   } else {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
@@ -132,11 +128,43 @@ async function generateListEmbed(interaction, queue, messagetitle, page) {
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Playlist length: ${queue.length} tracks`, inline: true },
       ],
     };
-    try {
-      await interaction.followUp({ embeds: [queueEmbed], files: [thumb] });
-    } catch (error) {
-      logLine('error', [error.stack]);
-    }
+    const buttonembed = [
+      {
+        'type': 1,
+        'components': [
+          {
+            'type': 2,
+            'custom_id': 'list-prev',
+            'style':2,
+            'label':'Previous',
+          },
+          {
+            'type': 2,
+            'custom_id': 'list-refresh',
+            'style':1,
+            'label':'Refresh',
+          },
+          {
+            'type': 2,
+            'custom_id': 'list-next',
+            'style':2,
+            'label':'Next',
+          },
+        ],
+      },
+      {
+        'type': 1,
+        'components': [
+          {
+            'type': 2,
+            'custom_id': 'list-loop',
+            'style':3,
+            'label':'Toggle Loop',
+          },
+        ],
+      },
+    ];
+    return { embeds: [queueEmbed], components: buttonembed, files: [thumb] };
   }
 }
 
