@@ -31,7 +31,7 @@ async function getTrack(query) {
   // returns the first track object that matches the query
   try {
     const tracks = db.collection(collname);
-    const track = await tracks.findOne(query);
+    const track = await tracks.findOne(query, { projection: { _id: 0 } });
     return track;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
@@ -51,7 +51,7 @@ async function insertTrack(track) {
     const tracks = db.collection(collname);
     // check if we already have this url
     if (!track.ephemeral) {
-      const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube.id }, { 'goose.id': track.goose.id }] });
+      const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube.id }, { 'goose.id': track.goose.id }] }, { projection: { _id: 0 } });
       if (test == null || (test.youtube.id != track.youtube.id && test.goose.id != track.goose.id)) {
       // we don't have this in our database yet, so
         const result = await tracks.insertOne(track);
@@ -121,7 +121,7 @@ async function getPlaylist(listname) {
     const tracks = db.collection(collname);
     const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
-    const options = { sort: { [qustr]:1 } };
+    const options = { sort: { [qustr]:1 }, projection: { _id: 0 } };
     const cursor = await tracks.find(query, options);
     const everything = await cursor.toArray();
     return everything;
@@ -205,7 +205,7 @@ async function getAlbum(request, type) {
     const tracks = db.collection(collname);
     const qustr = `album.${type}`;
     const query = { [qustr]: request };
-    const options = { sort: { 'album.trackNumber':1 } };
+    const options = { sort: { 'album.trackNumber':1 }, projection: { _id: 0 } };
     const cursor = await tracks.find(query, options);
     const everything = await cursor.toArray();
     return everything;
@@ -263,7 +263,7 @@ async function genericGet(query, collection) { // arc v1
   // returns the first item that matches the query
   try {
     const coll = db.collection(collection);
-    const result = await coll.findOne(query);
+    const result = await coll.findOne(query, { projection: { _id: 0 } });
     return result;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
