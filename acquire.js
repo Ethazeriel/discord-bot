@@ -31,7 +31,7 @@ async function fetch(search) {
 }
 
 // search will be sanitized
-async function fromSpotify(search) {
+async function fromSpotify(search, partial = false) {
   logLine('info', [`fromSpotify search= '${search}'`]);
 
   const is = {
@@ -125,7 +125,7 @@ async function fromSpotify(search) {
         logLine('error', ['spotify.id db.getTrack promise rejected,', `from search: ${search}`, `for [${i}]= ${title}`]);
       } else if (values[i]?.value) {
         // if it is a key and we had it, we'd have returned it at the beginning
-        if (!match) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
+        if (!match && !partial) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
         logLine('track', [`[${i}] have '${title}'`]);
         tracks[i] = values[i].value;
       } else {
@@ -142,7 +142,7 @@ async function fromSpotify(search) {
   do {
     if (tracks[i]) {
       logLine('track', [`[${i}] youtube skip`]);
-    } else {
+    } else if (!partial) { // else, with exception
       let query =
         (is.playlist) ? `${spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.track?.name}` :
           (is.album) ? `${spotifyResult.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.name}` :
@@ -216,7 +216,7 @@ async function fromSpotify(search) {
   do {
     if (!tracks[i]) {
       const track = {
-        'keys' : (match) ? [] : [search],
+        'keys' : (match || partial) ? [] : [search],
         'playlists': {},
         'album' : {
           'id' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.id : (is.album) ? spotifyResult.id : (is.track) ? spotifyResult.album?.id : spotifyResult.tracks?.items?.[0]?.album?.id || null,
@@ -234,15 +234,17 @@ async function fromSpotify(search) {
           'duration' : undefined, // defined just below
         },
         'youtube' : {
-          'id' : youtubeResults[i].items[0].id.videoId,
-          'name' : youtubeResults[i].items[0].snippet.title,
-          'art' : youtubeResults[i].items[0].snippet.thumbnails.high.url,
+          'id' : youtubeResults[i]?.items?.[0]?.id?.videoId,
+          'name' : youtubeResults[i]?.items?.[0]?.snippet?.title,
+          'art' : youtubeResults[i]?.items?.[0]?.snippet?.thumbnails?.high?.url,
           'duration' : undefined, // defined below
         },
         'alternates': [],
       };
       const duration_ms = (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.duration_ms : (is.album) ? spotifyResult.tracks?.items?.[i]?.duration_ms : (is.track) ? spotifyResult.duration_ms : spotifyResult.tracks?.items?.[0]?.duration_ms || null;
       track.spotify.duration = (duration_ms) ? duration_ms / 1000 : null;
+
+      if (partial) { return Array(track); }
 
       for (let k = 1; k < youtubeResults[i].items.length; k++) {
         track.alternates.push({
@@ -255,6 +257,7 @@ async function fromSpotify(search) {
       const internalPromises = [];
       try {
         promises.push((async () => {
+          if (!track.youtube?.id) { return; } // from arrow function expression, not overall function
           const l = i;
           for (let j = 0; j < youtubeResults[i].items.length; j++) {
             internalPromises.push((async () => {
@@ -295,7 +298,7 @@ async function fromYoutube(search) {
   logLine('info', [`fromYoutube search= '${search}'`]);
 
   const match = search.match(youtubePattern);
-  const track = await db.getTrack({ 'youtube.id': match[2] });
+  let track = await db.getTrack({ 'youtube.id': match[2] });
 
   if (track) {
     logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
@@ -306,43 +309,42 @@ async function fromYoutube(search) {
       logLine('error', ['fromYoutube, ytdl', err.stack]);
       throw err;
     });
-    logDebug(`length: ${Object.keys(ytdlResult.videoDetails.media).length}, song: ${ytdlResult.videoDetails.media.song}, artist: ${ytdlResult.videoDetails.media.artist}`);
+
     let query = (Object.keys(ytdlResult.videoDetails.media).length) ? `${ytdlResult.videoDetails.media.song} ${ytdlResult.videoDetails.media.artist}` : ytdlResult.videoDetails.title;
     query = query.replace(sanitize, '');
 
-    const tracks = await fromSpotify(query);
+    [track] = await fromSpotify(query, true);
 
-    if (tracks[0].youtube.id != match[2]) {
-      tracks[0].ephemeral = `mismatch between provided ${match[2]} and found/ created id ${tracks[0].youtube.id}. prompt user for remap`;
+    if (track.youtube.id) {
+      // complete track, different id. null keys, playlists and spotify album, artist and track ids
+
+      track.keys.length = 0;
+      track.playlists = {};
+      track.album.id = null;
+      track.artist.id = null;
+      track.spotify.id.length = 0;
     }
 
-    const replacementYoutube = {
-      id: match[2],
-      name: query,
-      art: ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url,
-      duration: ytdlResult.videoDetails.lengthSeconds,
+    let id = crypto.randomBytes(5).toString('hex');
+    while (await db.getTrack({ 'goose.id': id })) {
+      id = crypto.randomBytes(5).toString('hex');
+    }
+
+    track.goose = {
+      id: id,
     };
-    tracks[0].youtube = replacementYoutube;
+    logDebug(`[0] assigned id: ${id}`);
 
-    if (tracks[0].spotify.duration) {
-      const difference = Math.trunc(Math.abs(tracks[0].spotify.duration - tracks[0].youtube.duration));
-      const percentage = Math.trunc(100 * ((tracks[0].spotify.duration < tracks[0].youtube.duration) ? (tracks[0].spotify.duration / tracks[0].youtube.duration) : (tracks[0].youtube.duration / tracks[0].spotify.duration)));
-      if (difference > 10 || percentage < 95) {
-        const message = 'duration discrepancy, voiding spotify details in return';
-        tracks[0].ephemeral = (tracks[0].ephemeral) ? tracks[0].ephemeral += `\n                              ${message}` : message;
-        logDebug(`duration difference of ${difference}s, or ${percentage}%`);
-        const replacementSpotify = {
-          id: [],
-          name: null,
-          art: null,
-          duration: null,
-        };
-        tracks[0].spotify = replacementSpotify;
-      }
-    }
-    if (tracks[0].ephemeral) {logLine('info', [tracks[0].ephemeral]); }
+    track.youtube = {
+      id: match[2],
+      name: ytdlResult.videoDetails.title,
+      art: ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url,
+      duration: Number(ytdlResult.videoDetails.lengthSeconds),
+    };
 
-    return (tracks);
+    await db.insertTrack(track);
+
+    return (Array(track));
   }
 }
 
