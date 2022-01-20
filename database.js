@@ -45,22 +45,19 @@ key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
 generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
 */
 
-async function insertTrack(track, query) {
+async function insertTrack(track) {
   // inserts a single track object into the database
-  if (query == null) {query = 'youtube';} // by default, check for duplicate youtube urls - if we want to lookout for eg. spotifyURIs instead, can specify
-  const id = 'id';
-  const search = query + '.id';
   try {
     const tracks = db.collection(collname);
     // check if we already have this url
     if (!track.ephemeral) {
-      const test = await tracks.findOne({ [search]: track[query][id] });
-      if (test == null || test[query][id] != track[query][id]) {
+      const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube.id }, { 'goose.id': track.goose.id }] });
+      if (test == null || (test.youtube.id != track.youtube.id && test.goose.id != track.goose.id)) {
       // we don't have this in our database yet, so
         const result = await tracks.insertOne(track);
         logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
         return result;
-      } else { throw new Error(`Track ${track.youtube.id} already exists!`);}
+      } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.youtube.id})`);}
     // console.log(track);
     } else { throw new Error('This track is ephemeral!');}
   } catch (error) {

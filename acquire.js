@@ -276,7 +276,7 @@ async function fromSpotify(search) {
           };
           logDebug(`[${l}] assigned id: ${id}`);
           tracks[l] = track;
-          await db.insertTrack(track, 'youtube');
+          await db.insertTrack(track);
         })());
       } catch (error) {
         logLine('error', ['ytdl, likely track not inserted', `***\n[${i}] ${tracksInfo[i].title}:\n${JSON.stringify(youtubeResults, '', 2)}\n***`]);
