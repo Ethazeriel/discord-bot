@@ -16,8 +16,10 @@ const sanitize = /([^\w :/.?=&-])+/g;
 // usage: string.replace(sanitize, ''); // destructive removal of invalid symbols
 
 const sanitizePlaylists = /([^\w :/?=&-])+|(\.$)+/g;
+const embedPage = /(?:Page )(\d+)(?: of )(\d+)/;
 
 exports.sanitize = sanitize;
 exports.spotifyPattern = spotifyPattern;
 exports.youtubePattern = youtubePattern;
 exports.sanitizePlaylists = sanitizePlaylists;
+exports.embedPage = embedPage;
