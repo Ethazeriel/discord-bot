@@ -16,5 +16,6 @@
     "url": "mongodb://username:password@localhost:27017/?authSource=admin",
     "database": "test",
     "collection": "tracks"
-  }
+  },
+  "debug": false
 }

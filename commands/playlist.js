@@ -4,7 +4,7 @@ const utils = require('../utils.js');
 const { logLine } = require('../logger.js');
 const database = require('../database.js');
 const music = require('../music.js');
-const { sanitize } = require('../regexes.js');
+const { sanitize, sanitizePlaylists } = require('../regexes.js');
 const { fetch } = require('../acquire.js');
 
 module.exports = {
@@ -106,7 +106,7 @@ module.exports = {
       }
 
       case 'save': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitize, '');
+        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
         const result = await database.addPlaylist(songlist.list, listname);
         if (result) {
           interaction.followUp({ content:result, ephemeral: true });
@@ -123,7 +123,7 @@ module.exports = {
       }
 
       case 'load': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitize, '');
+        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
         const result = await database.getPlaylist(listname);
         songlist.addTracks(result, (songlist.list.length));
         interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });

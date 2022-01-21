@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { logLine } = require('../logger.js');
-const { sanitize, youtubePattern } = require('../regexes.js');
+const { sanitize, youtubePattern, sanitizePlaylists } = require('../regexes.js');
 const database = require('../database.js');
 
 module.exports = {
@@ -26,7 +26,7 @@ module.exports = {
       switch (interaction.options.getSubcommand()) {
 
       case 'removeplaylist': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitize, '')?.trim();
+        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '')?.trim();
         const result = await database.removePlaylist(listname);
         interaction.followUp({ content:`Removed ${listname} from the database; ${result} tracks.`, ephemeral: true });
         break;

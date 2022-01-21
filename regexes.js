@@ -15,6 +15,9 @@ match[3+] will be for any trailing parameters we may want later, and currently e
 const sanitize = /([^\w :/.?=&-])+/g;
 // usage: string.replace(sanitize, ''); // destructive removal of invalid symbols
 
+const sanitizePlaylists = /([^\w :/?=&-])+|(\.$)+/g;
+
 exports.sanitize = sanitize;
 exports.spotifyPattern = spotifyPattern;
 exports.youtubePattern = youtubePattern;
+exports.sanitizePlaylists = sanitizePlaylists;
