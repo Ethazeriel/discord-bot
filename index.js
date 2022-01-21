@@ -10,16 +10,26 @@ const chalk = require('chalk');
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
 
-// pull commands from individual files
+// dynamic import of commands, buttons, select menus
 client.commands = new Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
+const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  // Set a new item in the Collection
-  // With the key as the command name and the value as the exported module
+  const command = require(`./interactions/commands/${file}`);
   client.commands.set(command.data.name, command);
 }
+const buttons = new Collection();
+const buttonFiles = fs.readdirSync('./interactions/buttons').filter(file => file.endsWith('.js'));
+for (const file of buttonFiles) {
+  const button = require(`./interactions/buttons/${file}`);
+  buttons.set(button.name, button);
+}
+const selects = new Collection();
+const selectFiles = fs.readdirSync('./interactions/selects').filter(file => file.endsWith('.js'));
+for (const file of selectFiles) {
+  const select = require(`./interactions/selects/${file}`);
+  selects.set(select.name, select);
+}
+
 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
@@ -28,7 +38,7 @@ client.once('ready', () => {
   database.printCount();
 });
 
-// actually run the commands
+// handle interactions
 client.on('interactionCreate', async interaction => {
   // console.log(interaction);
   // if (!interaction.isCommand() || !interaction.isSelectMenu()) return;
@@ -45,9 +55,9 @@ client.on('interactionCreate', async interaction => {
     }
   } else if (interaction.isSelectMenu()) {
     logComponent(interaction);
-    const selectMenu = client.commands.get(interaction.customId);
+    const selectMenu = selects.get(interaction.customId);
     try {
-      await selectMenu.select(interaction);
+      await selectMenu.execute(interaction);
     } catch (error) {
       logLine('error', [error.stack]);
       return interaction.update({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true });
@@ -55,9 +65,9 @@ client.on('interactionCreate', async interaction => {
   } else if (interaction.isButton()) {
     logComponent(interaction);
     const match = interaction.customId.match(/([A-z]*)[-]([A-z]*)/);
-    const buttonPress = client.commands.get(match[1]);
+    const buttonPress = buttons.get(match[1]);
     try {
-      await buttonPress.button(interaction, match[2]);
+      await buttonPress.execute(interaction, match[2]);
     } catch (error) {
       logLine('error', [error.stack]);
       return interaction.update({ content: 'There was an error while processing this button press!', components: [], ephemeral: true });
@@ -69,6 +79,7 @@ client.on('interactionCreate', async interaction => {
 // Login to Discord
 client.login(token);
 
+// handle exits
 process.on('SIGINT' || 'SIGTERM', async () => {
   logLine('info', ['received termination command, exiting']);
   leaveVoice();

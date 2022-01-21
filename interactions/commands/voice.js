@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const music = require('../music.js');
-const utils = require('../utils.js');
-const { logLine } = require('../logger.js');
+const music = require('../../music.js');
+const utils = require('../../utils.js');
+const { logLine } = require('../../logger.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -40,7 +40,8 @@ module.exports = {
         const track = music.getCurrentTrack();
 
         if (track != null) {
-          utils.generateTrackEmbed(interaction, track, 'Now Playing: ');
+          const message = await utils.generateTrackEmbed(track, 'Now Playing: ');
+          await interaction.followUp(message);
         } else {
           await interaction.followUp({ content:'unable to get the current track.', ephemeral: true });
         }

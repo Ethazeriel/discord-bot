@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { logLine } = require('../logger.js');
-const { sanitize, youtubePattern, sanitizePlaylists } = require('../regexes.js');
-const database = require('../database.js');
+const { logLine } = require('../../logger.js');
+const { sanitize, youtubePattern, sanitizePlaylists } = require('../../regexes.js');
+const database = require('../../database.js');
 
 module.exports = {
   data: new SlashCommandBuilder()

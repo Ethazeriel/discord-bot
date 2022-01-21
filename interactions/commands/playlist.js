@@ -1,11 +1,11 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const songlist = require('../songlist.js');
-const utils = require('../utils.js');
-const { logLine } = require('../logger.js');
-const database = require('../database.js');
-const music = require('../music.js');
-const { sanitize, sanitizePlaylists } = require('../regexes.js');
-const { fetch } = require('../acquire.js');
+const songlist = require('../../songlist.js');
+const utils = require('../../utils.js');
+const { logLine } = require('../../logger.js');
+const database = require('../../database.js');
+const music = require('../../music.js');
+const { sanitize, sanitizePlaylists } = require('../../regexes.js');
+const { fetch } = require('../../acquire.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -68,7 +68,8 @@ module.exports = {
       case 'show': {
         const page = Math.abs(interaction.options.getInteger('page')) || 1;
 
-        utils.generateListEmbed(interaction, songlist.list, 'Current Playlist:', page);
+        const message = await utils.generateListEmbed(songlist.list, 'Current Playlist:', page);
+        await interaction.followUp(message);
         break;
       }
 
@@ -94,7 +95,8 @@ module.exports = {
         }
         if (tracks && tracks.length > 0) {
           songlist.addTracks(tracks, index);
-          utils.generateListEmbed(interaction, songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+          const message = await utils.generateListEmbed(songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+          await interaction.followUp(message);
         }
         break;
       }
@@ -141,7 +143,8 @@ module.exports = {
       case 'play': {
         music.createVoiceConnection(interaction);
         await music.addToQueue(songlist.list);
-        utils.generateListEmbed(interaction, songlist.list, 'Now Playing:', 1);
+        const message = await utils.generateListEmbed(songlist.list, 'Now Playing:', 1);
+        await interaction.followUp(message);
         break;
       }
 
