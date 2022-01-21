@@ -69,103 +69,156 @@ async function generateTrackEmbed(track, messagetitle) {
 }
 
 
-async function generateQueueEmbed(track, queue, messagetitle, page) {
-  const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
+async function generateQueueEmbed(track, queue, messagetitle, page, fresh = true) {
+  page = Math.abs(page) || 1;
+  const albumart = fresh ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
-  const queuePart = queue.slice((page - 1) * 10, page * 10);
-  if (page > pages) {
-    return { content: `Invalid page number ${page}. Please try again.`, ephemeral: true };
-  } else {
-    let queueStr = '';
-    for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + (queuePart[i].artist.name || ' ') + ' - [' + (queuePart[i].spotify.name || queuePart[i].youtube.name) + '](https://youtube.com/watch?v=' + queuePart[i].youtube.id + ')' + '\n';
-      queueStr = queueStr.concat(part);
-    }
-    const queueEmbed = {
-      color: 0x3277a8,
-      author: {
-        name: messagetitle,
-        icon_url: pickPride('fish'),
-      },
-      thumbnail: {
-        url: 'attachment://art.jpg',
-      },
-      fields: [
-        { name: 'Current Track:', value: `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` },
-        { name: 'Next Up:', value: queueStr },
-        { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
-        { name: `Loop Status: ${music.getLoop()}`, value: '** **' },
-      ],
-    };
-    return { embeds: [queueEmbed], files: [albumart] };
+  if (pages === 0) {
+    return { content: 'Nothing to show!', ephemeral: true };
   }
+  if (page > pages) {
+    page = pages;
+  }
+  const queuePart = queue.slice((page - 1) * 10, page * 10);
+  let queueStr = '';
+  for (let i = 0; i < queuePart.length; i++) {
+    const part = `**${((page - 1) * 10 + (i + 1))}. **${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${new Date(queuePart[i].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')} \n`;
+    queueStr = queueStr.concat(part);
+  }
+  let queueTime = 0;
+  for (const item of queue) {
+    queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration);
+  }
+  const queueEmbed = {
+    color: 0x3277a8,
+    author: {
+      name: messagetitle,
+      icon_url: pickPride('fish'),
+    },
+    thumbnail: {
+      url: 'attachment://art.jpg',
+    },
+    fields: [
+      { name: 'Current Track:', value: `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+      { name: 'Next Up:', value: queueStr },
+      { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
+      { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
+      { name: '\u200b', value: `Duration: ${new Date(queueTime * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}`, inline: true },
+      { name: `Loop: ${music.getLoop() ? '🟢' : '🟥'}`, value: '** **' },
+    ],
+  };
+  const buttonEmbed = [
+    {
+      'type': 1,
+      'components': [
+        {
+          'type': 2,
+          'custom_id': 'queue-prev',
+          'style':2,
+          'label':'Previous',
+          'disabled': (page === 1) ? true : false,
+        },
+        {
+          'type': 2,
+          'custom_id': 'queue-refresh',
+          'style':1,
+          'label':'Refresh',
+        },
+        {
+          'type': 2,
+          'custom_id': 'queue-next',
+          'style':2,
+          'label':'Next',
+          'disabled': (page === pages) ? true : false,
+        },
+      ],
+    },
+    {
+      'type': 1,
+      'components': [
+        {
+          'type': 2,
+          'custom_id': 'queue-loop',
+          'style':(music.getLoop()) ? 4 : 3,
+          'label':(music.getLoop()) ? 'Disable loop' : 'Enable loop',
+        },
+        {
+          'type': 2,
+          'custom_id': 'queue-shuffle',
+          'style':1,
+          'label':'Shuffle',
+        },
+      ],
+    },
+  ];
+  return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [albumart] } : { embeds: [queueEmbed], components: buttonEmbed };
 }
 
 
-async function generateListEmbed(queue, messagetitle, page) {
-  const thumb = new MessageAttachment(pickPride('dab'), 'thumb.jpg');
+async function generateListEmbed(queue, messagetitle, page, fresh = true) {
+  page = Math.abs(page) || 1;
+  const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
-  const queuePart = queue.slice((page - 1) * 10, page * 10);
-  if (page > pages) {
-    return { content: `Invalid page number ${page}. Please try again.`, ephemeral: true };
-  } else {
-    let queueStr = '';
-    for (let i = 0; i < queuePart.length; i++) {
-      const part = '**' + ((page - 1) * 10 + (i + 1)) + '.   **' + (queuePart[i].artist.name || ' ') + ' - [' + (queuePart[i].spotify.name || queuePart[i].youtube.name) + '](https://youtube.com/watch?v=' + queuePart[i].youtube.id + ')' + '\n';
-      queueStr = queueStr.concat(part);
-    }
-    const queueEmbed = {
-      color: 0x3277a8,
-      author: {
-        name: messagetitle,
-        icon_url: pickPride('fish'),
-      },
-      thumbnail: {
-        url: 'attachment://thumb.jpg',
-      },
-      fields: [
-        { name: 'Horse:', value: queueStr },
-        { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true }, { name: '\u200b', value: `Playlist length: ${queue.length} tracks`, inline: true },
-      ],
-    };
-    const buttonembed = [
-      {
-        'type': 1,
-        'components': [
-          {
-            'type': 2,
-            'custom_id': 'list-prev',
-            'style':2,
-            'label':'Previous',
-          },
-          {
-            'type': 2,
-            'custom_id': 'list-refresh',
-            'style':1,
-            'label':'Refresh',
-          },
-          {
-            'type': 2,
-            'custom_id': 'list-next',
-            'style':2,
-            'label':'Next',
-          },
-        ],
-      },
-      {
-        'type': 1,
-        'components': [
-          {
-            'type': 2,
-            'custom_id': 'list-loop',
-            'style':3,
-            'label':'Toggle Loop',
-          },
-        ],
-      },
-    ];
-    return { embeds: [queueEmbed], components: buttonembed, files: [thumb] };
+  if (pages === 0) {
+    return { content: 'Nothing to show!', ephemeral: true };
   }
+  if (page > pages) {
+    page = pages;
+  }
+  const queuePart = queue.slice((page - 1) * 10, page * 10);
+  let queueStr = '';
+  for (let i = 0; i < queuePart.length; i++) {
+    const part = `**${((page - 1) * 10 + (i + 1))}. **${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${new Date(queuePart[i].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')} \n`;
+    queueStr = queueStr.concat(part);
+  }
+  let queueTime = 0;
+  for (const item of queue) {
+    queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration);
+  }
+  const queueEmbed = {
+    color: 0x3277a8,
+    author: {
+      name: messagetitle,
+      icon_url: pickPride('fish'),
+    },
+    thumbnail: {
+      url: 'attachment://thumb.jpg',
+    },
+    fields: [
+      { name: 'Horse:', value: queueStr },
+      { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
+      { name: '\u200b', value: `Playlist length: ${queue.length} tracks`, inline: true },
+      { name: '\u200b', value: `Duration: ${new Date(queueTime * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}`, inline: true },
+    ],
+  };
+  const buttonEmbed = [
+    {
+      'type': 1,
+      'components': [
+        {
+          'type': 2,
+          'custom_id': 'list-prev',
+          'style':2,
+          'label':'Previous',
+          'disabled': (page === 1) ? true : false,
+        },
+        {
+          'type': 2,
+          'custom_id': 'list-refresh',
+          'style':1,
+          'label':'Refresh',
+        },
+        {
+          'type': 2,
+          'custom_id': 'list-next',
+          'style':2,
+          'label':'Next',
+          'disabled': (page === pages) ? true : false,
+        },
+      ],
+    },
+  ];
+  return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [thumb] } : { embeds: [queueEmbed], components: buttonEmbed };
 }
 
 

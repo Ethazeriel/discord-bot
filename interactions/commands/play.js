@@ -95,8 +95,8 @@ module.exports = {
             const message = await utils.generateTrackEmbed(tracks[0], `Queued at position ${length}:`);
             await interaction.followUp(message);
           } else {
-
-            const message = await utils.generateListEmbed(music.queue, 'Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+            await sleep(500);
+            const message = await utils.generateQueueEmbed(music.getCurrentTrack(), music.queue, 'Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
             await interaction.followUp(message);
           }
           break;

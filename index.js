@@ -10,33 +10,26 @@ const chalk = require('chalk');
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
 
-// pull commands from individual files
+// dynamic import of commands, buttons, select menus
 client.commands = new Collection();
 const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
   const command = require(`./interactions/commands/${file}`);
-  // Set a new item in the Collection
-  // With the key as the command name and the value as the exported module
   client.commands.set(command.data.name, command);
 }
-
 const buttons = new Collection();
 const buttonFiles = fs.readdirSync('./interactions/buttons').filter(file => file.endsWith('.js'));
 for (const file of buttonFiles) {
   const button = require(`./interactions/buttons/${file}`);
-  // Set a new item in the Collection
-  // With the key as the command name and the value as the exported module
   buttons.set(button.name, button);
 }
-
 const selects = new Collection();
 const selectFiles = fs.readdirSync('./interactions/selects').filter(file => file.endsWith('.js'));
 for (const file of selectFiles) {
   const select = require(`./interactions/selects/${file}`);
-  // Set a new item in the Collection
-  // With the key as the command name and the value as the exported module
   selects.set(select.name, select);
 }
+
 
 // When the client is ready, run this code (only once)
 client.once('ready', () => {
@@ -45,7 +38,7 @@ client.once('ready', () => {
   database.printCount();
 });
 
-// actually run the commands
+// handle interactions
 client.on('interactionCreate', async interaction => {
   // console.log(interaction);
   // if (!interaction.isCommand() || !interaction.isSelectMenu()) return;
@@ -86,6 +79,7 @@ client.on('interactionCreate', async interaction => {
 // Login to Discord
 client.login(token);
 
+// handle exits
 process.on('SIGINT' || 'SIGTERM', async () => {
   logLine('info', ['received termination command, exiting']);
   leaveVoice();
