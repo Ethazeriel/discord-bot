@@ -5,7 +5,7 @@ const { Routes } = require('discord-api-types/v9');
 const { clientId, guildId, token } = require('./config.json').discord;
 const launchArg = process.argv[2];
 const commands = [];
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
 const database = require('./database.js');
 
 if (process.argv.length > 3) {
@@ -18,7 +18,7 @@ if (process.argv.length > 3) {
 
 console.log('Deployment started with scope: ' + launchArg);
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
+  const command = require(`./interactions/commands/${file}`);
   commands.push(command.data.toJSON());
 }
 
