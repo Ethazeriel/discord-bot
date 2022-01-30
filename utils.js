@@ -74,7 +74,7 @@ async function generateQueueEmbed(track, queue, messagetitle, page, fresh = true
   const albumart = fresh ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
-    return { content: 'Nothing to show!', ephemeral: true };
+    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], files: [albumart], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], ephemeral: true };
   }
   if (page > pages) {
     page = pages;
@@ -160,7 +160,7 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
   const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
-    return { content: 'Nothing to show!', ephemeral: true };
+    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], files: [thumb], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], ephemeral: true };
   }
   if (page > pages) {
     page = pages;
