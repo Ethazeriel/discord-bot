@@ -22,6 +22,7 @@ module.exports = {
         .addChoice('Play Last', 'last'))
     .addStringOption(option =>
       option.setName('what').setDescription('Flag as internal playlist, not external search')
+        .addChoice('Search', 'search')
         .addChoice('Internal bot playlist', 'playlist')),
 
   async execute(interaction) {
@@ -40,7 +41,7 @@ module.exports = {
 
       let tracks = null;
 
-      if (what) {
+      if (what === 'playlist') {
         if ((spotifyPattern.test(search) || youtubePattern.test(search))) {
           await interaction.followUp({ content: 'Omit playlist flag for external resources. See /help play or /help playlist for usage and interrelationship.', ephemeral: true });
         } else {

@@ -74,7 +74,7 @@ async function generateQueueEmbed(track, queue, messagetitle, page, fresh = true
   const albumart = fresh ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
-    return { content: 'Nothing to show!', ephemeral: true };
+    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], files: [albumart], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], ephemeral: true };
   }
   if (page > pages) {
     page = pages;
@@ -160,7 +160,7 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
   const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
-    return { content: 'Nothing to show!', ephemeral: true };
+    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], files: [thumb], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], ephemeral: true };
   }
   if (page > pages) {
     page = pages;
@@ -221,9 +221,28 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
   return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [thumb] } : { embeds: [queueEmbed], components: buttonEmbed };
 }
 
+function progressBar(size, duration, playhead, { start, end, bar, head } = {}) {
+  const istart = start ? start : '|';
+  const iend = end ? end : '|';
+  const ibar = bar ? bar : '-';
+  const ihead = head ? head : '0';
+  let result = '';
+  const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
+  let before = parseInt((size - 2) * playperc) || 0;
+  let after = parseInt((size - 2) * (1 - playperc)) || 0;
+  while ((before + after + 1) > (size - 2)) { (before < after) ? after-- : before--; }
+  while ((before + after + 1) < (size - 2)) { (before < after) ? before++ : after++; }
+  result = result.concat(istart);
+  for (let i = 0; i < before; i++) { result = result.concat(ibar); }
+  result = result.concat(ihead);
+  for (let i = 0; i < after; i++) { result = result.concat(ibar); }
+  result = result.concat(iend);
+  return result;
+}
 
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;
 exports.generateListEmbed = generateListEmbed;
 exports.prideSticker = prideSticker;
+exports.progressBar = progressBar;

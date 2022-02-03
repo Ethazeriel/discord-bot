@@ -7,7 +7,8 @@ module.exports = {
   name:'list',
 
   async execute(interaction, which) {
-    const match = interaction.message.embeds[0].fields[1].value.match(embedPage);
+    let match = interaction.message.embeds[0].fields[1]?.value.match(embedPage);
+    if (!match) { match = [0, 1]; }
     const currentPage = Number(match[1]);
     switch (which) {
     case 'prev': {
