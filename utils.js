@@ -222,24 +222,23 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
 }
 
 function progressBar(size, duration, playhead, { start, end, bar, head } = {}) {
-  const istart = start ? start : '|';
-  const iend = end ? end : '|';
-  const ibar = bar ? bar : '-';
-  const ihead = head ? head : '0';
+  start = start ? start : '|';
+  end = end ? end : '|';
+  bar = bar ? bar : '-';
+  head = head ? head : '0';
   let result = '';
   const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
   let before = parseInt((size - 2) * playperc) || 0;
   let after = parseInt((size - 2) * (1 - playperc)) || 0;
   while ((before + after + 1) > (size - 2)) { (before < after) ? after-- : before--; }
   while ((before + after + 1) < (size - 2)) { (before < after) ? before++ : after++; }
-  result = result.concat(istart);
-  for (let i = 0; i < before; i++) { result = result.concat(ibar); }
-  result = result.concat(ihead);
-  for (let i = 0; i < after; i++) { result = result.concat(ibar); }
-  result = result.concat(iend);
+  result = result.concat(start);
+  for (let i = 0; i < before; i++) { result = result.concat(bar); }
+  result = result.concat(head);
+  for (let i = 0; i < after; i++) { result = result.concat(bar); }
+  result = result.concat(end);
   return result;
 }
-
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;
