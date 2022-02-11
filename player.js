@@ -182,6 +182,10 @@ class Player {
     return (this.queue.tracks[this.queue.playhead]);
   }
 
+  queue() {
+    return (this.queue.tracks);
+  }
+
   getPause() {
     return (this.queue.paused);
   }
