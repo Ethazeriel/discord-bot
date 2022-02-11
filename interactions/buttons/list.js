@@ -11,26 +11,26 @@ module.exports = {
     if (!match) { match = [0, 1]; }
     const currentPage = Number(match[1]);
     switch (which) {
-    case 'prev': {
-      const reply = await utils.generateListEmbed(songlist.list, 'Current Playlist:', (currentPage - 1), false);
-      interaction.update(reply);
-      break;
-    }
+      case 'prev': {
+        const reply = await utils.generateListEmbed(songlist.list, 'Current Playlist:', (currentPage - 1), false);
+        interaction.update(reply);
+        break;
+      }
 
-    case 'refresh': {
-      const reply = await utils.generateListEmbed(songlist.list, 'Current Playlist:', currentPage, false);
-      interaction.update(reply);
-      break;
-    }
+      case 'refresh': {
+        const reply = await utils.generateListEmbed(songlist.list, 'Current Playlist:', currentPage, false);
+        interaction.update(reply);
+        break;
+      }
 
-    case 'next': {
-      const reply = await utils.generateListEmbed(songlist.list, 'Current Playlist:', (currentPage + 1), false);
-      interaction.update(reply);
-      break;
-    }
+      case 'next': {
+        const reply = await utils.generateListEmbed(songlist.list, 'Current Playlist:', (currentPage + 1), false);
+        interaction.update(reply);
+        break;
+      }
 
-    default:
-      break;
+      default:
+        break;
     }
   },
 };
