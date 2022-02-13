@@ -221,11 +221,12 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
   return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [thumb] } : { embeds: [queueEmbed], components: buttonEmbed };
 }
 
-function progressBar(size, duration, playhead, { start, end, bar, head } = {}) {
-  start = start ? start : '|';
-  end = end ? end : '|';
-  bar = bar ? bar : '-';
-  head = head ? head : '0';
+function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
+  start ??= '|';
+  end ??= '|';
+  barbefore ??= '-';
+  barafter ??= '-';
+  head ??= '0';
   let result = '';
   const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
   let before = parseInt((size - 2) * playperc) || 0;
@@ -233,12 +234,14 @@ function progressBar(size, duration, playhead, { start, end, bar, head } = {}) {
   while ((before + after + 1) > (size - 2)) { (before < after) ? after-- : before--; }
   while ((before + after + 1) < (size - 2)) { (before < after) ? before++ : after++; }
   result = result.concat(start);
-  for (let i = 0; i < before; i++) { result = result.concat(bar); }
+  for (let i = 0; i < before; i++) { result = result.concat(barbefore); }
   result = result.concat(head);
-  for (let i = 0; i < after; i++) { result = result.concat(bar); }
+  for (let i = 0; i < after; i++) { result = result.concat(barafter); }
   result = result.concat(end);
   return result;
 }
+
+
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;
