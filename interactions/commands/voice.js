@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const music = require('../../music.js');
+// const music = require('../../music.js');
+const Player = require('../../player.js');
 const utils = require('../../utils.js');
 const { logLine } = require('../../logger.js');
 
@@ -22,39 +23,28 @@ module.exports = {
 
     if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
-      switch (interaction.options.getSubcommand()) {
 
-      case 'join': {
-        music.createVoiceConnection(interaction);
-        await interaction.followUp({ content:`Joined voice channel ${interaction.member.voice.channel}`, ephemeral: true });
-        break;
-      }
+      const command = interaction.options.getSubcommand();
+      if (command == 'leave') {
+        await interaction.followUp(Player.leave(interaction));
+      } else {
+        const player = await Player.getPlayer(interaction, { explicitJoin: (command == 'join') });
+        if (player && command != 'join') {
+          switch (command) {
+            case 'nowplaying': {
+              const track = player.getCurrent();
+              await interaction.followUp((track) ? await utils.generateTrackEmbed(player, 'Now Playing: ') : { content: 'Nothing is playing.' });
+              break;
+            }
 
-      case 'leave': {
-        music.leaveVoice();
-        await interaction.followUp({ content:'Left voice channel (if I was in one).', ephemeral: true });
-        break;
-      }
-
-      case 'nowplaying': {
-        const track = music.getCurrentTrack();
-
-        if (track != null) {
-          const message = await utils.generateTrackEmbed(track, 'Now Playing: ');
-          await interaction.followUp(message);
-        } else {
-          await interaction.followUp({ content:'unable to get the current track.', ephemeral: true });
+            default: {
+              logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+              await interaction.followUp({ content: 'Something broke. Please try again', ephemeral: true });
+            }
+          }
         }
-        break;
       }
-
-      default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
-        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
-      }
-
-      }
-    } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
+    } else { await interaction.reply({ content: 'You don\'t have permission to do that.', ephemeral: true });}
   },
 
 };

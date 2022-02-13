@@ -1,5 +1,6 @@
 const { MessageAttachment } = require('discord.js');
-const music = require('./music.js');
+// const music = require('./music.js');
+const Player = require('./player.js');
 const { logLine } = require('./logger.js');
 const Canvas = require('canvas');
 
@@ -69,7 +70,9 @@ async function generateTrackEmbed(track, messagetitle) {
 }
 
 
-async function generateQueueEmbed(track, queue, messagetitle, page, fresh = true) {
+async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
+  const track = player.getCurrent();
+  const queue = player.getQueue();
   page = Math.abs(page) || 1;
   const albumart = fresh ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
@@ -104,7 +107,7 @@ async function generateQueueEmbed(track, queue, messagetitle, page, fresh = true
       { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
       { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
       { name: '\u200b', value: `Duration: ${new Date(queueTime * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}`, inline: true },
-      { name: `Loop: ${music.getLoop() ? '🟢' : '🟥'}`, value: '** **' },
+      { name: `Loop: ${player.getLoop() ? '🟢' : '🟥'}`, value: '** **' },
     ],
   };
   const buttonEmbed = [
@@ -139,14 +142,15 @@ async function generateQueueEmbed(track, queue, messagetitle, page, fresh = true
         {
           'type': 2,
           'custom_id': 'queue-loop',
-          'style':(music.getLoop()) ? 4 : 3,
-          'label':(music.getLoop()) ? 'Disable loop' : 'Enable loop',
+          'style':(player.getLoop()) ? 4 : 3,
+          'label':(player.getLoop()) ? 'Disable loop' : 'Enable loop',
         },
         {
           'type': 2,
           'custom_id': 'queue-shuffle',
           'style':1,
           'label':'Shuffle',
+          'disabled': true,
         },
       ],
     },
@@ -241,6 +245,66 @@ function progressBar(size, duration, playhead, { start, end, barbefore, barafter
   return result;
 }
 
+function mediaEmbed(player, fresh = true) {
+  const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
+  const track = player.getCurrent();
+  const embed = {
+    color: 0x3277a8,
+    author: {
+      name: 'Current Track:',
+      icon_url: pickPride('fish'),
+    },
+    thumbnail: {
+      url: 'attachment://thumb.jpg',
+    },
+    fields: [
+      { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}` : 'None' },
+    ],
+  };
+  const buttons = [
+    {
+      'type': 1,
+      'components': [
+        {
+          'type': 2,
+          'custom_id': 'media-prev',
+          'style': 1,
+          'label': 'Previous',
+          'disabled': false,
+        },
+        {
+          'type': 2,
+          'custom_id': 'media-pause',
+          'style': 3,
+          'label': (player.getPause()) ? 'Play' : 'Pause',
+          'disabled': false,
+        },
+        {
+          'type': 2,
+          'custom_id': 'media-next',
+          'style': (player.getNext()) ? 1 : 2,
+          'label': 'Next',
+          'disabled': (player.getNext()) ? false : true,
+        },
+        {
+          'type': 2,
+          'custom_id': 'media-refresh',
+          'style': 1,
+          'label': 'Refresh',
+          'disabled': false,
+        },
+        /* {
+          'type': 2,
+          'custom_id': '',
+          'style': 2,
+          'label': '',
+          'disabled': false,
+        },*/
+      ],
+    },
+  ];
+  return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
+}
 
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
@@ -248,3 +312,4 @@ exports.generateQueueEmbed = generateQueueEmbed;
 exports.generateListEmbed = generateListEmbed;
 exports.prideSticker = prideSticker;
 exports.progressBar = progressBar;
+exports.mediaEmbed = mediaEmbed;

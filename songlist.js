@@ -1,4 +1,5 @@
-const music = require('./music.js');
+// const music = require('./music.js');
+const Player = require('./player.js');
 
 const list = [];
 
@@ -10,12 +11,12 @@ function emptyList() {
   list.length = 0;
 }
 
-function importQueue() {
-  const first = music.getCurrentTrack();
-  const songqueue = music.queue;
-  list.push(first);
-  for (const track of songqueue) {
-    list.push(track);
+async function importQueue(interaction) {
+  const player = await Player.getPlayer(interaction);
+  if (player) {
+    const queue = player.getQueue();
+    list.push(...queue);
+    interaction.followUp({ content: `Copied ${queue.length} items from the play queue to the workspace`, ephemeral: true });
   }
 }
 

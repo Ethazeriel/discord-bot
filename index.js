@@ -3,7 +3,7 @@ const fs = require('fs');
 const { Client, Collection, Intents } = require('discord.js');
 const { token } = require('./config.json').discord;
 const { logLine, logCommand, logComponent, logDebug } = require('./logger.js');
-const { leaveVoice } = require('./music');
+// const { leaveVoice } = require('./music');
 const database = require('./database.js');
 const chalk = require('chalk');
 
@@ -82,7 +82,6 @@ client.login(token);
 // handle exits
 process.on('SIGINT' || 'SIGTERM', async () => {
   logLine('info', ['received termination command, exiting']);
-  leaveVoice();
   await database.closeDB();
   process.exit();
 });

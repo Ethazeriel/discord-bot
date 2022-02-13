@@ -1,9 +1,10 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+
 const songlist = require('../../songlist.js');
 const utils = require('../../utils.js');
 const { logLine } = require('../../logger.js');
 const database = require('../../database.js');
-const music = require('../../music.js');
+const Player = require('../../player.js');
 const { sanitize, sanitizePlaylists } = require('../../regexes.js');
 const { fetch } = require('../../acquire.js');
 
@@ -65,114 +66,115 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 
-      case 'show': {
-        const page = Math.abs(interaction.options.getInteger('page')) || 1;
+        case 'show': {
+          const page = Math.abs(interaction.options.getInteger('page')) || 1;
 
-        const message = await utils.generateListEmbed(songlist.list, 'Current Playlist:', page);
-        await interaction.followUp(message);
-        break;
-      }
-
-      case 'remove': {
-        songlist.removeTrack(Math.abs(interaction.options.getInteger('index') - 1));
-        await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('index'))} from the playlist.`);
-        break;
-      }
-
-      case 'add': {
-        let tracks = null;
-        const search = interaction.options.getString('track')?.replace(sanitize, '');
-        const input = Math.abs(interaction.options.getInteger('index') ?? songlist.list.length);
-        let index;
-        if (input > songlist.list.length) {index = songlist.list.length;} else {
-          index = input;
-          if (index && (index != songlist.list.length)) {index--;}
-        }// check if our index is non-zero and not the length of our songlist
-
-        tracks = await fetch(search);
-        if (!tracks) {
-          await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
-        }
-        if (tracks && tracks.length > 0) {
-          songlist.addTracks(tracks, index);
-          const message = await utils.generateListEmbed(songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+          const message = await utils.generateListEmbed(songlist.list, 'Current Playlist:', page);
           await interaction.followUp(message);
+          break;
         }
-        break;
-      }
 
-      case 'empty': {
-        songlist.emptyList();
-        await interaction.followUp({ content:'Emptied playlist.', ephemeral: true });
-        break;
-      }
-
-      case 'save': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
-        const result = await database.addPlaylist(songlist.list, listname);
-        if (result) {
-          interaction.followUp({ content:result, ephemeral: true });
-        } else {
-          interaction.followUp({ content:`Saved ${listname} to the database.`, ephemeral: true });
+        case 'remove': {
+          songlist.removeTrack(Math.abs(interaction.options.getInteger('index') - 1));
+          await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('index'))} from the playlist.`);
+          break;
         }
-        break;
-      }
 
-      case 'copy': {
-        songlist.importQueue();
-        interaction.followUp({ content:`Copied ${songlist.list.length} items from the play queue to the workspace`, ephemeral: true });
-        break;
-      }
+        case 'add': {
+          let tracks = null;
+          const search = interaction.options.getString('track')?.replace(sanitize, '');
+          const input = Math.abs(interaction.options.getInteger('index') ?? songlist.list.length);
+          let index;
+          if (input > songlist.list.length) {index = songlist.list.length;} else {
+            index = input;
+            if (index && (index != songlist.list.length)) {index--;}
+          }// check if our index is non-zero and not the length of our songlist
 
-      case 'load': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
-        const result = await database.getPlaylist(listname);
-        songlist.addTracks(result, (songlist.list.length));
-        interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
-        break;
-      }
-
-      case 'move': {
-        const fromindex = Math.abs(interaction.options.getInteger('from-index') - 1);
-        const toindex = Math.abs(interaction.options.getInteger('to-index') - 1);
-        const result = songlist.moveTrack(fromindex, toindex);
-        interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
-        break;
-      }
-
-      case 'play': {
-        music.createVoiceConnection(interaction);
-        await music.addToQueue(songlist.list);
-        const message = await utils.generateListEmbed(songlist.list, 'Now Playing:', 1);
-        await interaction.followUp(message);
-        break;
-      }
-
-      case 'list': {
-        const lists = await database.listPlaylists();
-        let listStr = '```';
-        for (const list of lists) {
-          const part = '\n' + list;
-          listStr = listStr.concat(part);
+          tracks = await fetch(search);
+          if (!tracks) {
+            await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
+          }
+          if (tracks && tracks.length > 0) {
+            songlist.addTracks(tracks, index);
+            const message = await utils.generateListEmbed(songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+            await interaction.followUp(message);
+          }
+          break;
         }
-        listStr = listStr.concat('```');
-        const listEmbed = {
-          color: 0x3277a8,
-          author: { name: '\u200b', icon_url: utils.pickPride('fish') },
-          thumbnail: { url: utils.pickPride('dab') },
-          fields: [{ name: 'Playlists:', value: listStr }],
-        };
-        try {
-          await interaction.followUp({ embeds: [listEmbed] });
-        } catch (error) {
-          logLine('error', [error.stack]);
+
+        case 'empty': {
+          songlist.emptyList();
+          await interaction.followUp({ content:'Emptied playlist.', ephemeral: true });
+          break;
         }
-        break;
-      }
-      default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
-        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
-      }
+
+        case 'save': {
+          const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
+          const result = await database.addPlaylist(songlist.list, listname);
+          if (result) {
+            interaction.followUp({ content:result, ephemeral: true });
+          } else {
+            interaction.followUp({ content:`Saved ${listname} to the database.`, ephemeral: true });
+          }
+          break;
+        }
+
+        case 'copy': {
+          songlist.importQueue(interaction);
+          break;
+        }
+
+        case 'load': {
+          const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
+          const result = await database.getPlaylist(listname);
+          songlist.addTracks(result, (songlist.list.length));
+          interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
+          break;
+        }
+
+        case 'move': {
+          const fromindex = Math.abs(interaction.options.getInteger('from-index') - 1);
+          const toindex = Math.abs(interaction.options.getInteger('to-index') - 1);
+          const result = songlist.moveTrack(fromindex, toindex);
+          interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
+          break;
+        }
+
+        case 'play': {
+          const player = await Player.getPlayer(interaction);
+          if (player) {
+            await player.queueLast(songlist.list);
+            const message = await utils.generateListEmbed(songlist.list, 'Now Playing:', 1);
+            await interaction.followUp(message);
+          }
+          break;
+        }
+
+        case 'list': {
+          const lists = await database.listPlaylists();
+          let listStr = '```';
+          for (const list of lists) {
+            const part = '\n' + list;
+            listStr = listStr.concat(part);
+          }
+          listStr = listStr.concat('```');
+          const listEmbed = {
+            color: 0x3277a8,
+            author: { name: '\u200b', icon_url: utils.pickPride('fish') },
+            thumbnail: { url: utils.pickPride('dab') },
+            fields: [{ name: 'Playlists:', value: listStr }],
+          };
+          try {
+            await interaction.followUp({ embeds: [listEmbed] });
+          } catch (error) {
+            logLine('error', [error.stack]);
+          }
+          break;
+        }
+        default: {
+          logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+          await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
+        }
 
       }
     } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}

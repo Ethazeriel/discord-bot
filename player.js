@@ -1,6 +1,7 @@
 const youtubedl = require('youtube-dl-exec').raw;
-const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, getVoiceConnections } = require('@discordjs/voice');
+const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 
+const db = require('./database.js');
 const { logLine, logDebug } = require('./logger.js');
 const { useragent } = require('./config.json').youtube;
 
@@ -9,7 +10,6 @@ const players = [];
 class Player {
   // acquisition
   constructor(interaction) {
-    logDebug('constructor');
     this.queue = {
       tracks: [],
       playhead: 0,
@@ -23,8 +23,7 @@ class Player {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'idle') { // Starts the next track in line when one finishes
-        this.queue.playhead++;
-        this.play();
+        this.next();
       }
     });
 
@@ -46,7 +45,7 @@ class Player {
     const userChannel = interaction.member.voice.channelId;
 
     if (!userChannel) {
-      await interaction.followUp({ content:'You must join a voice channel first.', ephemeral: true });
+      await interaction.followUp({ content:'You must join a voice channel first.' });
       return (null);
     }
 
@@ -56,12 +55,14 @@ class Player {
     const isAlone = !botChannel || botChannel.members.size == 1; // was just member check, but since connection seems unreliable, think this is necessary
 
     if (userChannel == botChannel?.id) {
-      if (explicitJoin) { await interaction.followUp({ content:'Bot is already in your channel.', ephemeral: true }); }
+      if (explicitJoin) { await interaction.followUp({ content:'Bot is already in your channel.' }); }
       return (players[guild]);
     } else if (!connection || isAlone) {
-      return (players[guild]?.join(interaction) || (players[guild] = new Player(interaction)));
+      const player = (players[guild]?.join(interaction) || (players[guild] = new Player(interaction)));
+      if (explicitJoin) { await interaction.followUp({ content:'Joined voice.' }); }
+      return (player);
     } else {
-      await interaction.followUp({ content:'Bot is busy in another channel.', ephemeral: true });
+      await interaction.followUp({ content:'Bot is busy in another channel.' });
       return (null);
     }
   }
@@ -77,14 +78,29 @@ class Player {
     return (this); // lazy code condensing
   }
 
-  leave(interaction) {
-    const success = getVoiceConnection(interaction.guild.id)?.disconnect();
-    return (success);
+  static leave(interaction) {
+    const connection = getVoiceConnection(interaction.guild.id);
+    if (connection) {
+      const userChannel = interaction.member.voice.channelId;
+      const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId) : null;
+      const isAlone = botChannel.members?.size == 1;
+
+      if (userChannel == botChannel || isAlone) {
+        const success = connection.disconnect();
+        // eslint-disable-next-line no-console
+        if (!success) { console.log(`failed to disconnect connection: ${connection}`); }
+        return ({ content: (success) ? 'Left voice.' : 'Failed to leave voice.' });
+      } else {
+        return ({ content:'Bot is busy in another channel.' });
+      }
+    } else { return ({ content:'Bot is not in a voice channel.' }); }
   }
 
   // core
-  play() {
-    const track = this.queue.tracks[this.queue.playhead];
+  async play() {
+    let track = this.queue.tracks[this.queue.playhead];
+    track &&= await db.getTrack({ 'goose.id': track.goose.id });
+    this.queue.tracks[this.queue.playhead] &&= track;
     if (track) {
       try {
         const resource = createAudioResource(youtubedl(track.youtube.id, {
@@ -101,58 +117,62 @@ class Player {
       } catch (error) {
         logLine('error', [error.stack]);
       }
-    }
+    } else if (this.player.state.status == 'playing') { this.player.stop(); }
+    return (track);
   }
 
   // modification
-  queueNow(tracks) {
+  async queueNow(tracks) {
     // not constrained to length because splice does that automatically
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
-    this.play();
+    await this.next();
   }
 
-  queueNext(tracks) {
+  async queueNext(tracks) {
     // not constrained to length because splice does that automatically
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
-    if (this.player.state.status == 'idle') { this.play(); }
+    if (this.player.state.status == 'idle') { await this.next(); }
   }
 
-  queueLast(tracks) {
-    this.queue.tracks.push(tracks);
-    if (this.player.state.status == 'idle') { this.play(); }
+  async queueLast(tracks) {
+    this.queue.tracks.push(...tracks);
+    if (this.player.state.status == 'idle') { await this.next(); }
+    return (this.queue.tracks.length);
   }
 
-  remove(position = this.queue.playhead) { // will make this take a range later
-    position = ((value = Math.abs(position), length = this.queue.length) => (value > length) ? length : value)();
+  async remove(position = this.queue.playhead) { // will make this take a range later
+    position = ((value = Math.abs(position), length = this.queue.tracks.length) => (value > length) ? length : value)();
     const removed = this.queue.tracks.splice(position, 1); // constrained 0 to length, not length - 1, and unworried about overshooting due to how splice is implemented
     if (position < this.queue.playhead) {
       this.queue.playhead--;
     } else if (position == this.queue.playhead) {
-      this.play();
+      await this.play();
     }
     return (removed);
-  }
+  } // seems fine
 
-  clear() {
+  empty() {
     this.queue.playhead = 0;
     this.queue.tracks.length = 0;
     this.player.stop();
   }
 
   // manipulation
-  prev() { // prior, loop or restart current
-    this.queue.playhead = ((playhead = this.queue.playhead) => (playhead > 0) ? playhead-- : (this.queue.loop) ? this.queue.length - 1 : 0)();
-    this.play(); // thinking to have play return track, for feedback on if there is a track at playhead
+  async prev() { // prior, loop or restart current
+    // this.queue.playhead = ((playhead = this.queue.playhead) => (playhead > 0) ? --playhead : (this.queue.loop) ? this.queue.tracks.length - 1 : 0)();
+    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
+    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
   }
 
-  next() { // next, loop or end
-    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.length) => (playhead < length - 1) ? playhead++ : (this.queue.loop) ? 0 : length)();
-    this.play(); // thinking to have play return track, for feedback on if there is a track at playhead
+  async next() { // next, loop or end
+    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
+    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
   }
 
-  jump(position) {
-    this.queue.playhead = ((value = Math.abs(position), length = this.queue.length) => (value > length) ? length : value)();
-    this.play();
+  async jump(position) {
+    this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
+    // this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length == 0) ? length : length - 1)();
+    return (await this.play());
   }
 
   seek(time) {
@@ -171,18 +191,31 @@ class Player {
     return ((condition != result) ? ({ content: (result) ? 'Paused.' : 'Unpaused.' }) : ({ content:'OH NO SOMETHING\'S FUCKED' }));
   }
 
-  toggleLoop({ force } = {}) {
+  async toggleLoop({ force } = {}) {
     force = (typeof force == 'boolean') ? force : undefined;
     this.queue.loop = (force == undefined) ? !this.queue.loop : force;
+    if (this.queue.loop && this.queue.tracks.length && (this.queue.tracks.length == this.queue.playhead)) { await this.next(); }
+    return (this.queue.loop);
   }
 
   // information
 
-  current() {
+  getPrev() {
+    // const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop && length > 0) ? length - 1 : 0)();
+    const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
+    return (this.queue.tracks[position]);
+  }
+
+  getCurrent() {
     return (this.queue.tracks[this.queue.playhead]);
   }
 
-  queue() {
+  getNext() {
+    const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
+    return (this.queue.tracks[position]);
+  }
+
+  getQueue() {
     return (this.queue.tracks);
   }
 
@@ -201,4 +234,5 @@ class Player {
 }
 
 exports.getPlayer = Player.getPlayer;
+exports.leave = Player.leave;
 exports.Player = Player;

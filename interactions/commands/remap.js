@@ -5,7 +5,8 @@ const { sanitize, youtubePattern } = require('../../regexes.js');
 const db = require('../../database.js');
 const utils = require('../../utils.js');
 const Canvas = require('canvas');
-const music = require('../../music.js');
+// const music = require('../../music.js');
+const Player = require('../../player.js');
 const ytdl = require('ytdl-core');
 
 
@@ -56,55 +57,53 @@ module.exports = {
             drawtext('To', 500, 70);
             const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
             const reply = {
-              embeds:
-            [
-              {
-                color: 0xd64004,
-                author: {
-                  name: 'Remapped:',
-                  icon_url: utils.pickPride('fish'),
+              embeds: [
+                {
+                  color: 0xd64004,
+                  author: {
+                    name: 'Remapped:',
+                    icon_url: utils.pickPride('fish'),
+                  },
+                  fields: [
+                    { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                    { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(newtrack.videoDetails.lengthSeconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  ],
+                  image: {
+                    url: 'attachment://combined.png',
+                  },
+                  footer: {
+                    text: `${track.youtube.id}${newtrack.videoDetails.videoId}`,
+                  },
                 },
-                fields: [
-                  { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                  { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(newtrack.videoDetails.lengthSeconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                ],
-                image: {
-                  url: 'attachment://combined.png',
+              ],
+              components: [
+                {
+                  'type': 1,
+                  'components': [
+                    {
+                      'type': 2,
+                      'custom_id': 'remap-new',
+                      'style':3,
+                      'label':'Confirm',
+                    },
+                    {
+                      'type': 2,
+                      'custom_id': 'remap-no',
+                      'style':4,
+                      'label':'Cancel',
+                    },
+                  ],
                 },
-                footer: {
-                  text: `${track.youtube.id}${newtrack.videoDetails.videoId}`,
-                },
-              },
-            ],
-              components:
-  [
-    {
-      'type': 1,
-      'components': [
-        {
-          'type': 2,
-          'custom_id': 'remap-new',
-          'style':3,
-          'label':'Confirm',
-        },
-        {
-          'type': 2,
-          'custom_id': 'remap-no',
-          'style':4,
-          'label':'Cancel',
-        },
-      ],
-    },
-  ],
-              files: [combined] };
+              ],
+              files: [combined],
+            };
             await interaction.followUp(reply);
-
 
           } else { await interaction.followUp({ content:'Invalid newtrack URL', ephemeral: true });}
         } else {
           let track;
           if (search === 'current') {
-            track = music.getCurrentTrack();
+            track = await Player.getPlayer(interaction)?.getCurrent();
             if (!Object.keys(track).length) {
               await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
               return;
@@ -141,72 +140,71 @@ module.exports = {
           drawtext('4', 900, 705);
           const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
           const reply = {
-            embeds:
-          [
-            {
-              color: 0xd64004,
-              author: {
-                name: 'Remap:',
-                icon_url: utils.pickPride('fish'),
+            embeds: [
+              {
+                color: 0xd64004,
+                author: {
+                  name: 'Remap:',
+                  icon_url: utils.pickPride('fish'),
+                },
+                fields: [
+                  { name: 'Spotify:', value: `${track.artist.name || 'no artist'} - ${track.spotify.name || 'no track name'} - ${new Date(track.spotify.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'Current Youtube:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: '\u200b', value: '** **' },
+                  { name: 'Alternate 1:', value: `[${track.alternates[0].name}](https://youtube.com/watch?v=${track.alternates[0].id}) - ${new Date(track.alternates[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'Alternate 2:', value: `[${track.alternates[1].name}](https://youtube.com/watch?v=${track.alternates[1].id}) - ${new Date(track.alternates[1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'Alternate 3:', value: `[${track.alternates[2].name}](https://youtube.com/watch?v=${track.alternates[2].id}) - ${new Date(track.alternates[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'Alternate 4:', value: `[${track.alternates[3].name}](https://youtube.com/watch?v=${track.alternates[3].id}) - ${new Date(track.alternates[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                ],
+                image: {
+                  url: 'attachment://combined.png',
+                },
+                footer: {
+                  text: track.youtube.id,
+                },
               },
-              fields: [
-                { name: 'Spotify:', value: `${track.artist.name || 'no artist'} - ${track.spotify.name || 'no track name'} - ${new Date(track.spotify.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Current Youtube:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: '\u200b', value: '** **' },
-                { name: 'Alternate 1:', value: `[${track.alternates[0].name}](https://youtube.com/watch?v=${track.alternates[0].id}) - ${new Date(track.alternates[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 2:', value: `[${track.alternates[1].name}](https://youtube.com/watch?v=${track.alternates[1].id}) - ${new Date(track.alternates[1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 3:', value: `[${track.alternates[2].name}](https://youtube.com/watch?v=${track.alternates[2].id}) - ${new Date(track.alternates[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 4:', value: `[${track.alternates[3].name}](https://youtube.com/watch?v=${track.alternates[3].id}) - ${new Date(track.alternates[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-              ],
-              image: {
-                url: 'attachment://combined.png',
+            ],
+            components: [
+              {
+                'type': 1,
+                'components': [
+                  {
+                    'type': 3,
+                    'custom_id': 'remap',
+                    'options':[
+                      {
+                        'label': 'Alternative 1',
+                        'value': '0',
+                        'description': track.alternates[0].name,
+                      },
+                      {
+                        'label': 'Alternative 2',
+                        'value': '1',
+                        'description': track.alternates[1].name,
+                      },
+                      {
+                        'label': 'Alternative 3',
+                        'value': '2',
+                        'description': track.alternates[2].name,
+                      },
+                      {
+                        'label': 'Alternative 4',
+                        'value': '3',
+                        'description': track.alternates[3].name,
+                      },
+                      {
+                        'label': 'Something else',
+                        'value': '4',
+                        'description': 'none of these are correct',
+                      },
+                    ],
+                    'placeholder': 'Select track...',
+                  },
+                ],
               },
-              footer: {
-                text: track.youtube.id,
-              },
-            },
-          ],
-            components:
-      [
-        {
-          'type': 1,
-          'components': [
-            {
-              'type': 3,
-              'custom_id': 'remap',
-              'options':[
-                {
-                  'label': 'Alternative 1',
-                  'value': '0',
-                  'description': track.alternates[0].name,
-                },
-                {
-                  'label': 'Alternative 2',
-                  'value': '1',
-                  'description': track.alternates[1].name,
-                },
-                {
-                  'label': 'Alternative 3',
-                  'value': '2',
-                  'description': track.alternates[2].name,
-                },
-                {
-                  'label': 'Alternative 4',
-                  'value': '3',
-                  'description': track.alternates[3].name,
-                },
-                {
-                  'label': 'Something else',
-                  'value': '4',
-                  'description': 'none of these are correct',
-                },
-              ],
-              'placeholder': 'Select track...',
-            },
-          ],
-        },
-      ],
-            files: [combined] };
+            ],
+            files: [combined],
+          };
 
           await interaction.followUp(reply);
         }
