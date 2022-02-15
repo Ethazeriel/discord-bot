@@ -227,6 +227,10 @@ class Player {
     return (this.queue.loop);
   }
 
+  getPlayhead() {
+    return (this.queue.playhead);
+  }
+
   // testing
   test(interaction) {
     console.log(this.player.state.status == 'idle');
