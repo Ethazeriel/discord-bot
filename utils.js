@@ -1,8 +1,26 @@
 const { MessageAttachment } = require('discord.js');
-// const music = require('./music.js');
-const Player = require('./player.js');
 const { logLine } = require('./logger.js');
 const Canvas = require('canvas');
+
+function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
+  start ??= '|';
+  end ??= '|';
+  barbefore ??= '-';
+  barafter ??= '-';
+  head ??= '0';
+  let result = '';
+  const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
+  let before = parseInt((size - 2) * playperc) || 0;
+  let after = parseInt((size - 2) * (1 - playperc)) || 0;
+  while ((before + after + 1) > (size - 2)) { (before < after) ? after-- : before--; }
+  while ((before + after + 1) < (size - 2)) { (before < after) ? before++ : after++; }
+  result = result.concat(start);
+  for (let i = 0; i < before; i++) { result = result.concat(barbefore); }
+  result = result.concat(head);
+  for (let i = 0; i < after; i++) { result = result.concat(barafter); }
+  result = result.concat(end);
+  return result;
+}
 
 function pickPride(type, detail) {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
@@ -47,6 +65,14 @@ async function prideSticker(interaction, type) {
 
 }
 
+function timeDisplay(seconds) {
+  return new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
+}
+
+// =================================
+//               EMBEDS
+// =================================
+
 async function generateTrackEmbed(track, messagetitle) {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
   const npEmbed = {
@@ -77,7 +103,7 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
   const albumart = fresh ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
-    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], files: [albumart], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], ephemeral: true };
+    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], files: [albumart], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], ephemeral: true };
   }
   if (page > pages) {
     page = pages;
@@ -85,13 +111,27 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   let queueStr = '';
   for (let i = 0; i < queuePart.length; i++) {
-    const part = `**${((page - 1) * 10 + (i + 1))}. **${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${new Date(queuePart[i].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')} \n`;
+    const songNum = ((page - 1) * 10 + (i + 1));
+    const part = `**${songNum}.** ${((songNum - 1) == player.getPlayhead()) ? '**' : ''}${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${timeDisplay(queuePart[i].youtube.duration)}${((songNum - 1) == player.getPlayhead()) ? '**' : ''} \n`;
     queueStr = queueStr.concat(part);
   }
   let queueTime = 0;
   for (const item of queue) {
     queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration);
   }
+  let elapsedTime = 0;
+  for (const [i, item] of queue.entries()) {
+    if (i < player.getPlayhead()) {
+      elapsedTime = elapsedTime + Number(item.youtube.duration || item.spotify.duration);
+    } else { break;}
+  }
+  const bar = {
+    start: track.goose?.bar?.start || '[',
+    end: track.goose?.bar?.end || ']',
+    barbefore: track.goose?.bar?.barbefore || '#',
+    barafter: track.goose?.bar?.barafter || '-',
+    head: track.goose?.bar?.head || '#',
+  };
   const queueEmbed = {
     color: 0x3277a8,
     author: {
@@ -102,12 +142,12 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
       url: 'attachment://art.jpg',
     },
     fields: [
-      { name: 'Current Track:', value: `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-      { name: 'Next Up:', value: queueStr },
+      { name: 'Now Playing:', value: `**${player.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${timeDisplay(track.youtube.duration)}` },
+      { name: 'Queue:', value: queueStr },
+      { name: '\u200b', value: `Loop: ${player.getLoop() ? '🟢' : '🟥'}`, inline: true },
       { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
-      { name: '\u200b', value: `Queue length: ${queue.length} tracks`, inline: true },
-      { name: '\u200b', value: `Duration: ${new Date(queueTime * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}`, inline: true },
-      { name: `Loop: ${player.getLoop() ? '🟢' : '🟥'}`, value: '** **' },
+      { name: '\u200b', value: `${queue.length} tracks`, inline: true },
+      { name: `\` ${progressBar(45, queueTime, elapsedTime, bar)} \``, value: `Elapsed: ${timeDisplay(elapsedTime)} | Total: ${timeDisplay(queueTime)}` },
     ],
   };
   const buttonEmbed = [
@@ -172,7 +212,7 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
   const queuePart = queue.slice((page - 1) * 10, page * 10);
   let queueStr = '';
   for (let i = 0; i < queuePart.length; i++) {
-    const part = `**${((page - 1) * 10 + (i + 1))}. **${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${new Date(queuePart[i].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')} \n`;
+    const part = `**${((page - 1) * 10 + (i + 1))}. **${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${timeDisplay(queuePart[i].youtube.duration)} \n`;
     queueStr = queueStr.concat(part);
   }
   let queueTime = 0;
@@ -192,7 +232,7 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
       { name: 'Horse:', value: queueStr },
       { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
       { name: '\u200b', value: `Playlist length: ${queue.length} tracks`, inline: true },
-      { name: '\u200b', value: `Duration: ${new Date(queueTime * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}`, inline: true },
+      { name: '\u200b', value: `Duration: ${timeDisplay(queueTime)}`, inline: true },
     ],
   };
   const buttonEmbed = [
@@ -223,26 +263,6 @@ async function generateListEmbed(queue, messagetitle, page, fresh = true) {
     },
   ];
   return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [thumb] } : { embeds: [queueEmbed], components: buttonEmbed };
-}
-
-function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
-  start ??= '|';
-  end ??= '|';
-  barbefore ??= '-';
-  barafter ??= '-';
-  head ??= '0';
-  let result = '';
-  const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
-  let before = parseInt((size - 2) * playperc) || 0;
-  let after = parseInt((size - 2) * (1 - playperc)) || 0;
-  while ((before + after + 1) > (size - 2)) { (before < after) ? after-- : before--; }
-  while ((before + after + 1) < (size - 2)) { (before < after) ? before++ : after++; }
-  result = result.concat(start);
-  for (let i = 0; i < before; i++) { result = result.concat(barbefore); }
-  result = result.concat(head);
-  for (let i = 0; i < after; i++) { result = result.concat(barafter); }
-  result = result.concat(end);
-  return result;
 }
 
 function mediaEmbed(player, fresh = true) {
