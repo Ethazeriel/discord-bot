@@ -25,28 +25,28 @@ module.exports = {
       await interaction.deferReply({ ephemeral: true });
       switch (interaction.options.getSubcommand()) {
 
-      case 'removeplaylist': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '')?.trim();
-        const result = await database.removePlaylist(listname);
-        interaction.followUp({ content:`Removed ${listname} from the database; ${result} tracks.`, ephemeral: true });
-        break;
-      }
+        case 'removeplaylist': {
+          const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '')?.trim();
+          const result = await database.removePlaylist(listname);
+          interaction.followUp({ content:`Removed ${listname} from the database; ${result} tracks.`, ephemeral: true });
+          break;
+        }
 
-      case 'removetrack': {
-        const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
-        if (youtubePattern.test(track)) {
-          const match = track.match(youtubePattern);
-          const result = await database.removeTrack(match[2]);
-          interaction.followUp({ content:`Removed ${track} from the database; ${result} tracks.`, ephemeral: true });
-        } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
-        break;
-      }
+        case 'removetrack': {
+          const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
+          if (youtubePattern.test(track)) {
+            const match = track.match(youtubePattern);
+            const result = await database.removeTrack(match[2]);
+            interaction.followUp({ content:`Removed ${track} from the database; ${result} tracks.`, ephemeral: true });
+          } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
+          break;
+        }
 
 
-      default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
-        await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
-      }
+        default: {
+          logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+          await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
+        }
 
       }
     } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
