@@ -1,6 +1,7 @@
 const { MessageAttachment } = require('discord.js');
 const { logLine } = require('./logger.js');
 const Canvas = require('canvas');
+const db = require('./database.js');
 
 function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
   start ??= '|';
@@ -112,7 +113,8 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
   let queueStr = '';
   for (let i = 0; i < queuePart.length; i++) {
     const songNum = ((page - 1) * 10 + (i + 1));
-    const part = `**${songNum}.** ${((songNum - 1) == player.getPlayhead()) ? '**' : ''}${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${timeDisplay(queuePart[i].youtube.duration)}${((songNum - 1) == player.getPlayhead()) ? '**' : ''} \n`;
+    const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
+    const part = `**${songNum}.** ${((songNum - 1) == player.getPlayhead()) ? '**' : ''}${(dbtrack.artist.name || ' ')} - [${(dbtrack.spotify.name || dbtrack.youtube.name)}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${timeDisplay(dbtrack.youtube.duration)}${((songNum - 1) == player.getPlayhead()) ? '**' : ''} \n`;
     queueStr = queueStr.concat(part);
   }
   let queueTime = 0;
