@@ -6,7 +6,8 @@ const { sanitizePlaylists } = require('./regexes.js');
 // Connection URL
 const url = mongo.url;
 const dbname = mongo.database;
-const collname = mongo.collection;
+const trackcol = mongo.trackcollection;
+const usercol = mongo.usercollection;
 let db;
 let con;
 MongoClient.connect(url, function(err, client) {
@@ -30,7 +31,7 @@ async function closeDB() {
 async function getTrack(query) {
   // returns the first track object that matches the query
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const track = await tracks.findOne(query, { projection: { _id: 0 } });
     return track;
   } catch (error) {
@@ -48,7 +49,7 @@ generally speaking we should let the client close after the query - but if there
 async function insertTrack(track) {
   // inserts a single track object into the database
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     // check if we already have this url
     if (!track.ephemeral) {
       const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube.id }, { 'goose.id': track.goose.id }] }, { projection: { _id: 0 } });
@@ -69,7 +70,7 @@ async function addKey(query, newkey) {
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { keys: newkey.toLowerCase() } });
     logLine('database', [`Adding key ${chalk.blue(newkey.toLowerCase())} to ${chalk.green(query)}`]);
   } catch (error) {
@@ -82,7 +83,7 @@ async function addSpotifyId(query, newid) {
   // adds a new spotify id to a track we already have
   // silently fails if we don't have the track in the DB already
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { 'spotify.id': newid } });
     logLine('database', [`Adding spotify id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
   } catch (error) {
@@ -98,7 +99,7 @@ async function addPlaylist(trackarray, listname) {
   const test = await getPlaylist(name);
   if (!test.length) {
     try {
-      const tracks = db.collection(collname);
+      const tracks = db.collection(trackcol);
       trackarray.forEach(async (element, index) => {
         const query = { 'youtube.id': element.youtube.id };
         const field = `playlists.${name}`;
@@ -118,7 +119,7 @@ async function getPlaylist(listname) {
   // returns a playlist as an array of tracks, ready for use
   try {
     const name = listname.replace(sanitizePlaylists, '');
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
     const options = { sort: { [qustr]:1 }, projection: { _id: 0 } };
@@ -133,7 +134,7 @@ async function getPlaylist(listname) {
 async function removePlaylist(listname) {
   try {
     const name = listname.replace(sanitizePlaylists, '');
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
     const filt = { $unset:{ [qustr]: '' } };
@@ -148,7 +149,7 @@ async function removePlaylist(listname) {
 async function updateTrack(query, update) {
   // generic update function; basically just a wrapper for updateOne
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     await tracks.updateOne(query, update);
     logLine('database', [`Updating track ${chalk.blue(JSON.stringify(query, '', 2))} with data ${chalk.green(JSON.stringify(update, '', 2))}`]);
   } catch (error) {
@@ -160,7 +161,7 @@ async function removeTrack(query) {
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const track = await tracks.deleteOne({ 'youtube.id':query });
     if (track.deletedCount === 1) {
       logLine('database', [`Removed track ${chalk.red(query)} from DB.`]);
@@ -177,7 +178,7 @@ async function removeTrack(query) {
 async function switchAlternate(query, alternate) {
   // returns the first track object that matches the query
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const search = { 'youtube.id':query };
     const track = await tracks.findOne(search);
     if (track) {
@@ -202,7 +203,7 @@ async function getAlbum(request, type) {
   const pattern = /^(?:id|name){1}$/g;
   if (!pattern.test(type)) {return null;}
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const qustr = `album.${type}`;
     const query = { [qustr]: request };
     const options = { sort: { 'album.trackNumber':1 }, projection: { _id: 0 } };
@@ -217,9 +218,9 @@ async function getAlbum(request, type) {
 async function printCount() {
   // returns the number of tracks we have
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const number = await tracks.count();
-    logLine('database', [`We currently have ${chalk.green(number)} tracks in the ${dbname} database, collection ${collname}.`]);
+    logLine('database', [`We currently have ${chalk.green(number)} tracks in the ${dbname} database, collection ${trackcol}.`]);
     return number;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
@@ -230,7 +231,7 @@ async function listPlaylists() {
   // returns all the playlists we have as a set
   // this may take a long time to return and a lot of cpu once we've got more than a few playlists; consider revising
   try {
-    const tracks = db.collection(collname);
+    const tracks = db.collection(trackcol);
     const list = await tracks.distinct('playlists');
     const result = new Set();
     list.forEach((element) => {
@@ -239,6 +240,75 @@ async function listPlaylists() {
       });
     });
     return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
+// *****************
+// userdb functions
+// *****************
+
+async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', discriminator:'4962'});
+  // inserts a new user object into the database
+  // returns null if unsuccessful
+  try {
+    const userdb = db.collection(usercol);
+    // check if we already have this user
+    const test = await userdb.findOne({ 'discord.id': discord.id }, { projection: { _id: 0 } });
+    if (test == null) {
+      // we don't have this in our database yet, so
+      const object = {
+        discord: discord,
+        stash: { playhead:0, tracks:[] },
+      };
+      const result = await userdb.insertOne(object);
+      logLine('database', [`Adding user ${chalk.green(discord.username)} to database`]);
+      return result;
+    } else { throw new Error(`User ${chalk.red(discord.username)} already exists!`);}
+  } catch (error) {
+    logLine('error', ['database error:', error.message]);
+  }
+}
+
+async function getUser(discordid) { // usage: const result = await getUser('119678070222225408');
+  // returns the user object with the matching id
+  try {
+    const userdb = db.collection(usercol);
+    const result = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
+    return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
+async function saveStash(discordid, playhead, queue) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
+  // updates the stash for the given user
+  // returns null if unsuccessful
+  const idarray = [];
+  for (const track of queue) { !track.ephemeral ? idarray.push(track.goose.id) : null; }
+  const stash = { playhead: playhead, tracks: idarray };
+  try {
+    const userdb = db.collection(usercol);
+    const result = await userdb.updateOne({ 'discord.id': discordid }, stash);
+    logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.index)}, ${chalk.green(stash.tracks.length)} tracks`]);
+    return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
+async function getStash(discordid) { // usage: const result = await getStash('119678070222225408');
+  // returns the stash (playhead and full track objects) for the given id
+  try {
+    const userdb = db.collection(usercol);
+    const user = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
+    const queue = [];
+    for (const id of user.stash.tracks) {
+      const track = await getTrack({ 'goose.id':id });
+      queue.push(track);
+    }
+    return { playhead:user.stash.playhead, tracks:queue };
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
   }
@@ -270,6 +340,7 @@ async function genericGet(query, collection) { // arc v1
   }
 }
 
+// trackdb
 exports.getTrack = getTrack;
 exports.insertTrack = insertTrack;
 exports.addKey = addKey;
@@ -284,5 +355,11 @@ exports.removeTrack = removeTrack;
 exports.switchAlternate = switchAlternate;
 exports.updateTrack = updateTrack;
 exports.addSpotifyId = addSpotifyId;
+// generics
 exports.genericUpdate = genericUpdate;
 exports.genericGet = genericGet;
+// userdb
+exports.newUser = newUser;
+exports.getUser = getUser;
+exports.saveStash = saveStash;
+exports.getStash = getStash;
