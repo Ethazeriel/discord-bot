@@ -101,7 +101,7 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
   const track = player.getCurrent();
   const queue = player.getQueue();
   page = Math.abs(page) || 1;
-  const albumart = fresh ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
+  const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
     return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], files: [albumart], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], ephemeral: true };
@@ -144,7 +144,7 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
       url: 'attachment://art.jpg',
     },
     fields: [
-      { name: 'Now Playing:', value: `**${player.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${timeDisplay(track.youtube.duration)}` },
+      { name: 'Now Playing:', value: (track) ? `**${player.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${timeDisplay(track.youtube.duration)}` : 'Nothing is playing.' },
       { name: 'Queue:', value: queueStr },
       { name: '\u200b', value: `Loop: ${player.getLoop() ? '🟢' : '🟥'}`, inline: true },
       { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
@@ -280,7 +280,7 @@ function mediaEmbed(player, fresh = true) {
       url: 'attachment://thumb.jpg',
     },
     fields: [
-      { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}` : 'None' },
+      { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` : 'Nothing is playing.' },
     ],
   };
   const buttons = [
@@ -304,9 +304,9 @@ function mediaEmbed(player, fresh = true) {
         {
           'type': 2,
           'custom_id': 'media-next',
-          'style': (player.getNext()) ? 1 : 2,
+          'style': (player.getCurrent()) ? 1 : 2,
           'label': 'Next',
-          'disabled': (player.getNext()) ? false : true,
+          'disabled': (player.getCurrent()) ? false : true,
         },
         {
           'type': 2,

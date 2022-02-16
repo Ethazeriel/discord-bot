@@ -63,9 +63,8 @@ module.exports = {
       if (player) {
         switch (interaction.options.getSubcommand()) {
           case 'show': {
-            const track = player.getCurrent();
-            const page = Math.abs(interaction.options.getInteger('page')) || 1;
-            if (track) {
+            if (player.getQueue().length) {
+              const page = Math.abs(interaction.options.getInteger('page')) || 1;
               const message = await utils.generateQueueEmbed(player, 'Current Queue:', page);
               await interaction.followUp(message);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
