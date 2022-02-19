@@ -22,7 +22,7 @@ module.exports = {
         .addChoice('Play Now', 'now'))
     .addStringOption(option =>
       option.setName('what').setDescription('Flag as internal playlist, not external search')
-        .addChoice('Search', 'search')
+        .addChoice('External Search', 'search')
         .addChoice('Internal bot playlist', 'playlist')),
 
   async execute(interaction) {

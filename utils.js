@@ -2,6 +2,7 @@ const { MessageAttachment } = require('discord.js');
 const { logLine } = require('./logger.js');
 const Canvas = require('canvas');
 const db = require('./database.js');
+const crypto = require('crypto');
 
 function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
   start ??= '|';
@@ -68,6 +69,10 @@ async function prideSticker(interaction, type) {
 
 function timeDisplay(seconds) {
   return new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
+}
+
+function randomHexColor() {
+  return Number(`0x${crypto.randomBytes(3).toString('hex')}`);
 }
 
 // =================================
@@ -335,3 +340,4 @@ exports.generateListEmbed = generateListEmbed;
 exports.prideSticker = prideSticker;
 exports.progressBar = progressBar;
 exports.mediaEmbed = mediaEmbed;
+exports.randomHexColor = randomHexColor;
