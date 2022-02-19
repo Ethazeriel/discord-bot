@@ -74,32 +74,36 @@ module.exports = {
         name = 'Queue command';
         fields = [
           { name: 'Overview', value: 'Requires the DJ role. The queue command provides functionality for manipulating the active queue.' },
-          { name: 'Show', value: '' },
-          { name: 'Prev', value: '' },
-          { name: 'Next', value: '' },
-          { name: 'Jump', value: '' },
-          { name: 'Seek', value: '' },
-          { name: 'Play-Pause', value: '' },
-          { name: 'Loop', value: '' },
-          { name: 'Shuffle', value: '' },
-          { name: 'Remove', value: '' },
-          { name: 'Empty', value: '' },
+          { name: 'Show', value: 'Summons an embed that displays the current queue, including navigation buttons and the ability to activate looping and shuffle. This embed will auto-update with changes for as long as possible; Discord imposes a hard 15-minute limit on updating embeds, so to receive updates beyond that point you must summon a new embed or refresh the current one with a button press.' },
+          { name: 'Prev', value: 'Moves the playhead back one song to play the previous song in the queue.' },
+          { name: 'Next', value: 'Moves the playhead up one song to play the next song in the queue.' },
+          { name: 'Jump', value: 'Accepts an integer position to move to; jumps to any track in the queue.' },
+          { name: 'Seek', value: 'Accepts an integer (number of seconds) to seek to; seeks within the current track to a timestamp.' },
+          { name: 'Play-Pause', value: 'Acts as a toggle, pausing/playing the current track based on its\' current state. Can also be done using the play/pause button on the player embed.' },
+          { name: 'Loop', value: 'Toggles looping on and off. This can also be done using the loop button on the queue embed.' },
+          { name: 'Shuffle', value: 'When invoked, shuffles the queue. By default, this uses a pseudo-random algorithm to shuffle all tracks after the playhead (ie. it will not shuffle things that have already played). If looping is turned on, this will shuffle the entire queue and place you at the beginning. Optionally, select "Yes" in the "album-aware" argument to run an album-aware shuffle algorithm that will keep whole albums together and randomly shuffle those instead of individual tracks.' },
+          { name: 'Remove', value: 'Removes a track from the queue. If no additional argument is specified, removes the current track; Optionally specify an integer to remove the track at that position in the queue.' },
+          { name: 'Empty', value: 'Completely removes everything from the queue, returning it to an empty state.' },
         ];
         break;
 
       case 'voice':
         name = 'Voice command';
         fields = [
-          { name: 'Overview', value: 'It\'s a bot!' },
-          { name: 'NowPlaying', value: '' },
-          { name: 'Join', value: '' },
-          { name: 'Leave', value: '' },
+          { name: 'Overview', value: 'Requires the DJ role. Mainly provides functionality for manipulating the bots\' voice connection.' },
+          { name: 'NowPlaying', value: 'Summons an embed to display the currently playing track.' },
+          { name: 'Join', value: 'Forces the bot to join you in a voice channel. Most likely this isn\'t something you\'ll actually want to do; use the play command instead.' },
+          { name: 'Leave', value: 'Forces the bot to leave voice, for those times when you really, really need it gone like right now please.' },
         ];
         break;
 
       case 'remap':
         name = 'Remap command';
-        fields = [{ name: 'Overview', value: 'It\'s a bot!' }];
+        fields = [
+          { name: 'Overview', value: 'Requires the DJ role. If you\'ve queue\'d something and the thing that starts playing isn\'t what you wanted, the remap command helps fix that if you queue the same thing again in the future.' },
+          { name: 'Usage', value: 'To remap the currently playing track, invoke the remap command and specify "current". If you want to remap something other than the current track (eg. the next song), invoke the remap command and specify the youtube link of the thing you want to remap; you can check the queue embed for youtube links. \n \nThe bot will generate an embed with a list of alternative tracks (the next four options youtube\'s search returned). If any of those are correct, use the dropdown box to select the correct track; If none of those seem right, you can select "none of these" in the drop down for further instructions.' },
+          { name: 'Why?', value: 'When we receive a request to fetch a track for the first time, we grab a bunch of data about it and store that for reference. This is safe with youtube requests, but when we try a text search or a spotify link youtube\'s api likes to return instrumentals, covers, and other things that aren\'t actually what we\'re looking for. The remap command provides a method to fix incorrect mappings.' },
+        ];
         break;
 
       case 'admin':

@@ -72,7 +72,7 @@ function timeDisplay(seconds) {
 }
 
 function randomHexColor() {
-  return `0x${crypto.randomBytes(3).toString('hex')}`;
+  return Number(`0x${crypto.randomBytes(3).toString('hex')}`);
 }
 
 // =================================
