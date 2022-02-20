@@ -1,8 +1,20 @@
 {
   "discord": {
     "id":"string",
-    "username":"string",
-    "discriminator":"string"
+    "nickname": {
+      "id":{
+        "current":"string",
+        "old":[]
+      }
+    },
+    "username":{
+      "current":"string",
+      "old":[]
+    },
+    "discriminator":{
+      "current":"string",
+      "old":[]
+    }
   },
   "stash": {
     "playhead": "integer", // playhead index
