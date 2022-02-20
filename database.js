@@ -293,7 +293,7 @@ async function getUser(discordid) { // usage: const result = await getUser('1196
   }
 }
 
-async function updateUser(discordid, field, data, guild) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
+async function updateUser(discordid, field, data, guild) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
   try {
