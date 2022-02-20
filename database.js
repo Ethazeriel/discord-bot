@@ -249,7 +249,7 @@ async function listPlaylists() {
 // userdb functions
 // *****************
 
-async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', discriminator:'4962'});
+async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065'});
   // inserts a new user object into the database
   // returns null if unsuccessful
   try {
@@ -259,11 +259,22 @@ async function newUser(discord) { // usage: await newUser({ id:'1196780702222254
     if (test == null) {
       // we don't have this in our database yet, so
       const object = {
-        discord: discord,
+        discord: {
+          'id':discord.id,
+          'nickname': (discord.guild) ? { [discord.guild]:{ 'current':discord?.nickname, 'old':[] } } : {},
+          'username':{
+            'current':discord.username,
+            'old':[],
+          },
+          'discriminator':{
+            'current':discord.discriminator,
+            'old':[],
+          },
+        },
         stash: { playhead:0, tracks:[] },
       };
       const result = await userdb.insertOne(object);
-      logLine('database', [`Adding user ${chalk.green(discord.username)} to database`]);
+      logLine('database', [`Adding user ${chalk.green(`${discord.username}#${discord.discriminator}`)} to database`]);
       return result;
     } else { throw new Error(`User ${chalk.red(discord.username)} already exists!`);}
   } catch (error) {
@@ -282,6 +293,33 @@ async function getUser(discordid) { // usage: const result = await getUser('1196
   }
 }
 
+async function updateUser(discordid, field, data, guild) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
+  // updates the given field for the given user
+  // returns null if unsuccessful
+  try {
+    const userdb = db.collection(usercol);
+    const user = await getUser(discordid);
+    if (!user) {return;}
+    const validfields = ['username', 'nickname', 'discriminator'];
+    if (!validfields.includes(field)) {
+      return;
+    }
+    let why = `discord.${field}.current`;
+    let why2 = `discord.${field}.old`;
+    if (field === 'nickname') {
+      if (!guild) {return;}
+      why = `discord.${field}.${guild}.current`;
+      why2 = `discord.${field}.${guild}.old`;
+    }
+    const update = (field === 'nickname') ? { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field][guild]?.current } } : { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field].current } };
+    const result = await userdb.updateOne({ 'discord.id': discordid }, update);
+    logLine('database', [`Updating info for ${chalk.blue(discordid)}: ${chalk.green(field)} is now ${chalk.green(data)}`]);
+    return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 async function saveStash(discordid, playhead, queue) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
@@ -290,7 +328,7 @@ async function saveStash(discordid, playhead, queue) { // usage: const result = 
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection(usercol);
-    const result = await userdb.updateOne({ 'discord.id': discordid }, stash);
+    const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
     logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.index)}, ${chalk.green(stash.tracks.length)} tracks`]);
     return result;
   } catch (error) {
@@ -363,3 +401,4 @@ exports.newUser = newUser;
 exports.getUser = getUser;
 exports.saveStash = saveStash;
 exports.getStash = getStash;
+exports.updateUser = updateUser;

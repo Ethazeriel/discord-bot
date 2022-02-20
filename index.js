@@ -8,7 +8,7 @@ const database = require('./database.js');
 const chalk = require('chalk');
 
 // Create a new client instance
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES] });
 
 // dynamic import of commands, buttons, select menus
 client.commands = new Collection();
@@ -32,10 +32,27 @@ for (const file of selectFiles) {
 
 
 // When the client is ready, run this code (only once)
-client.once('ready', () => {
+client.once('ready', async () => {
   logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));
   logLine('info', ['Ready!', `Node version: ${process.version}`]);
   database.printCount();
+  // console.log(client);
+  for (const [id, guild] of client.guilds._cache) {
+    logDebug(`Checking users for ${id}`);
+    for (const [userid, member] of guild.members._cache) {
+      const user = await database.getUser(userid);
+      if (!user) {
+        logDebug(`New user with ID ${userid}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
+        await database.newUser({ id:userid, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:id });
+      } else if (user.discord.username.current !== member.user.username) {
+        await database.updateUser(userid, 'username', member.user.username);
+      } else if (user.discord.discriminator.current !== member.user.discriminator) {
+        await database.updateUser(userid, 'discriminator', member.user.discriminator);
+      } else if (user.discord.nickname[id]?.current !== member.nickname) {
+        await database.updateUser(userid, 'nickname', member.nickname, id);
+      }
+    }
+  }
 });
 
 // handle interactions
@@ -75,6 +92,41 @@ client.on('interactionCreate', async interaction => {
   } else {return;}
 });
 
+client.on('guildMemberUpdate', async (oldUser, member) => {
+  logLine('info', ['Received guild member update']);
+  const user = await database.getUser(member.user.id);
+  if (!user) {
+    logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
+    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id });
+  } else if (user.discord.username.current !== member.user.username) {
+    await database.updateUser(member.user.id, 'username', member.user.username);
+  } else if (user.discord.discriminator.current !== member.user.discriminator) {
+    await database.updateUser(member.user.id, 'discriminator', member.user.discriminator);
+  } else if (user.discord.nickname[member.guild.id].current !== member.nickname) {
+    await database.updateUser(member.user.id, 'nickname', member.nickname, member.guild.id);
+  }
+});
+
+client.on('guildMemberAdd', async member => {
+  logLine('info', ['New user arrived']);
+  const user = await database.getUser(member.user.id);
+  if (!user) {
+    logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
+    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id });
+  }
+});
+
+client.on('userUpdate', async (oldUser, newUser) => {
+  logLine('info', ['Received global user update']);
+  const user = await database.getUser(newUser.id);
+  if (!user) {
+    await database.newUser({ id:newUser.id, username:newUser.username, discriminator:newUser.discriminator });
+  } else if (user.discord.username.current !== newUser.username) {
+    await database.updateUser(newUser.id, 'username', newUser.username);
+  } else if (user.discord.discriminator.current !== newUser.discriminator) {
+    await database.updateUser(newUser.id, 'discriminator', newUser.discriminator);
+  }
+});
 
 // Login to Discord
 client.login(token);
