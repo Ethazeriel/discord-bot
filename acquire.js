@@ -55,7 +55,7 @@ async function fromSpotify(search, partial = false) {
     }
 
     if (track) {
-      logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
+      logLine('fetch', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
       return (Array(track));
     }
   }
@@ -126,7 +126,7 @@ async function fromSpotify(search, partial = false) {
       } else if (values[i]?.value) {
         // if it is a key and we had it, we'd have returned it at the beginning
         if (!match && !partial) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
-        logLine('track', [`[${i}] have '${title}'`]);
+        logLine('fetch', [`[${i}] have '${title}'`]);
         tracks[i] = values[i].value;
       } else {
         logLine('info', [` [${i}] lack '${title}'`]);
@@ -141,7 +141,7 @@ async function fromSpotify(search, partial = false) {
   promises = [];
   do {
     if (tracks[i]) {
-      logLine('track', [`[${i}] youtube skip`]);
+      logLine('fetch', [`[${i}] youtube skip`]);
     } else if (!partial) { // else, with exception
       let query =
         (is.playlist) ? `${spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.track?.name}` :
@@ -301,7 +301,7 @@ async function fromYoutube(search) {
   let track = await db.getTrack({ 'youtube.id': match[2] });
 
   if (track) {
-    logLine('track', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
+    logLine('fetch', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
     return (Array(track));
   } else {
     const ytdlResult = await ytdl.getBasicInfo(match[2], { requestOptions: { family:4 } }).catch(err => {
