@@ -101,7 +101,7 @@ async function addPlaylist(trackarray, listname) {
     try {
       const tracks = db.collection(trackcol);
       trackarray.forEach(async (element, index) => {
-        const query = { 'youtube.id': element.youtube.id };
+        const query = { 'goose.id': element.goose.id };
         const field = `playlists.${name}`;
         await tracks.updateOne(query, { $set: { [field]:index } });
         logLine('database', [`Adding playlist entry ${chalk.blue(name + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
