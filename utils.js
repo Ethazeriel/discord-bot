@@ -109,7 +109,7 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
   const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
   const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
   if (pages === 0) {
-    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], files: [albumart], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], ephemeral: true };
+    return { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], ephemeral: true };
   }
   if (page > pages) {
     page = pages;
