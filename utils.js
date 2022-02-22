@@ -205,73 +205,6 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
   return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [albumart] } : { embeds: [queueEmbed], components: buttonEmbed };
 }
 
-
-async function generateListEmbed(queue, messagetitle, page, fresh = true) {
-  page = Math.abs(page) || 1;
-  const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
-  const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
-  if (pages === 0) {
-    return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], files: [thumb], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], ephemeral: true };
-  }
-  if (page > pages) {
-    page = pages;
-  }
-  const queuePart = queue.slice((page - 1) * 10, page * 10);
-  let queueStr = '';
-  for (let i = 0; i < queuePart.length; i++) {
-    const part = `**${((page - 1) * 10 + (i + 1))}. **${(queuePart[i].artist.name || ' ')} - [${(queuePart[i].spotify.name || queuePart[i].youtube.name)}](https://youtube.com/watch?v=${queuePart[i].youtube.id}) - ${timeDisplay(queuePart[i].youtube.duration)} \n`;
-    queueStr = queueStr.concat(part);
-  }
-  let queueTime = 0;
-  for (const item of queue) {
-    queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration);
-  }
-  const queueEmbed = {
-    color: 0x3277a8,
-    author: {
-      name: messagetitle,
-      icon_url: pickPride('fish'),
-    },
-    thumbnail: {
-      url: 'attachment://thumb.jpg',
-    },
-    fields: [
-      { name: 'Horse:', value: queueStr },
-      { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
-      { name: '\u200b', value: `Playlist length: ${queue.length} tracks`, inline: true },
-      { name: '\u200b', value: `Duration: ${timeDisplay(queueTime)}`, inline: true },
-    ],
-  };
-  const buttonEmbed = [
-    {
-      'type': 1,
-      'components': [
-        {
-          'type': 2,
-          'custom_id': 'list-prev',
-          'style':2,
-          'label':'Previous',
-          'disabled': (page === 1) ? true : false,
-        },
-        {
-          'type': 2,
-          'custom_id': 'list-refresh',
-          'style':1,
-          'label':'Refresh',
-        },
-        {
-          'type': 2,
-          'custom_id': 'list-next',
-          'style':2,
-          'label':'Next',
-          'disabled': (page === pages) ? true : false,
-        },
-      ],
-    },
-  ];
-  return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [thumb] } : { embeds: [queueEmbed], components: buttonEmbed };
-}
-
 function mediaEmbed(player, fresh = true) {
   const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
   const track = player.getCurrent();
@@ -336,8 +269,8 @@ function mediaEmbed(player, fresh = true) {
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;
-exports.generateListEmbed = generateListEmbed;
 exports.prideSticker = prideSticker;
 exports.progressBar = progressBar;
 exports.mediaEmbed = mediaEmbed;
 exports.randomHexColor = randomHexColor;
+exports.timeDisplay = timeDisplay;

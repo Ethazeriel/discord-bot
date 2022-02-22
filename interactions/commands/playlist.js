@@ -1,12 +1,11 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-
-const songlist = require('../../songlist.js');
 const utils = require('../../utils.js');
 const { logLine } = require('../../logger.js');
 const database = require('../../database.js');
 const Player = require('../../player.js');
 const { sanitize, sanitizePlaylists } = require('../../regexes.js');
 const { fetch } = require('../../acquire.js');
+const Workspace = require('../../workspace.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -64,18 +63,19 @@ module.exports = {
 
     if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
       await interaction.deferReply({ ephemeral: true });
+      const workspace = Workspace.getWorkspace(interaction.member.user.id);
       switch (interaction.options.getSubcommand()) {
 
         case 'show': {
           const page = Math.abs(interaction.options.getInteger('page')) || 1;
-
-          const message = await utils.generateListEmbed(songlist.list, 'Current Playlist:', page);
+          const message = await workspace.makeEmbed('Current Playlist:', page);
           await interaction.followUp(message);
+          console.log(workspace);
           break;
         }
 
         case 'remove': {
-          songlist.removeTrack(Math.abs(interaction.options.getInteger('index') - 1));
+          workspace.removeTrack(Math.abs(interaction.options.getInteger('index') - 1));
           await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('index'))} from the playlist.`);
           break;
         }
@@ -83,11 +83,11 @@ module.exports = {
         case 'add': {
           let tracks = null;
           const search = interaction.options.getString('track')?.replace(sanitize, '');
-          const input = Math.abs(interaction.options.getInteger('index') ?? songlist.list.length);
+          const input = Math.abs(interaction.options.getInteger('index') ?? workspace.list.length);
           let index;
-          if (input > songlist.list.length) {index = songlist.list.length;} else {
+          if (input > workspace.list.length) {index = workspace.list.length;} else {
             index = input;
-            if (index && (index != songlist.list.length)) {index--;}
+            if (index && (index != workspace.list.length)) {index--;}
           }// check if our index is non-zero and not the length of our songlist
 
           tracks = await fetch(search);
@@ -95,22 +95,22 @@ module.exports = {
             await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
           }
           if (tracks && tracks.length > 0) {
-            songlist.addTracks(tracks, index);
-            const message = await utils.generateListEmbed(songlist.list, 'Added: ', (Math.ceil(index / 10) || 1));
+            workspace.addTracks(tracks, index);
+            const message = await workspace.makeEmbed('Added: ', (Math.ceil(index / 10) || 1));
             await interaction.followUp(message);
           }
           break;
         }
 
         case 'empty': {
-          songlist.emptyList();
+          workspace.emptyList();
           await interaction.followUp({ content:'Emptied playlist.', ephemeral: true });
           break;
         }
 
         case 'save': {
           const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
-          const result = await database.addPlaylist(songlist.list, listname);
+          const result = await database.addPlaylist(workspace.list, listname);
           if (result) {
             interaction.followUp({ content:result, ephemeral: true });
           } else {
@@ -120,14 +120,14 @@ module.exports = {
         }
 
         case 'copy': {
-          songlist.importQueue(interaction);
+          workspace.importQueue(interaction);
           break;
         }
 
         case 'load': {
           const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
           const result = await database.getPlaylist(listname);
-          songlist.addTracks(result, (songlist.list.length));
+          workspace.addTracks(result, (workspace.list.length));
           interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
           break;
         }
@@ -135,7 +135,7 @@ module.exports = {
         case 'move': {
           const fromindex = Math.abs(interaction.options.getInteger('from-index') - 1);
           const toindex = Math.abs(interaction.options.getInteger('to-index') - 1);
-          const result = songlist.moveTrack(fromindex, toindex);
+          const result = workspace.moveTrack(fromindex, toindex);
           interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
           break;
         }
@@ -143,8 +143,8 @@ module.exports = {
         case 'play': {
           const player = await Player.getPlayer(interaction);
           if (player) {
-            await player.queueLast(songlist.list);
-            const message = await utils.generateListEmbed(songlist.list, 'Now Playing:', 1);
+            const length = await player.queueLast(workspace.list);
+            const message = await utils.generateQueueEmbed(player, 'Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
             await interaction.followUp(message);
           }
           break;
