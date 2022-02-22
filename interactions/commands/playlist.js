@@ -70,7 +70,6 @@ module.exports = {
           const page = Math.abs(interaction.options.getInteger('page')) || 1;
           const message = await workspace.makeEmbed('Current Playlist:', page);
           await interaction.followUp(message);
-          console.log(workspace);
           break;
         }
 
