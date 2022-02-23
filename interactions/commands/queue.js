@@ -41,7 +41,7 @@ module.exports = {
       .setName('shuffle')
       .setDescription('Shuffles the queue')
       .addIntegerOption(option => option
-        .setName('albums').setDescription('Should shuffle keep albums in order?')
+        .setName('album-aware').setDescription('Should shuffle keep albums in order?')
         .addChoice('No', 0)
         .addChoice('Yes', 1)))
     .addSubcommand(subcommand => subcommand
@@ -65,35 +65,41 @@ module.exports = {
           case 'show': {
             if (player.getQueue().length) {
               const page = Math.abs(interaction.options.getInteger('page')) || 1;
-              const message = await utils.generateQueueEmbed(player, 'Current Queue:', page);
-              await interaction.followUp(message);
+              const embed = await utils.generateQueueEmbed(player, 'Current Queue:', page);
+              interaction.message = await interaction.followUp(embed);
+              player.register(interaction, 'queue', embed);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }
 
           case 'prev': {
             if (player.getQueue().length) {
-              const track = await player.prev();
-              await interaction.followUp({ content: `Playing: ${(track.spotify.name || track.youtube.name)}` });
+              await player.prev();
+              const embed = utils.mediaEmbed(player);
+              await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }
 
           case 'next': {
-            if (player.getQueue().length) {
-              const track = await player.next();
-              if (track) {
-                await interaction.followUp({ content: `Playing: ${(track.spotify.name || track.youtube.name)}` });
-              } else { await interaction.followUp({ content: 'Queue is over, and not set to loop.' }); }
+            const length = player.getQueue().length;
+            if (length) {
+              if (length == player.getPlayhead()) {
+                await interaction.followUp({ content: 'Queue is over, and not set to loop.' });
+                return;
+              }
+              await player.next();
+              const embed = utils.mediaEmbed(player);
+              await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }
 
           case 'jump': {
-            // player.remove(Math.abs(interaction.options.getInteger('track') - 1));
             if (player.getQueue().length) {
-              const track = await player.jump(Math.abs((interaction.options.getInteger('position') || 1) - 1));
-              await interaction.followUp({ content: `Playing: ${(track.spotify.name || track.youtube.name)}` });
+              await player.jump(Math.abs((interaction.options.getInteger('position') || 1) - 1));
+              const embed = utils.mediaEmbed(player);
+              await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }
@@ -104,8 +110,15 @@ module.exports = {
           }
 
           case 'play-pause': {
-            if (player.getQueue().length) {
-              await interaction.followUp(player.togglePause());
+            const length = player.getQueue().length;
+            if (length) {
+              if (length == player.getPlayhead()) {
+                await interaction.followUp({ content: 'Queue is over.' });
+                return;
+              }
+              player.togglePause();
+              const embed = utils.mediaEmbed(player);
+              await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }

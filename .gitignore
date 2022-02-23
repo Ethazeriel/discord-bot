@@ -5,3 +5,4 @@ config.json
 /setup/*
 /logs/*
 cookies.txt
+.vscode

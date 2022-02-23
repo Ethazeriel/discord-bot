@@ -206,7 +206,7 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
 }
 
 function mediaEmbed(player, fresh = true) {
-  const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'thumb.jpg')) : null;
+  const thumb = fresh ? (new MessageAttachment(pickPride('dab'), 'art.jpg')) : null;
   const track = player.getCurrent();
   const embed = {
     color: 0x3277a8,
@@ -215,7 +215,7 @@ function mediaEmbed(player, fresh = true) {
       icon_url: pickPride('fish'),
     },
     thumbnail: {
-      url: 'attachment://thumb.jpg',
+      url: 'attachment://art.jpg',
     },
     fields: [
       { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` : 'Nothing is playing.' },
@@ -225,6 +225,13 @@ function mediaEmbed(player, fresh = true) {
     {
       'type': 1,
       'components': [
+        {
+          'type': 2,
+          'custom_id': 'media-refresh',
+          'style': 2,
+          'label': 'Refresh',
+          'disabled': false,
+        },
         {
           'type': 2,
           'custom_id': 'media-prev',
@@ -245,13 +252,6 @@ function mediaEmbed(player, fresh = true) {
           'style': (player.getCurrent()) ? 1 : 2,
           'label': 'Next',
           'disabled': (player.getCurrent()) ? false : true,
-        },
-        {
-          'type': 2,
-          'custom_id': 'media-refresh',
-          'style': 1,
-          'label': 'Refresh',
-          'disabled': false,
         },
         /* {
           'type': 2,

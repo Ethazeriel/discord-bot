@@ -61,7 +61,7 @@ async function fromSpotify(search, partial = false) {
   }
 
   const { data : spotifyCredentials } = await axios(spotify.auth).catch(error => {
-    logLine('error', ['spotifyAuth: ', error.stack]);
+    logLine('error', ['spotifyAuth: ', `headers: ${error.response.headers}`, error.stack]);
     return (null);
   });
 
@@ -103,6 +103,11 @@ async function fromSpotify(search, partial = false) {
       //   playlist                                 || album, text                       || track. spotifyResult.id collides on album and track, so goes last
       id = spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
       if (id) { promises[i] = db.getTrack({ 'spotify.id': id }); }
+      if (!promises[i]) {
+        const resultName = spotifyResult.tracks?.items?.[i]?.track?.name || spotifyResult.tracks?.items?.[i]?.name || spotifyResult.name;
+        const resultArtist = spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name || spotifyResult.tracks?.items?.[i]?.artists?.[0]?.name || spotifyResult.artists?.[0]?.name;
+        promises[i] = db.getTrack({ $and: [{ 'spotify.name': resultName }, { 'artist.name': resultArtist }] });
+      }
     }
     tracksInfo[i] = {
       id: id,
@@ -124,9 +129,16 @@ async function fromSpotify(search, partial = false) {
       if (values[i]?.status == 'rejected') {
         logLine('error', ['spotify.id db.getTrack promise rejected,', `from search: ${search}`, `for [${i}]= ${title}`]);
       } else if (values[i]?.value) {
-        // if it is a key and we had it, we'd have returned it at the beginning
-        if (!match && !partial) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
-        logLine('fetch', [`[${i}] have '${title}'`]);
+        // here either by id or exact title & artist match, need to know which
+        const resultId = spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
+        if (values[i].value.spotify.id.includes(resultId)) {
+          // if it is a key and we had it, we'd have returned it at the beginning. so add key. doing nothing otherwise is intentional
+          if (!match && !partial) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
+        } else {
+          // found by exact title & artist match, but different id. so merge ids and accept existing track
+          db.addSpotifyId({ 'spotify.id': values[i].value.spotify.id }, resultId);
+        }
+        logLine('track', [`[${i}] have '${title}'`]);
         tracks[i] = values[i].value;
       } else {
         logLine('info', [` [${i}] lack '${title}'`]);

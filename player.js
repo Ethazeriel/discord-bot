@@ -5,10 +5,12 @@ const db = require('./database.js');
 const { logLine, logDebug } = require('./logger.js');
 const { useragent } = require('./config.json').youtube;
 
-const players = [];
+const utils = require('./utils');
+const { embedPage } = require('./regexes.js');
 
 class Player {
   // acquisition
+  static #players = [];
   constructor(interaction) {
     this.queue = {
       tracks: [],
@@ -16,6 +18,8 @@ class Player {
       loop: false,
       paused: false,
     };
+
+    this.listeners = {};
 
     this.player = createAudioPlayer();
     this.player.on('error', error => { logLine('error', [error.stack ]); });
@@ -42,27 +46,27 @@ class Player {
   }
 
   static async getPlayer(interaction, { explicitJoin = false } = {}) {
+    const followUp = (message) => ((interaction.isCommand()) ? interaction.followUp({ content: message }) : interaction.update({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }));
     const userChannel = interaction.member.voice.channelId;
 
     if (!userChannel) {
-      await interaction.followUp({ content:'You must join a voice channel first.' });
+      await followUp('You must join a voice channel first.');
       return (null);
     }
-
     const guild = interaction.guild.id;
     const connection = getVoiceConnection(guild);
     const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId) : null;
     const isAlone = !botChannel || botChannel.members.size == 1; // was just member check, but since connection seems unreliable, think this is necessary
 
     if (userChannel == botChannel?.id) {
-      if (explicitJoin) { await interaction.followUp({ content:'Bot is already in your channel.' }); }
-      return (players[guild]);
+      if (explicitJoin) { await followUp('Bot is already in your channel.'); }
+      return (Player.#players[guild]);
     } else if (!connection || isAlone) {
-      const player = (players[guild]?.join(interaction) || (players[guild] = new Player(interaction)));
-      if (explicitJoin) { await interaction.followUp({ content:'Joined voice.' }); }
+      const player = (Player.#players[guild]?.join(interaction) || (Player.#players[guild] = new Player(interaction)));
+      if (explicitJoin) { await followUp('Joined voice.'); }
       return (player);
     } else {
-      await interaction.followUp({ content:'Bot is busy in another channel.' });
+      await followUp('Bot is busy in another channel.');
       return (null);
     }
   }
@@ -101,6 +105,7 @@ class Player {
     let track = this.queue.tracks[this.queue.playhead];
     track &&= await db.getTrack({ 'goose.id': track.goose.id });
     this.queue.tracks[this.queue.playhead] &&= track;
+    if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
         const resource = createAudioResource(youtubedl(track.youtube.id, {
@@ -125,18 +130,18 @@ class Player {
   async queueNow(tracks) {
     // not constrained to length because splice does that automatically
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
-    await this.next();
+    (this.player.state.status == 'idle') ? await this.play() : await this.next();
   }
 
   async queueNext(tracks) {
     // not constrained to length because splice does that automatically
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
-    if (this.player.state.status == 'idle') { await this.next(); }
+    if (this.player.state.status == 'idle') { await this.play(); }
   }
 
   async queueLast(tracks) {
     this.queue.tracks.push(...tracks);
-    if (this.player.state.status == 'idle') { await this.next(); }
+    if (this.player.state.status == 'idle') { await this.play(); }
     return (this.queue.tracks.length);
   }
 
@@ -233,7 +238,177 @@ class Player {
 
   // testing
   test(interaction) {
-    console.log(this.player.state.status == 'idle');
+    // console.log(interaction.member.user.id);
+    // console.log(interaction.member.user.bot);
+    // console.log(`createdAt: ${interaction.createdAt}\n`);
+    // console.log(`createdTimestamp: ${interaction.createdTimestamp}`);
+  }
+
+  async decommission(interaction, type, embed, message = '\u27F3 expired') {
+    const { embeds, components } = JSON.parse(JSON.stringify(embed));
+    interaction.decommission = true;
+    switch (type) {
+      case 'queue': {
+        logDebug('decommission queue');
+        embeds[0].footer = { text: message };
+        for (const row of components) {
+          for (const button of row.components) { button.style = 2; }
+        }
+        components[0].components[1].style = 3;
+        await interaction.editReply({ embeds: embeds, components: components });
+        break;
+      }
+      case 'media': {
+        logDebug('decommission media');
+        embeds[0].footer = { text: message };
+        for (const button of components[0].components) { button.style = 2; }
+        components[0].components[2].label = (this.getPause()) ? 'Play' : 'Pause';
+        components[0].components[0].style = 3;
+        await interaction.editReply({ embeds: embeds, components: components });
+        break;
+      }
+
+      default: {
+        break;
+      }
+    }
+  }
+
+  async register(interaction, type, embed) {
+    const id = interaction.member.user.id;
+    if (!this.listeners[id]) { this.listeners[id] = {}; }
+
+    const name = interaction.member.user.username;
+
+    switch (type) {
+      case 'queue': {
+        const match = embed.embeds[0].fields[3]?.value.match(embedPage);
+        if (this.listeners[id].queue) {
+          this.listeners[id].queue.idleTimer.refresh();
+          this.listeners[id].queue.refreshTimer.refresh();
+          this.listeners[id].queue.refreshCount = 0;
+          this.listeners[id].queue.userPage = (match) ? Number(match[1]) : 1;
+          this.listeners[id].queue.followPlayhead = (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10));
+          logDebug(`old ${this.listeners[id].queue.interaction.message.id}`);
+          logDebug(`new ${interaction.message?.id}`);
+          if (this.listeners[id].queue.interaction.message.id != interaction.message?.id) {
+            const temp = this.listeners[id].queue.interaction;
+            this.listeners[id].queue.interaction = undefined;
+            (async () => this.decommission(temp, type, embed))();
+          }
+          this.listeners[id].queue.interaction = interaction;
+        } else {
+          this.listeners[id].queue = {
+            userPage : (match) ? Number(match[1]) : 1,
+            followPlayhead : (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10)),
+            refreshCount: 0,
+            interaction: interaction,
+            idleTimer: setInterval(async () => {
+              clearInterval(this.listeners[id].queue.idleTimer);
+              clearInterval(this.listeners[id].queue.refreshTimer);
+              await this.decommission(this.listeners[id].queue.interaction, 'queue', await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false));
+              delete this.listeners[id].queue;
+              if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
+            }, 870000).unref(),
+            refreshTimer: setInterval(async () => {
+              this.listeners[id].queue.refreshCount++;
+              this.listeners[id].queue.update(id, 'interval');
+            }, 15000).unref(),
+            getPage: function() {
+              if (this.listeners[id].queue.followPlayhead || this.listeners[id].queue.refreshCount > 2) {
+                this.listeners[id].queue.userPage = Math.ceil((this.getPlayhead() + 1) / 10);
+                this.listeners[id].queue.refreshCount = 0;
+                this.listeners[id].queue.followPlayhead = true;
+              }
+              return (this.listeners[id].queue.userPage);
+            }.bind(this),
+            update: async function(userId, description, content) {
+              content ||= await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false);
+              const message = `${name} queue: ${description}`;
+              if (this.listeners[userId].queue.interaction.decommission) {
+                logDebug(`decommission interrupt — ${message}`);
+                setImmediate(() => this.listeners[userId].queue.interaction.editReply(content)).unref();
+              } else {
+                logDebug(message);
+                this.listeners[userId].queue.interaction.message = await this.listeners[userId].queue.interaction.editReply(content);
+              }
+            }.bind(this),
+          };
+        }
+        break;
+      }
+
+      case 'media': {
+        if (this.listeners[id].media) {
+          this.listeners[id].media.idleTimer.refresh();
+          this.listeners[id].media.refreshTimer.refresh();
+          logDebug(`old ${this.listeners[id].media.interaction.message.id}`);
+          logDebug(`new ${interaction.message?.id}`);
+          if (this.listeners[id].media.interaction.message.id != interaction.message?.id) {
+            const temp = this.listeners[id].media.interaction;
+            this.listeners[id].media.interaction = undefined;
+            (async () => this.decommission(temp, type, embed))();
+          }
+          this.listeners[id].media.interaction = interaction;
+        } else {
+          this.listeners[id].media = {
+            interaction: interaction,
+            idleTimer: setInterval(async () => {
+              clearInterval(this.listeners[id].media.idleTimer);
+              clearInterval(this.listeners[id].media.refreshTimer);
+              await this.decommission(this.listeners[id].media.interaction, 'media', utils.mediaEmbed(this, false));
+              delete this.listeners[id].media;
+              if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
+            }, 870000).unref(),
+            refreshTimer: setInterval(() => {
+              this.listeners[id].media.update(id, 'interval');
+            }, 15000).unref(),
+            update: async function(userId, description, content = utils.mediaEmbed(this, false)) {
+              const message = `${name} media: ${description}`;
+              if (this.listeners[userId].media.interaction.decommission) {
+                logDebug(`decommission interrupt — ${message}`);
+                setImmediate(() => this.listeners[userId].media.interaction.editReply(content)).unref();
+              } else {
+                logDebug(message);
+                this.listeners[userId].media.interaction.message = await this.listeners[userId].media.interaction.editReply(content);
+              }
+            }.bind(this),
+          };
+        }
+        break;
+      }
+
+      default: {
+        logDebug(`register failing with type: ${type}`);
+        break;
+      }
+    }
+  }
+
+  sync(interaction, type, embed) {
+    switch (type) {
+      case 'queue': {
+        (async () => {
+          Object.keys(this.listeners).map((id) => this.listeners[id]?.queue?.update(id, 'sync'));
+        })();
+        break;
+      }
+      case 'media': { // .filter(id => id != userId)
+        Object.keys(this.listeners).map((id) => {
+          (async () => {
+            const { media, queue } = this.listeners[id];
+            const queueEmbed = (queue) ? await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
+            const promises = [media?.update(id, 'sync', embed), queue?.update(id, 'sync', queueEmbed)];
+            await Promise.all(promises);
+          })();
+        });
+        break;
+      }
+      default: {
+        logDebug(`player sync—bad case: ${type}`);
+        break;
+      }
+    }
   }
 }
 
