@@ -249,7 +249,7 @@ async function listPlaylists() {
 // userdb functions
 // *****************
 
-async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065'});
+async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
   // inserts a new user object into the database
   // returns null if unsuccessful
   try {
@@ -260,16 +260,11 @@ async function newUser(discord) { // usage: await newUser({ id:'1196780702222254
       // we don't have this in our database yet, so
       const object = {
         discord: {
-          'id':discord.id,
-          'nickname': (discord.guild) ? { [discord.guild]:{ 'current':discord?.nickname, 'old':[] } } : {},
-          'username':{
-            'current':discord.username,
-            'old':[],
-          },
-          'discriminator':{
-            'current':discord.discriminator,
-            'old':[],
-          },
+          id:discord.id,
+          locale:discord.locale,
+          nickname: (discord.guild) ? { [discord.guild]:{ current:discord?.nickname, old:[] } } : {},
+          username:{ current:discord.username, old:[] },
+          discriminator:{ current:discord.discriminator, old:[] },
         },
         stash: { playhead:0, tracks:[] },
       };
@@ -311,7 +306,8 @@ async function updateUser(discordid, field, data, guild) { // usage: const resul
       why = `discord.${field}.${guild}.current`;
       why2 = `discord.${field}.${guild}.old`;
     }
-    const update = (field === 'nickname') ? { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field][guild]?.current } } : { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field].current } };
+    let update = (field === 'nickname') ? { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field][guild]?.current } } : { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field].current } };
+    update = (field === 'locale') ? { $set: { 'discord.locale':data } } : update;
     const result = await userdb.updateOne({ 'discord.id': discordid }, update);
     logLine('database', [`Updating info for ${chalk.blue(discordid)}: ${chalk.green(field)} is now ${chalk.green(data)}`]);
     return result;

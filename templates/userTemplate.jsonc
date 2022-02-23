@@ -1,6 +1,7 @@
 {
   "discord": {
     "id":"string",
+    "locale":"en-US",
     "nickname": {
       "id":{
         "current":"string",
