@@ -266,6 +266,7 @@ function mediaEmbed(player, fresh = true) {
   return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
 }
 
+
 exports.generateTrackEmbed = generateTrackEmbed;
 exports.pickPride = pickPride;
 exports.generateQueueEmbed = generateQueueEmbed;

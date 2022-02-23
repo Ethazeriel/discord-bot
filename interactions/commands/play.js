@@ -42,7 +42,6 @@ module.exports = {
       const player = await Player.getPlayer(interaction);
       if (player) {
         let tracks = null;
-
         if (what === 'playlist') {
           if ((spotifyPattern.test(search) || youtubePattern.test(search))) {
             await interaction.followUp({ content: 'Playlist flag is for internal playlists, not external resources. See /help play or /help playlist for usage and interrelationship' });
