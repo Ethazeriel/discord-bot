@@ -136,8 +136,10 @@ module.exports = {
                 await interaction.followUp({ content: 'Queue is over.' });
                 return;
               }
+              console.log((interaction.options.getInteger('album-aware') == 1));
+              const embed = await utils.generateQueueEmbed(player, 'Current Queue:', Math.ceil((player.getPlayhead() + 1) / 10));
               player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
-              await Promise.all([player.register(interaction, 'queue'), player.sync(interaction, 'queue')]);
+              await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue')]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }

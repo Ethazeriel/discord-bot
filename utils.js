@@ -146,11 +146,11 @@ async function generateQueueEmbed(player, messagetitle, page, fresh = true) {
     } else { break;}
   }
   const bar = {
-    start: track.goose?.bar?.start || '[',
-    end: track.goose?.bar?.end || ']',
-    barbefore: track.goose?.bar?.barbefore || '#',
-    barafter: track.goose?.bar?.barafter || '-',
-    head: track.goose?.bar?.head || '#',
+    start: track?.goose?.bar?.start || '[',
+    end: track?.goose?.bar?.end || ']',
+    barbefore: track?.goose?.bar?.barbefore || '#',
+    barafter: track?.goose?.bar?.barafter || '-',
+    head: track?.goose?.bar?.head || '#',
   };
   const queueEmbed = {
     color: 0x3277a8,
