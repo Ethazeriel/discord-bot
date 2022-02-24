@@ -138,7 +138,7 @@ async function fromSpotify(search, partial = false) {
           // found by exact title & artist match, but different id. so merge ids and accept existing track
           db.addSpotifyId({ 'spotify.id': values[i].value.spotify.id }, resultId);
         }
-        logLine('track', [`[${i}] have '${title}'`]);
+        logLine('fetch', [`[${i}] have '${title}'`]);
         tracks[i] = values[i].value;
       } else {
         logLine('info', [` [${i}] lack '${title}'`]);
