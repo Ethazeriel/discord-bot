@@ -374,27 +374,29 @@ async function genericGet(query, collection) { // arc v1
   }
 }
 
-// trackdb
-exports.getTrack = getTrack;
-exports.insertTrack = insertTrack;
-exports.addKey = addKey;
-exports.addPlaylist = addPlaylist;
-exports.getPlaylist = getPlaylist;
-exports.removePlaylist = removePlaylist;
-exports.getAlbum = getAlbum;
-exports.printCount = printCount;
-exports.closeDB = closeDB;
-exports.listPlaylists = listPlaylists;
-exports.removeTrack = removeTrack;
-exports.switchAlternate = switchAlternate;
-exports.updateTrack = updateTrack;
-exports.addSpotifyId = addSpotifyId;
-// generics
-exports.genericUpdate = genericUpdate;
-exports.genericGet = genericGet;
-// userdb
-exports.newUser = newUser;
-exports.getUser = getUser;
-exports.saveStash = saveStash;
-exports.getStash = getStash;
-exports.updateUser = updateUser;
+module.exports = {
+  // trackdb
+  getTrack,
+  insertTrack,
+  addKey,
+  addPlaylist,
+  getPlaylist,
+  removePlaylist,
+  getAlbum,
+  printCount,
+  closeDB,
+  listPlaylists,
+  removeTrack,
+  switchAlternate,
+  updateTrack,
+  addSpotifyId,
+  // generic
+  genericUpdate,
+  genericGet,
+  // userdb
+  newUser,
+  getUser,
+  saveStash,
+  getStash,
+  updateUser,
+};
