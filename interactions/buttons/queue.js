@@ -14,11 +14,13 @@ module.exports = {
         const match = interaction.message.embeds[0].fields[3]?.value.match(embedPage);
         let page = (match) ? Number(match[1]) : 1;
         switch (which) {
-          case 'prev': page--; break;
           case 'refresh': break;
+          case 'prev': page--; break;
+          case 'home': page = Math.ceil((player.getPlayhead() + 1) / 10); break;
           case 'next': page++; break;
           case 'loop': player.toggleLoop(); break;
           case 'shuffle': player.shuffle(); break;
+          case 'showmedia': break;
           default: logDebug(`queue buttons—bad case: ${which}`); return;
         }
         const embed = await utils.generateQueueEmbed(player, 'Current Queue:', page, false);

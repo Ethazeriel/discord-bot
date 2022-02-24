@@ -15,6 +15,7 @@ module.exports = {
           case 'prev': await player.prev(); break;
           case 'pause': await player.togglePause(); break;
           case 'next': await player.next(); break;
+          case 'showqueue': break;
           default: logDebug(`media buttons—bad case: ${which}`); return;
         }
         const embed = utils.mediaEmbed(player, false);

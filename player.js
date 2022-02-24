@@ -254,7 +254,7 @@ class Player {
         for (const row of components) {
           for (const button of row.components) { button.style = 2; }
         }
-        components[0].components[1].style = 3;
+        components[0].components[0].style = 3;
         await interaction.editReply({ embeds: embeds, components: components });
         break;
       }
