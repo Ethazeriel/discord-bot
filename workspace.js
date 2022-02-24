@@ -2,12 +2,17 @@ const Player = require('./player.js');
 const { MessageAttachment } = require('discord.js');
 const utils = require('./utils.js');
 const db = require('./database.js');
+const { logDebug } = require('./logger.js');
 
 class Workspace {
   static #workspaces = {};
   constructor(userid) {
     this.list = [];
     this.id = userid;
+    this.expiry = setTimeout(() => {
+      logDebug(`Timeout reached; removing workspace for user ${this.id}`);
+      Workspace.clearWorkspace(this.id);
+    }, 3600000).unref(); // hour timeout to clear workspaces that haven't been interacted with
   }
 
   static getWorkspace(userid) {
@@ -15,15 +20,22 @@ class Workspace {
     return workspace;
   }
 
+  static clearWorkspace(userid) {
+    delete Workspace.#workspaces[userid];
+  }
+
   removeTrack(index) {
+    this.expiry.refresh();
     this.list.splice(index, 1);
   }
 
   emptyList() {
+    this.expiry.refresh();
     this.list.length = 0;
   }
 
   async importQueue(interaction) {
+    this.expiry.refresh();
     const player = await Player.getPlayer(interaction);
     if (player) {
       const queue = player.getQueue();
@@ -33,6 +45,7 @@ class Workspace {
   }
 
   addTracks(tracks, index) {
+    this.expiry.refresh();
     let where = index;
     for (const track of tracks) {
       this.list.splice(where, 0, track);
@@ -42,12 +55,14 @@ class Workspace {
   }
 
   moveTrack(fromindex, toindex) {
+    this.expiry.refresh();
     const track = this.list.splice(fromindex, 1);
     this.list.splice(toindex, 0, track[0]);
     return track;
   }
 
   async makeEmbed(messagetitle, page, fresh = true) {
+    this.expiry.refresh();
     page = Math.abs(page) || 1;
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'thumb.jpg')) : null;
     const pages = Math.ceil(this.list.length / 10); // this should be the total number of pages? rounding up
@@ -92,5 +107,7 @@ class Workspace {
   }
 
 }
+
 exports.Workspace = Workspace;
 exports.getWorkspace = Workspace.getWorkspace;
+exports.clearWorkspace = Workspace.clearWorkspace;
