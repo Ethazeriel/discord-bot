@@ -124,13 +124,21 @@ module.exports = {
           }
 
           case 'loop': {
-            const looping = await player.toggleLoop();
-            await interaction.followUp({ content: (looping) ? 'Enabled Queue Loop.' : 'Disabled Queue Loop.' });
+            await player.toggleLoop();
+            await Promise.all([player.register(interaction, 'queue'), player.sync(interaction, 'queue')]);
             break;
           }
 
           case 'shuffle': {
-            await interaction.followUp({ content: 'Not implemented yet.' });
+            const length = player.getQueue().length;
+            if (length) {
+              if (length == player.getPlayhead()) {
+                await interaction.followUp({ content: 'Queue is over.' });
+                return;
+              }
+              player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
+              await Promise.all([player.register(interaction, 'queue'), player.sync(interaction, 'queue')]);
+            } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }
 

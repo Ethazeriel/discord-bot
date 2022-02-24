@@ -1,5 +1,6 @@
 const youtubedl = require('youtube-dl-exec').raw;
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
+const crypto = require('crypto');
 
 const db = require('./database.js');
 const { logLine, logDebug } = require('./logger.js');
@@ -7,6 +8,7 @@ const { useragent } = require('./config.json').youtube;
 
 const utils = require('./utils');
 const { embedPage } = require('./regexes.js');
+const chalk = require('chalk');
 
 class Player {
   // acquisition
@@ -184,8 +186,77 @@ class Player {
     return ({ content:'No seek yet :c' });
   }
 
-  shuffle({ albumAware = false } = {}) {
-    return ({ content:'No shuffle yet :c' });
+  #chalks = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'gray'];
+  #location = 0;
+  #pickChalk() {
+    if (this.#location == this.#chalks.length) { this.#location = 0; }
+    return (this.#chalks[this.#location++]);
+  }
+
+  #randomizer(length) {
+    const random = [];
+    for (let i = 0; i < length; i++) { random[i] = [i]; }
+    for (let i = 0; i < (length - 2); i++) {
+      const j = crypto.randomInt(i, length);
+      const temp = random[j];
+      random[j] = random[i];
+      random[i] = temp;
+    }
+    return (random);
+  }
+
+  shuffle({ albumAware = false } = {}) { // idle check for end of non looping queue and reset
+    const playhead = this.getPlayhead() + 1;
+    const tracks = this.getQueue();
+    const remainder = tracks.slice(playhead);
+    tracks.length = playhead;
+
+    if (albumAware) { remainder.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1); }
+    remainder.sort((a, b) => (a.album.name === b.album.name) ? 0 : (a.album.name < b.album.name) ? -1 : 1);
+    remainder.sort((a, b) => (a.artist.name === b.artist.name) ? 0 : (a.artist.name < b.artist.name) ? -1 : 1);
+    const field = (albumAware) ? 'album' : 'artist';
+    const outer = [];
+    for (let inner = 0, index = 0; index < remainder.length; index++) {
+      if (outer[inner] && outer[inner][0] && outer[inner][0][field].name !== remainder[index][field].name) inner++;
+      if (!outer[inner]) { (outer[inner] = []); }
+      outer[inner].push(remainder[index]);
+    }
+    let length = 0;
+    for (const inner of outer) {
+      const color = this.#pickChalk();
+      for (const item of inner) { item.color = color; }
+      length += Object.keys(inner).length;
+    }
+    const offsets = [];
+    for (let i = 0; i < outer.length; i++) { offsets.push(crypto.randomInt(length * 100)); }
+    const sparse = new Array(length * 100);
+    for (const [index, inner] of outer.entries()) {
+      let position;
+      const offset = offsets[index];
+      if (albumAware) {
+        position = offset;
+        while (sparse[position]) { position++; }
+        sparse.splice(position, 0, ...inner);
+      } else {
+        const random = this.#randomizer(inner.length);
+        for (let i = 0; i < inner.length; i++) {
+          (!position) ? (position = offset) : (position = position + (sparse.length / inner.length));
+          if (position > sparse.length) { position = Math.abs(position - sparse.length); }
+          sparse.splice(position, 0, inner[random[i]]);
+        }
+      }
+    }
+    const notSparse = sparse.filter((element) => element);
+
+    for (const [index, track] of notSparse.entries()) {
+      console.log(chalk[track.color](`index: ${index}, goose: ${track.goose.id}`));
+    }
+
+    tracks.splice(playhead, 0, ...notSparse);
+    // for (const [index, track] of this.getQueue().entries()) {
+    //   console.log(`index: ${index}, goose: ${track.goose.id}`);
+    // }
+    // return ({ content:'No shuffle yet :c' });
   }
 
   togglePause({ force } = {}) {
@@ -206,7 +277,6 @@ class Player {
   // information
 
   getPrev() {
-    // const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop && length > 0) ? length - 1 : 0)();
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
     return (this.queue.tracks[position]);
   }
@@ -289,8 +359,6 @@ class Player {
           this.listeners[id].queue.refreshCount = 0;
           this.listeners[id].queue.userPage = (match) ? Number(match[1]) : 1;
           this.listeners[id].queue.followPlayhead = (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10));
-          logDebug(`old ${this.listeners[id].queue.interaction.message.id}`);
-          logDebug(`new ${interaction.message?.id}`);
           if (this.listeners[id].queue.interaction.message.id != interaction.message?.id) {
             const temp = this.listeners[id].queue.interaction;
             this.listeners[id].queue.interaction = undefined;
@@ -388,19 +456,19 @@ class Player {
   sync(interaction, type, embed) {
     switch (type) {
       case 'queue': {
-        (async () => {
-          Object.keys(this.listeners).map((id) => this.listeners[id]?.queue?.update(id, 'sync'));
-        })();
+        Object.keys(this.listeners).map(async (id) => {
+          const { queue } = this.listeners[id];
+          const queueEmbed = (queue) ? await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
+          this.listeners[id]?.queue?.update(id, 'sync', queueEmbed);
+        });
         break;
       }
-      case 'media': { // .filter(id => id != userId)
-        Object.keys(this.listeners).map((id) => {
-          (async () => {
-            const { media, queue } = this.listeners[id];
-            const queueEmbed = (queue) ? await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
-            const promises = [media?.update(id, 'sync', embed), queue?.update(id, 'sync', queueEmbed)];
-            await Promise.all(promises);
-          })();
+      case 'media': {
+        Object.keys(this.listeners).map(async (id) => {
+          const { media, queue } = this.listeners[id];
+          const queueEmbed = (queue) ? await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
+          const promises = [media?.update(id, 'sync', embed), queue?.update(id, 'sync', queueEmbed)];
+          await Promise.all(promises);
         });
         break;
       }

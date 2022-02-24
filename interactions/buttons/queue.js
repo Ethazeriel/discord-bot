@@ -24,7 +24,7 @@ module.exports = {
           default: logDebug(`queue buttons—bad case: ${which}`); return;
         }
         const embed = await utils.generateQueueEmbed(player, 'Current Queue:', page, false);
-        const action = (which === 'loop' || which === 'shuffle') ? (() => player.sync(interaction, 'queue', embed)) : (async () => await interaction.editReply(embed));
+        const action = (which === 'loop' || which === 'shuffle') ? (() => player.sync(interaction, 'queue')) : (async () => await interaction.editReply(embed));
         await Promise.all([player.register(interaction, 'queue', embed), action()]);
       } else { player.decommission(interaction, 'queue', await utils.generateQueueEmbed(player), 'Queue is empty.'); }
     }
