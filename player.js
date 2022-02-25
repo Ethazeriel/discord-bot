@@ -1,12 +1,12 @@
 const youtubedl = require('youtube-dl-exec').raw;
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const crypto = require('crypto');
-
+const { MessageAttachment } = require('discord.js');
 const db = require('./database.js');
 const { logLine, logDebug } = require('./logger.js');
 const { useragent } = require('./config.json').youtube;
 
-const utils = require('./utils');
+const utils = require('./utils.js');
 const { embedPage } = require('./regexes.js');
 const chalk = require('chalk');
 
@@ -306,6 +306,101 @@ class Player {
     return (this.queue.playhead);
   }
 
+  // embeds
+
+  mediaEmbed(fresh = true) {
+    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;
+    const track = this.getCurrent();
+    const embed = {
+      color: 0x3277a8,
+      author: { name: 'Current Track:', icon_url: utils.pickPride('fish') },
+      thumbnail: { url: 'attachment://art.jpg' },
+      fields: [
+        { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` : 'Nothing is playing.' },
+      ],
+    };
+    const buttons = [
+      {
+        type: 1,
+        components: [
+          { type: 2, custom_id: 'media-refresh', style: 2, label: 'Refresh', disabled: false },
+          { type: 2, custom_id: 'media-prev', style: 1, label: 'Previous', disabled: false },
+          { type: 2, custom_id: 'media-pause', style: 3, label: (this.getPause()) ? 'Play' : 'Pause', disabled: false },
+          { type: 2, custom_id: 'media-next', style: (this.getCurrent()) ? 1 : 2, label: 'Next', disabled: (this.getCurrent()) ? false : true },
+          { type: 2, custom_id: 'media-showqueue', style:1, label:'Show Queue' },
+          // { type: 2, custom_id: '', style: 2, label: '', disabled: false },
+        ],
+      },
+    ];
+    return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
+  }
+
+  async queueEmbed(messagetitle, page, fresh = true) {
+    const track = this.getCurrent();
+    const queue = this.getQueue();
+    page = Math.abs(page) || 1;
+    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
+    const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
+    const buttonEmbed = [
+      {
+        type: 1,
+        components: [
+          { type: 2, custom_id: 'queue-refresh', style:2, label:'Refresh' },
+          { type: 2, custom_id: 'queue-prev', style:1, label:'Previous', disabled: (page === 1) ? true : false },
+          { type: 2, custom_id: 'queue-home', style:2, label:'Home', disabled: (page === Math.ceil((this.getPlayhead() + 1) / 10)) ? true : false },
+          { type: 2, custom_id: 'queue-next', style:1, label:'Next', disabled: (page === pages) ? true : false },
+        ],
+      },
+      {
+        type: 1,
+        components: [
+          { type: 2, custom_id: 'queue-loop', style:(this.getLoop()) ? 4 : 3, label:(this.getLoop()) ? 'Disable loop' : 'Enable loop' },
+          { type: 2, custom_id: 'queue-shuffle', style:1, label:'Shuffle', disabled: false },
+          { type: 2, custom_id: 'queue-showmedia', style:1, label:'Show Media Player' },
+        ],
+      },
+    ];
+    if (pages === 0) { return { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://art.jpg' } }], components: buttonEmbed, ephemeral: true }; }
+    if (page > pages) { page = pages; }
+    const queuePart = queue.slice((page - 1) * 10, page * 10);
+    let queueStr = '';
+    for (let i = 0; i < queuePart.length; i++) {
+      const songNum = ((page - 1) * 10 + (i + 1));
+      const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
+      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.artist.name || ' ')} - [${(dbtrack.spotify.name || dbtrack.youtube.name)}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
+      queueStr = queueStr.concat(part);
+    }
+    let queueTime = 0;
+    for (const item of queue) { queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration); }
+    let elapsedTime = 0;
+    for (const [i, item] of queue.entries()) {
+      if (i < this.getPlayhead()) {
+        elapsedTime = elapsedTime + Number(item.youtube.duration || item.spotify.duration);
+      } else { break;}
+    }
+    const bar = {
+      start: track?.goose?.bar?.start || '[',
+      end: track?.goose?.bar?.end || ']',
+      barbefore: track?.goose?.bar?.barbefore || '#',
+      barafter: track?.goose?.bar?.barafter || '-',
+      head: track?.goose?.bar?.head || '#',
+    };
+    const embed = {
+      color: 0x3277a8,
+      author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
+      thumbnail: { url: 'attachment://art.jpg' },
+      fields: [
+        { name: 'Now Playing:', value: (track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}` : 'Nothing is playing.' },
+        { name: 'Queue:', value: queueStr },
+        { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
+        { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
+        { name: '\u200b', value: `${queue.length} tracks`, inline: true },
+        { name: `\` ${utils.progressBar(45, queueTime, elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(queueTime)}` },
+      ],
+    };
+    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } : { embeds: [embed], components: buttonEmbed };
+  }
+
   // testing
   test(interaction) {
     // console.log(interaction.member.user.id);
@@ -374,7 +469,7 @@ class Player {
             idleTimer: setInterval(async () => {
               clearInterval(this.listeners[id].queue.idleTimer);
               clearInterval(this.listeners[id].queue.refreshTimer);
-              await this.decommission(this.listeners[id].queue.interaction, 'queue', await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false));
+              await this.decommission(this.listeners[id].queue.interaction, 'queue', await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false));
               delete this.listeners[id].queue;
               if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
             }, 870000).unref(),
@@ -391,7 +486,7 @@ class Player {
               return (this.listeners[id].queue.userPage);
             }.bind(this),
             update: async function(userId, description, content) {
-              content ||= await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false);
+              content ||= await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false);
               const message = `${name} queue: ${description}`;
               if (this.listeners[userId].queue.interaction.decommission) {
                 logDebug(`decommission interrupt — ${message}`);
@@ -424,14 +519,14 @@ class Player {
             idleTimer: setInterval(async () => {
               clearInterval(this.listeners[id].media.idleTimer);
               clearInterval(this.listeners[id].media.refreshTimer);
-              await this.decommission(this.listeners[id].media.interaction, 'media', utils.mediaEmbed(this, false));
+              await this.decommission(this.listeners[id].media.interaction, 'media', this.mediaEmbed(false));
               delete this.listeners[id].media;
               if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
             }, 870000).unref(),
             refreshTimer: setInterval(() => {
               this.listeners[id].media.update(id, 'interval');
             }, 15000).unref(),
-            update: async function(userId, description, content = utils.mediaEmbed(this, false)) {
+            update: async function(userId, description, content = this.mediaEmbed(false)) {
               const message = `${name} media: ${description}`;
               if (this.listeners[userId].media.interaction.decommission) {
                 logDebug(`decommission interrupt — ${message}`);
@@ -458,7 +553,7 @@ class Player {
       case 'queue': {
         Object.keys(this.listeners).map(async (id) => {
           const { queue } = this.listeners[id];
-          const queueEmbed = (queue) ? await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
+          const queueEmbed = (queue) ? await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
           this.listeners[id]?.queue?.update(id, 'sync', queueEmbed);
         });
         break;
@@ -466,7 +561,7 @@ class Player {
       case 'media': {
         Object.keys(this.listeners).map(async (id) => {
           const { media, queue } = this.listeners[id];
-          const queueEmbed = (queue) ? await utils.generateQueueEmbed(this, 'Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
+          const queueEmbed = (queue) ? await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false) : undefined;
           const promises = [media?.update(id, 'sync', embed), queue?.update(id, 'sync', queueEmbed)];
           await Promise.all(promises);
         });

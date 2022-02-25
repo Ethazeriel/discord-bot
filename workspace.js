@@ -87,7 +87,7 @@ class Workspace {
     }
     let queueTime = 0;
     for (const item of this.list) { queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration); }
-    const queueEmbed = {
+    const embed = {
       color: utils.randomHexColor(),
       author: {
         name: messagetitle,
@@ -103,7 +103,7 @@ class Workspace {
         { name: '\u200b', value: `Duration: ${utils.timeDisplay(queueTime)}`, inline: true },
       ],
     };
-    return fresh ? { embeds: [queueEmbed], components: buttonEmbed, files: [thumb] } : { embeds: [queueEmbed], components: buttonEmbed };
+    return fresh ? { embeds: [embed], components: buttonEmbed, files: [thumb] } : { embeds: [embed], components: buttonEmbed };
   }
 
 }

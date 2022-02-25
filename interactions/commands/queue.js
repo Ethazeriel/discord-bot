@@ -1,9 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-
-// const music = require('../../music.js');
 const Player = require('../../player.js');
-const utils = require('../../utils.js');
-const { logLine, logDebug } = require('../../logger.js');
+const { logLine } = require('../../logger.js');
 
 
 module.exports = {
@@ -65,7 +62,7 @@ module.exports = {
           case 'show': {
             if (player.getQueue().length) {
               const page = Math.abs(interaction.options.getInteger('page')) || 1;
-              const embed = await utils.generateQueueEmbed(player, 'Current Queue:', page);
+              const embed = await player.queueEmbed('Current Queue:', page);
               interaction.message = await interaction.followUp(embed);
               player.register(interaction, 'queue', embed);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
@@ -75,7 +72,7 @@ module.exports = {
           case 'prev': {
             if (player.getQueue().length) {
               await player.prev();
-              const embed = utils.mediaEmbed(player);
+              const embed = player.mediaEmbed();
               await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
@@ -89,7 +86,7 @@ module.exports = {
                 return;
               }
               await player.next();
-              const embed = utils.mediaEmbed(player);
+              const embed = player.mediaEmbed();
               await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
@@ -98,7 +95,7 @@ module.exports = {
           case 'jump': {
             if (player.getQueue().length) {
               await player.jump(Math.abs((interaction.options.getInteger('position') || 1) - 1));
-              const embed = utils.mediaEmbed(player);
+              const embed = player.mediaEmbed();
               await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
@@ -117,7 +114,7 @@ module.exports = {
                 return;
               }
               player.togglePause();
-              const embed = utils.mediaEmbed(player);
+              const embed = player.mediaEmbed();
               await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
@@ -136,8 +133,7 @@ module.exports = {
                 await interaction.followUp({ content: 'Queue is over.' });
                 return;
               }
-              console.log((interaction.options.getInteger('album-aware') == 1));
-              const embed = await utils.generateQueueEmbed(player, 'Current Queue:', Math.ceil((player.getPlayhead() + 1) / 10));
+              const embed = await player.queueEmbed('Current Queue:', Math.ceil((player.getPlayhead() + 1) / 10));
               player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
               await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue')]);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }

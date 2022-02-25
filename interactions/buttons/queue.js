@@ -1,5 +1,4 @@
 const { embedPage } = require('../../regexes.js');
-const utils = require('../../utils.js');
 const Player = require('../../player.js');
 const { logDebug } = require('../../logger.js');
 
@@ -23,10 +22,10 @@ module.exports = {
           case 'showmedia': break;
           default: logDebug(`queue buttons—bad case: ${which}`); return;
         }
-        const embed = await utils.generateQueueEmbed(player, 'Current Queue:', page, false);
+        const embed = await player.queueEmbed('Current Queue:', page, false);
         const action = (which === 'loop' || which === 'shuffle') ? (() => player.sync(interaction, 'queue')) : (async () => await interaction.editReply(embed));
         await Promise.all([player.register(interaction, 'queue', embed), action()]);
-      } else { player.decommission(interaction, 'queue', await utils.generateQueueEmbed(player), 'Queue is empty.'); }
+      } else { player.decommission(interaction, 'queue', await player.queueEmbed(), 'Queue is empty.'); }
     }
   },
 };

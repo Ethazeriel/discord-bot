@@ -1,4 +1,3 @@
-const utils = require('../../utils.js');
 const Player = require('../../player.js');
 const { logDebug } = require('../../logger.js');
 
@@ -18,10 +17,10 @@ module.exports = {
           case 'showqueue': break;
           default: logDebug(`media buttons—bad case: ${which}`); return;
         }
-        const embed = utils.mediaEmbed(player, false);
+        const embed = player.mediaEmbed(false);
         const action = (which === 'refresh') ? (async () => await interaction.editReply(embed)) : (() => player.sync(interaction, 'media', embed));
         await Promise.all([player.register(interaction, 'media', embed), action()]);
-      } else { await player.decommission(interaction, 'media', utils.mediaEmbed(player, false), 'Queue is empty.'); }
+      } else { await player.decommission(interaction, 'media', player.mediaEmbed(false), 'Queue is empty.'); }
     }
   },
 };

@@ -72,7 +72,7 @@ module.exports = {
                 const message = await utils.generateTrackEmbed(tracks[0], 'Playing Now: ');
                 await interaction.followUp(message);
               } else {
-                const message = await utils.generateQueueEmbed(player, 'Playing Now: ', 1);
+                const message = await player.queueEmbed('Playing Now: ', 1);
                 await interaction.followUp(message);
               }
               break;
@@ -84,7 +84,7 @@ module.exports = {
                 const message = await utils.generateTrackEmbed(tracks[0], 'Playing Next: ');
                 await interaction.followUp(message);
               } else {
-                const message = await utils.generateQueueEmbed(player, 'Playing Next: ', 1);
+                const message = await player.queueEmbed('Playing Next: ', 1);
                 await interaction.followUp(message);
               }
               break;
@@ -96,7 +96,7 @@ module.exports = {
                 await interaction.followUp(message);
               } else {
                 // await sleep(500);
-                const message = await utils.generateQueueEmbed(player, 'Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+                const message = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
                 await interaction.followUp(message);
               }
               break;

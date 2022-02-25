@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Player = require('../../player.js');
-const utils = require('../../utils.js');
+
 
 const { logLine, logDebug } = require('../../logger.js');
 
@@ -26,15 +26,15 @@ module.exports = {
           }
 
           case 'reg1': {
-            player.reg1(interaction, (async () => utils.generateQueueEmbed(player, 'Playing Next: ', 1)));
-            interaction.followUp(await utils.generateQueueEmbed(player, 'Playing Next: ', 1));
+            player.reg1(interaction, (async () => player.queueEmbed('Playing Next: ', 1)));
+            interaction.followUp(await player.queueEmbed('Playing Next: ', 1));
             break;
           }
 
           case 'reg2': {
-            const action = (async () => utils.generateQueueEmbed(player, 'Playing Next: ', 1));
+            const action = (async () => player.queueEmbed('Playing Next: ', 1));
             player.reg2(interaction, action);
-            interaction.followUp(await utils.generateQueueEmbed(player, 'Playing Next: ', 1));
+            interaction.followUp(await player.queueEmbed('Playing Next: ', 1));
             break;
           }
 
@@ -44,7 +44,7 @@ module.exports = {
           }
 
           case 'media': {
-            const embed = utils.mediaEmbed(player);
+            const embed = player.mediaEmbed();
             interaction.message = await interaction.followUp(embed);
             await player.register(interaction, 'media', embed);
             break;

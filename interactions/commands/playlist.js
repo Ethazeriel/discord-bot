@@ -143,7 +143,7 @@ module.exports = {
           const player = await Player.getPlayer(interaction);
           if (player) {
             const length = await player.queueLast(workspace.list);
-            const message = await utils.generateQueueEmbed(player, 'Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
+            const message = await player.queueEmbed('Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
             await interaction.followUp(message);
           }
           break;
