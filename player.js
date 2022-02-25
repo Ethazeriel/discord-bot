@@ -1,16 +1,17 @@
-const youtubedl = require('youtube-dl-exec').raw;
-const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
-const crypto = require('crypto');
-const { MessageAttachment } = require('discord.js');
-const db = require('./database.js');
-const { logLine, logDebug } = require('./logger.js');
-const { useragent } = require('./config.json').youtube;
+import fs from 'fs';
+import youtubedl from 'youtube-dl-exec';
+import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } from '@discordjs/voice';
+import crypto from 'crypto';
+import { MessageAttachment } from 'discord.js';
+import * as db from './database.js';
+import { logLine, logDebug } from './logger.js';
+const { useragent } = JSON.parse(fs.readFileSync('./config.json')).youtube;
 
-const utils = require('./utils.js');
-const { embedPage } = require('./regexes.js');
-const chalk = require('chalk');
+import * as utils from './utils.js';
+import { embedPage } from './regexes.js';
+import chalk from 'chalk';
 
-class Player {
+export default class Player {
   // acquisition
   static #players = [];
   constructor(interaction) {
@@ -110,7 +111,7 @@ class Player {
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const resource = createAudioResource(youtubedl(track.youtube.id, {
+        const resource = createAudioResource(youtubedl.raw(track.youtube.id, {
           o: '-',
           q: '',
           'force-ipv4': '',
@@ -574,7 +575,3 @@ class Player {
     }
   }
 }
-
-exports.getPlayer = Player.getPlayer;
-exports.leave = Player.leave;
-exports.Player = Player;

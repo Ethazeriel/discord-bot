@@ -1,11 +1,11 @@
-const axios = require('axios').default;
-const ytdl = require('ytdl-core');
-const crypto = require('crypto');
-
-const db = require('./database.js');
-const { logLine, logSpace, logDebug } = require('./logger.js');
-const { spotify, youtube } = require('./config.json');
-const { youtubePattern, spotifyPattern, sanitize } = require('./regexes.js');
+import fs from 'fs';
+import axios from 'axios';
+import ytdl from 'ytdl-core';
+import crypto from 'crypto';
+import * as db from './database.js';
+import { logLine, logSpace, logDebug } from './logger.js';
+const { spotify, youtube } = JSON.parse(fs.readFileSync('./config.json'));
+import { youtubePattern, spotifyPattern, sanitize } from './regexes.js';
 
 spotify.auth = {
   url: 'https://accounts.spotify.com/api/token',
@@ -19,7 +19,7 @@ spotify.auth = {
   timeout: 1000,
 };
 
-async function fetch(search) {
+export default async function fetch(search) {
   search = search.replace(sanitize, ''); // destructive removal of invalid symbols
   search = search.trim(); // remove leading and trailing spaces
 
@@ -359,5 +359,3 @@ async function fromYoutube(search) {
     return (Array(track));
   }
 }
-
-exports.fetch = fetch;

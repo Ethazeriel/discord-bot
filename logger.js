@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
-const fs = require('fs');
-const chalk = require('chalk');
-const { sanitize } = require('./regexes.js');
-const debugMode = require('./config.json').debug;
+import fs from 'fs';
+import chalk from 'chalk';
+import { sanitize } from './regexes.js';
+const debugMode = JSON.parse(fs.readFileSync('./config.json')).debug;
+
 
 function currentDT() {
   const date = new Date();
@@ -19,7 +20,7 @@ function currentDT() {
   return `[${date.getFullYear()}-${month}-${day}|${hour}:${minute}:${second}]`;
 }
 
-async function logLine(level, args) {
+export async function logLine(level, args) {
   level = level.toUpperCase();
   let logStr = '';
   for (let i = 0; i < args.length; i++) {
@@ -95,7 +96,7 @@ async function logLine(level, args) {
 
 }
 
-async function logCommand(interaction) {
+export async function logCommand(interaction) {
   // takes an interaction, logs relevant details to file and console
   // for console
   let conStr = `Guild: ${chalk.blue(interaction.guildId ? interaction.member.guild.name.replace(sanitize, '').trim() : 'DM')}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Command: ${chalk.cyan(interaction.commandName)}`;
@@ -132,7 +133,7 @@ async function logCommand(interaction) {
   });
 }
 
-async function logComponent(interaction) {
+export async function logComponent(interaction) {
   // takes an interaction, logs relevant details to file and console
   // for console
   let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan(interaction.message.interaction?.commandName || 'component')}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;
@@ -155,7 +156,7 @@ async function logComponent(interaction) {
   });
 }
 
-async function logDebug(...message) {
+export async function logDebug(...message) {
   if (debugMode) {
     let logStr = '';
     for (let i = 0; i < message.length; i++) {
@@ -165,12 +166,6 @@ async function logDebug(...message) {
   }
 }
 
-async function logSpace() {
+export async function logSpace() {
   console.log();
 }
-
-exports.logLine = logLine;
-exports.logCommand = logCommand;
-exports.logComponent = logComponent;
-exports.logDebug = logDebug;
-exports.logSpace = logSpace;

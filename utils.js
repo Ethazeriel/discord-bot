@@ -1,9 +1,9 @@
-const { MessageAttachment } = require('discord.js');
-const { logLine } = require('./logger.js');
-const Canvas = require('canvas');
-const crypto = require('crypto');
+import { MessageAttachment } from 'discord.js';
+import { logLine } from './logger.js';
+import Canvas from 'canvas';
+import crypto from 'crypto';
 
-function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
+export function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
   start ??= '|';
   end ??= '|';
   barbefore ??= '-';
@@ -23,7 +23,7 @@ function progressBar(size, duration, playhead, { start, end, barbefore, barafter
   return result;
 }
 
-function pickPride(type, detail) {
+export function pickPride(type, detail) {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
   let ranpride = pridearray[Math.floor(Math.random() * pridearray.length)];
   if (ranpride == 'pride') {
@@ -40,7 +40,7 @@ function pickPride(type, detail) {
   return prideStr;
 }
 
-async function prideSticker(interaction, type) {
+export async function prideSticker(interaction, type) {
   const size = {
     heart:{ width:160, height:160 },
     dab:{ width:160, height:100 },
@@ -66,11 +66,11 @@ async function prideSticker(interaction, type) {
 
 }
 
-function timeDisplay(seconds) {
+export function timeDisplay(seconds) {
   return new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
 }
 
-function randomHexColor() {
+export function randomHexColor() {
   return Number(`0x${crypto.randomBytes(3).toString('hex')}`);
 }
 
@@ -78,7 +78,7 @@ function randomHexColor() {
 //               EMBEDS
 // =================================
 
-async function generateTrackEmbed(track, messagetitle) {
+export async function generateTrackEmbed(track, messagetitle) {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
   const npEmbed = {
     color: 0x580087,
@@ -99,12 +99,3 @@ async function generateTrackEmbed(track, messagetitle) {
     logLine('error', [error.stack]);
   }
 }
-
-module.exports = {
-  generateTrackEmbed,
-  pickPride,
-  prideSticker,
-  progressBar,
-  randomHexColor,
-  timeDisplay,
-};

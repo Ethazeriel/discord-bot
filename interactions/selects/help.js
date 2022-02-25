@@ -1,11 +1,9 @@
-const help = require('../commands/help.js');
+import { helpEmbed } from '../commands/help.js';
 
-module.exports = {
-  name: 'help',
+export const name = 'help';
 
-  async execute(interaction) { // dropdown selection function
-    const choice = interaction.values[0];
-    const result = help.helpEmbed(choice);
-    await interaction.update(result);
-  },
-};
+export async function execute(interaction) { // dropdown selection function
+  const choice = interaction.values[0];
+  const result = helpEmbed(choice);
+  await interaction.update(result);
+}

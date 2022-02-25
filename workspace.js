@@ -1,10 +1,10 @@
-const Player = require('./player.js');
-const { MessageAttachment } = require('discord.js');
-const utils = require('./utils.js');
-const db = require('./database.js');
-const { logDebug } = require('./logger.js');
+import Player from './player.js';
+import { MessageAttachment } from 'discord.js';
+import * as utils from './utils.js';
+import * as db from './database.js';
+import { logDebug } from './logger.js';
 
-class Workspace {
+export default class Workspace {
   static #workspaces = {};
   constructor(userid) {
     this.list = [];
@@ -107,7 +107,3 @@ class Workspace {
   }
 
 }
-
-exports.Workspace = Workspace;
-exports.getWorkspace = Workspace.getWorkspace;
-exports.clearWorkspace = Workspace.clearWorkspace;

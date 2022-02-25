@@ -2,7 +2,7 @@
 const MongoClient = require('mongodb').MongoClient;
 const { logLine } = require('../logger.js');
 const { mongo } = require('../config.json');
-const chalk = require('chalk');
+import chalk from 'chalk';
 const ytdl = require('ytdl-core');
 const url = mongo.url;
 const dbname = mongo.database;

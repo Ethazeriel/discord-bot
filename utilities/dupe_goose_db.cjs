@@ -2,7 +2,7 @@
 const MongoClient = require('mongodb').MongoClient;
 const { logLine } = require('../logger.js');
 const { mongo } = require('../config.json');
-const chalk = require('chalk');
+import chalk from 'chalk';
 const url = mongo.url;
 const proddb = 'goose';
 const prodtrackcol = 'tracks';

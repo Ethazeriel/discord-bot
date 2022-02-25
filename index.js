@@ -1,11 +1,11 @@
-const fs = require('fs');
+import fs from 'fs';
 // Require the necessary discord.js classes
-const { Client, Collection, Intents } = require('discord.js');
-const { token } = require('./config.json').discord;
-const { logLine, logCommand, logComponent, logDebug } = require('./logger.js');
+import { Client, Collection, Intents } from 'discord.js';
+const { token } = JSON.parse(fs.readFileSync('./config.json')).discord;
+import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 // const { leaveVoice } = require('./music');
-const database = require('./database.js');
-const chalk = require('chalk');
+import * as database from './database.js';
+import chalk from 'chalk';
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES] });
@@ -14,19 +14,19 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_
 client.commands = new Collection();
 const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-  const command = require(`./interactions/commands/${file}`);
+  const command = await import(`./interactions/commands/${file}`);
   client.commands.set(command.data.name, command);
 }
 const buttons = new Collection();
 const buttonFiles = fs.readdirSync('./interactions/buttons').filter(file => file.endsWith('.js'));
 for (const file of buttonFiles) {
-  const button = require(`./interactions/buttons/${file}`);
+  const button = await import(`./interactions/buttons/${file}`);
   buttons.set(button.name, button);
 }
 const selects = new Collection();
 const selectFiles = fs.readdirSync('./interactions/selects').filter(file => file.endsWith('.js'));
 for (const file of selectFiles) {
-  const select = require(`./interactions/selects/${file}`);
+  const select = await import(`./interactions/selects/${file}`);
   selects.set(select.name, select);
 }
 

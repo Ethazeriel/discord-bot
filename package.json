@@ -1,12 +1,13 @@
 {
   "name": "discord-bot",
   "version": "1.0.0",
-  "description": "eth discord bot",
+  "description": "GOOSE",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Ethazeriel, Whuppee",
   "license": "CC BY-NC-SA 4.0",
   "dependencies": {
     "@discordjs/builders": "^0.6.0",
@@ -15,7 +16,7 @@
     "@discordjs/voice": "^0.6.0",
     "axios": "^0.24.0",
     "canvas": "^2.8.0",
-    "chalk": "^4.1.2",
+    "chalk": "^5.0.0",
     "discord-api-types": "^0.23.1",
     "discord.js": "^13.5.0",
     "express": "^4.17.1",

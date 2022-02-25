@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
-const youtubePattern = /(?:youtube\.com|youtu\.be)(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]{11})(\S+)?/;
-const spotifyPattern = /(?:spotify\.com|spotify)(?:\/|:)((?:track|playlist|album){1})(?:\/|:)([a-zA-Z0-9]{22})/;
+export const youtubePattern = /(?:youtube\.com|youtu\.be)(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]{11})(\S+)?/;
+export const spotifyPattern = /(?:spotify\.com|spotify)(?:\/|:)((?:track|playlist|album){1})(?:\/|:)([a-zA-Z0-9]{22})/;
 /* usage:
 pattern.test(string); // boolean
 const match = string.match(pattern);
@@ -12,14 +12,8 @@ match[2] is ID
 match[3+] will be for any trailing parameters we may want later, and currently exists only as a catchall only on the youtubePattern
 */
 
-const sanitize = /([^\w :/.?=&-])+/g;
+export const sanitize = /([^\w :/.?=&-])+/g;
 // usage: string.replace(sanitize, ''); // destructive removal of invalid symbols
 
-const sanitizePlaylists = /([^\w :/?=&-])+|(\.$)+/g;
-const embedPage = /(?:Page )(\d+)(?: of )(\d+)/;
-
-exports.sanitize = sanitize;
-exports.spotifyPattern = spotifyPattern;
-exports.youtubePattern = youtubePattern;
-exports.sanitizePlaylists = sanitizePlaylists;
-exports.embedPage = embedPage;
+export const sanitizePlaylists = /([^\w :/?=&-])+|(\.$)+/g;
+export const embedPage = /(?:Page )(\d+)(?: of )(\d+)/;
