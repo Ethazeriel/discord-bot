@@ -24,7 +24,7 @@ module.exports = {
         }
         const embed = (which === 'showmedia') ? await player.mediaEmbed() : await player.queueEmbed('Current Queue:', page, false);
         const action = (which === 'loop' || which === 'shuffle') ? (() => player.sync(interaction, 'queue')) : (async () => await interaction.editReply(embed));
-        (which === 'showmedia') ? await Promise.all([interaction.editReply(embed), player.register(interaction, 'media', embed)]) : await Promise.all([player.register(interaction, 'queue', embed), action()]);
+        await Promise.all([player.register(interaction, (which === 'showmedia') ? 'media' : 'queue', embed), action()]);
       } else { player.decommission(interaction, 'queue', await player.queueEmbed(), 'Queue is empty.'); }
     }
   },
