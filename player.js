@@ -338,7 +338,7 @@ class Player {
   async queueEmbed(messagetitle, page, fresh = true) {
     const track = this.getCurrent();
     const queue = this.getQueue();
-    page = Math.abs(page) || 1;
+    page = Math.abs(page) || Math.ceil((this.getPlayhead() + 1) / 10);
     const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
     const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
     const buttonEmbed = [

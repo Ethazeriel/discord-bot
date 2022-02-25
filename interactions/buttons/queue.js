@@ -6,7 +6,7 @@ module.exports = {
   name:'queue',
 
   async execute(interaction, which) {
-    await interaction.deferUpdate({ ephemeral: true });
+    (which === 'showmedia') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true });
     const player = await Player.getPlayer(interaction);
     if (player) {
       if (player.getQueue().length) {
@@ -19,12 +19,12 @@ module.exports = {
           case 'next': page++; break;
           case 'loop': player.toggleLoop(); break;
           case 'shuffle': player.shuffle(); break;
-          case 'showmedia': break;
+          case 'showmedia': /* empty case as is handled through ternaries */ break;
           default: logDebug(`queue buttons—bad case: ${which}`); return;
         }
-        const embed = await player.queueEmbed('Current Queue:', page, false);
+        const embed = (which === 'showmedia') ? await player.mediaEmbed() : await player.queueEmbed('Current Queue:', page, false);
         const action = (which === 'loop' || which === 'shuffle') ? (() => player.sync(interaction, 'queue')) : (async () => await interaction.editReply(embed));
-        await Promise.all([player.register(interaction, 'queue', embed), action()]);
+        (which === 'showmedia') ? await Promise.all([interaction.editReply(embed), player.register(interaction, 'media', embed)]) : await Promise.all([player.register(interaction, 'queue', embed), action()]);
       } else { player.decommission(interaction, 'queue', await player.queueEmbed(), 'Queue is empty.'); }
     }
   },

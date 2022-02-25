@@ -135,9 +135,9 @@ async function logCommand(interaction) {
 async function logComponent(interaction) {
   // takes an interaction, logs relevant details to file and console
   // for console
-  let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan(interaction.message.interaction.commandName)}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;
+  let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan(interaction.message.interaction?.commandName || 'component')}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;
   // for file
-  let logStr = `Guild: ${interaction.member.guild.name.replace(sanitize, '').trim()}(${interaction.guildId}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Source: ${interaction.message.interaction.commandName}(${interaction.message.interaction.id}), Type: ${interaction.componentType}, ID: ${interaction.customId}`;
+  let logStr = `Guild: ${interaction.member.guild.name.replace(sanitize, '').trim()}(${interaction.guildId}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Source: ${interaction.message.interaction?.commandName || 'component'}(${interaction.message.id}), Type: ${interaction.componentType}, ID: ${interaction.customId}`;
   if (interaction.componentType == 'SELECT_MENU') {
     logStr = logStr.concat(', Values: ');
     conStr = conStr.concat(', Values: ');
