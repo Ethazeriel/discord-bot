@@ -1,9 +1,10 @@
 /* eslint-disable no-console */
-const MongoClient = require('mongodb').MongoClient;
-const { logLine } = require('../logger.js');
-const { mongo } = require('../config.json');
+import fs from 'fs';
+import { MongoClient } from 'mongodb';
+import { logLine } from './logger.js';
+const mongo = JSON.parse(fs.readFileSync('./config.json')).mongo;
 import chalk from 'chalk';
-const ytdl = require('ytdl-core');
+import ytdl from 'ytdl-core';
 const url = mongo.url;
 const dbname = mongo.database;
 const collname = mongo.collection;
