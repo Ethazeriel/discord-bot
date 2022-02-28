@@ -1,14 +1,15 @@
+/* eslint-disable no-fallthrough */
 import { MessageAttachment } from 'discord.js';
 import { logLine } from './logger.js';
 import Canvas from 'canvas';
 import crypto from 'crypto';
 
 export function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
-  start ??= '|';
-  end ??= '|';
+  start ??= '[';
+  end ??= ']';
   barbefore ??= '-';
   barafter ??= '-';
-  head ??= '0';
+  head ??= '#';
   let result = '';
   const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
   let before = parseInt((size - 2) * playperc) || 0;
@@ -67,7 +68,13 @@ export async function prideSticker(interaction, type) {
 }
 
 export function timeDisplay(seconds) {
-  return new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
+  let time = new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
+  switch (time.length) {
+    case 0: time = `0${time}`;
+    case 1: time = `0${time}`;
+    case 2: time = `0:${time}`;
+    default: return time;
+  }
 }
 
 export function randomHexColor() {

@@ -324,12 +324,21 @@ export default class Player {
   mediaEmbed(fresh = true) {
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;
     const track = this.getCurrent();
+    const bar = {
+      start: track?.goose?.bar?.start,
+      end: track?.goose?.bar?.end,
+      barbefore: track?.goose?.bar?.barbefore,
+      barafter: track?.goose?.bar?.barafter,
+      head: track?.goose?.bar?.head,
+    };
+    const elapsedTime = ((Date.now() / 1000) - track?.start) || 0;
     const embed = {
       color: 0x3277a8,
       author: { name: 'Current Track:', icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
         { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` : 'Nothing is playing.' },
+        { name: `\` ${utils.progressBar(45, (track.youtube.duration || track.spotify.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.youtube.duration || track.spotify.duration)}` },
       ],
     };
     const buttons = [
@@ -344,6 +353,12 @@ export default class Player {
           // { type: 2, custom_id: '', style: 2, label: '', disabled: false },
         ],
       },
+      // {
+      //   type:1,
+      //   components: [
+      //     { type: 2, custom_id: 'media-showqueue', style:1, label:'Show Queue' },
+      //   ],
+      // },
     ];
     return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
   }
@@ -385,7 +400,7 @@ export default class Player {
     }
     let queueTime = 0;
     for (const item of queue) { queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration); }
-    let elapsedTime = 0;
+    let elapsedTime = ((Date.now() / 1000) - track?.start) || 0;
     for (const [i, item] of queue.entries()) {
       if (i < this.getPlayhead()) {
         elapsedTime = elapsedTime + Number(item.youtube.duration || item.spotify.duration);
