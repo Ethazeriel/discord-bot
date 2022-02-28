@@ -29,7 +29,19 @@ export default class Player {
     this.player.on('stateChange', (oldState, newState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
-      if (newState.status == 'idle') { // Starts the next track in line when one finishes
+      if (newState.status == 'playing') {
+        this.queue.tracks[this.queue.playhead].start = (Date.now() / 1000);
+      } else if (newState.status == 'idle') {
+        const track = this.queue.tracks[this.queue.playhead];
+        const elapsed = (Date.now() / 1000) - track.start;
+        const duration = track.youtube.duration;
+        const difference = Math.abs(duration - elapsed);
+        const percentage = (100 * ((elapsed < duration) ? (elapsed / duration) : (duration / elapsed)));
+        if (difference > 10 || percentage < 95) {
+          logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`);
+          db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.errors': 1, 'goose.plays': 1 } });
+        } else { db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.plays': 1 } }); }
+
         this.next();
       }
     });
@@ -154,7 +166,7 @@ export default class Player {
     if (position < this.queue.playhead) {
       this.queue.playhead--;
     } else if (position == this.queue.playhead) {
-      await this.play();
+      await this.play(); // should either this or jump check for being paused?
     }
     return (removed);
   } // seems fine
@@ -206,44 +218,44 @@ export default class Player {
     return (random);
   }
 
-  shuffle({ albumAware = false } = {}) { // idle check for end of non looping queue and reset
+  shuffle({ albumAware = false } = {}) { // idle check for end of non looping queue and reset, also need to handle the wrap around of a looping queue
     const playhead = this.getPlayhead() + 1;
     const tracks = this.getQueue();
     const remainder = tracks.slice(playhead);
     tracks.length = playhead;
 
-    if (albumAware) { remainder.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1); }
-    remainder.sort((a, b) => (a.album.name === b.album.name) ? 0 : (a.album.name < b.album.name) ? -1 : 1);
+    if (albumAware) {
+      remainder.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1)
+        .sort((a, b) => (a.album.name === b.album.name) ? 0 : (a.album.name < b.album.name) ? -1 : 1);
+    }
     remainder.sort((a, b) => (a.artist.name === b.artist.name) ? 0 : (a.artist.name < b.artist.name) ? -1 : 1);
     const field = (albumAware) ? 'album' : 'artist';
-    const outer = [];
-    for (let inner = 0, index = 0; index < remainder.length; index++) {
-      if (outer[inner] && outer[inner][0] && outer[inner][0][field].name !== remainder[index][field].name) inner++;
-      if (!outer[inner]) { (outer[inner] = []); }
-      outer[inner].push(remainder[index]);
+    const groups = [];
+    for (let grouping = 0, trackIndex = 0; trackIndex < remainder.length; trackIndex++) {
+      if (groups[grouping] && groups[grouping][0] && groups[grouping][0][field].name !== remainder[trackIndex][field].name) grouping++;
+      if (!groups[grouping]) { (groups[grouping] = []); }
+      groups[grouping].push(remainder[trackIndex]);
     }
-    let length = 0;
-    for (const inner of outer) {
+    for (const grouping of groups) {
       const color = this.#pickChalk();
-      for (const item of inner) { item.color = color; }
-      length += Object.keys(inner).length;
+      for (const track of grouping) { track.color = color; }
     }
     const offsets = [];
-    for (let i = 0; i < outer.length; i++) { offsets.push(crypto.randomInt(length * 100)); }
-    const sparse = new Array(length * 100);
-    for (const [index, inner] of outer.entries()) {
+    for (let i = 0; i < groups.length; i++) { offsets.push(crypto.randomInt(remainder.length * 100)); }
+    const sparse = new Array(remainder.length * 100);
+    for (const [index, grouping] of groups.entries()) {
       let position;
       const offset = offsets[index];
       if (albumAware) {
         position = offset;
         while (sparse[position]) { position++; }
-        sparse.splice(position, 0, ...inner);
+        sparse.splice(position, 0, ...grouping);
       } else {
-        const random = this.#randomizer(inner.length);
-        for (let i = 0; i < inner.length; i++) {
-          (!position) ? (position = offset) : (position = position + (sparse.length / inner.length));
+        const random = this.#randomizer(grouping.length);
+        for (let i = 0; i < grouping.length; i++) {
+          (!position) ? (position = offset) : (position = position + (sparse.length / grouping.length));
           if (position > sparse.length) { position = Math.abs(position - sparse.length); }
-          sparse.splice(position, 0, inner[random[i]]);
+          sparse.splice(position, 0, grouping[random[i]]);
         }
       }
     }
