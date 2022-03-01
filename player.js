@@ -123,7 +123,7 @@ export default class Player {
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const resource = createAudioResource(youtubedl.raw(track.youtube.id, {
+        const resource = createAudioResource(youtubedl.raw(`https://www.youtube.com/watch?v=${track.youtube.id}`, {
           o: '-',
           q: '',
           'force-ipv4': '',
@@ -338,7 +338,7 @@ export default class Player {
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
         { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` : 'Nothing is playing.' },
-        { name: `\` ${utils.progressBar(45, (track.youtube.duration || track.spotify.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.youtube.duration || track.spotify.duration)}` },
+        { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.youtube.duration || track.spotify.duration)}` },
       ],
     };
     const buttons = [
