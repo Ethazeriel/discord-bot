@@ -327,7 +327,7 @@ export async function saveStash(discordid, playhead, queue) { // usage: const re
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
-    logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.index)}, ${chalk.green(stash.tracks.length)} tracks`]);
+    logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green(stash.tracks.length)} tracks`]);
     return result;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);

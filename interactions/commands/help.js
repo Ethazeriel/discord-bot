@@ -84,6 +84,7 @@ export function helpEmbed(section) {
         { name: 'Shuffle', value: 'When invoked, shuffles the queue. By default, this uses a pseudo-random algorithm to shuffle all tracks after the playhead (ie. it will not shuffle things that have already played). If looping is turned on, this will shuffle the entire queue and place you at the beginning. Optionally, select "Yes" in the "album-aware" argument to run an album-aware shuffle algorithm that will keep whole albums together and randomly shuffle those instead of individual tracks.' },
         { name: 'Remove', value: 'Removes a track from the queue. If no additional argument is specified, removes the current track; Optionally specify an integer to remove the track at that position in the queue.' },
         { name: 'Empty', value: 'Completely removes everything from the queue, returning it to an empty state.' },
+        { name: 'Recall', value: 'Recalls everything from your previous listening session, just as it was when you left. Can only be called with an empty queue.' },
       ];
       break;
 

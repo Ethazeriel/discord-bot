@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import { logLine } from '../../logger.js';
+import * as db from '../../database.js';
 
 export const data = new SlashCommandBuilder()
   .setName('queue')
@@ -46,7 +47,10 @@ export const data = new SlashCommandBuilder()
       .setName('position').setDescription('Remove the current song, or go on to specify a position in the queue')))
   .addSubcommand(subcommand => subcommand
     .setName('empty')
-    .setDescription('Empties the queue'));
+    .setDescription('Empties the queue'))
+  .addSubcommand(subcommand => subcommand
+    .setName('recall')
+    .setDescription('Reloads the previous session'));
 
 
 export async function execute(interaction) {
@@ -149,6 +153,17 @@ export async function execute(interaction) {
         case 'empty': {
           player.empty();
           await interaction.followUp({ content: 'Emptied Queue.' });
+          break;
+        }
+
+        case 'recall': {
+          if (!player.getQueue().length) {
+            const result = await db.getStash(interaction.user.id);
+            player.queue.tracks = result.tracks;
+            await player.jump(result.playhead);
+            const embed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
+            await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue')]);
+          } else { await interaction.followUp({ content: 'This command can only be called with an empty queue.' }); }
           break;
         }
 

@@ -13,7 +13,7 @@ import chalk from 'chalk';
 
 export default class Player {
   // acquisition
-  static #players = [];
+  static #players = {};
   constructor(interaction) {
     this.queue = {
       tracks: [],
@@ -21,7 +21,7 @@ export default class Player {
       loop: false,
       paused: false,
     };
-
+    this.guildID = interaction.guild.id;
     this.listeners = {};
 
     this.player = createAudioPlayer();
@@ -54,14 +54,29 @@ export default class Player {
     connection.on('stateChange', (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
-        //
+        Object.keys(this.listeners).map(async (id) => {
+          const { media, queue } = this.listeners[id];
+          if (queue) {
+            clearInterval(this.listeners[id].queue.idleTimer);
+            clearInterval(this.listeners[id].queue.refreshTimer);
+            await this.decommission(this.listeners[id].queue.interaction, 'queue', await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false), 'Bot left');
+          }
+          if (media) {
+            clearInterval(this.listeners[id].media.idleTimer);
+            clearInterval(this.listeners[id].media.refreshTimer);
+            await this.decommission(this.listeners[id].media.interaction, 'media', this.mediaEmbed(false), 'Bot left');
+          }
+          if (this.listeners[id]) {delete this.listeners[id];}
+        });
+        logDebug(`Removing player with id ${this.guildID}`);
+        delete Player.#players[this.guildID];
       }
     });
     connection.subscribe(this.player);
   }
 
   static async getPlayer(interaction, { explicitJoin = false } = {}) {
-    const followUp = (message) => ((interaction.isCommand()) ? interaction.followUp({ content: message }) : interaction.update({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }));
+    const followUp = (message) => ((interaction.isCommand()) ? interaction.editReply({ content: message }) : interaction.editReply({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }));
     const userChannel = interaction.member.voice.channelId;
 
     if (!userChannel) {
@@ -86,6 +101,48 @@ export default class Player {
     }
   }
 
+  static async retrievePlayer(guildId) {
+    return Player.#players[guildId];
+  }
+
+  static async voiceEventDispatch(oldState, newState, client) {
+    logDebug(`Voice state update for server ${oldState.guild.id}, user ${oldState.member.displayName}`);
+    if (Player.#players[oldState.guild.id]) {Player.#players[oldState.guild.id].voiceEvent(oldState, newState, client);} else {
+      logDebug(`No player currently active in server ${oldState.guild.id}`);
+    }
+  }
+
+  // events
+  async voiceEvent(oldState, newState, client) {
+    // console.log('player function called');
+    const connection = getVoiceConnection(newState.guild.id);
+    if ((connection.joinConfig.channelId === oldState.channelId) && (newState.channelId != connection.joinConfig.channelId)) {
+      // console.log('channel matches, this is a leave event');
+      if (!newState.member.user.bot) {
+        const id = newState.member.id;
+        await db.saveStash(id, this.queue.playhead, this.queue.tracks);
+        if (this.listeners[id]?.queue) {
+          clearInterval(this.listeners[id].queue.idleTimer);
+          clearInterval(this.listeners[id].queue.refreshTimer);
+          await this.decommission(this.listeners[id].queue.interaction, 'queue', await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false), 'You left the channel');
+        }
+        if (this.listeners[id]?.media) {
+          clearInterval(this.listeners[id].media.idleTimer);
+          clearInterval(this.listeners[id].media.refreshTimer);
+          await this.decommission(this.listeners[id].media.interaction, 'media', this.mediaEmbed(false), 'You left the channel');
+        }
+        if (this.listeners[id]) {delete this.listeners[id];}
+      }
+      const botChannel = (connection) ? client.channels.cache.get(connection.joinConfig.channelId) : null;
+      let humans = 0;
+      for (const [, member] of botChannel.members) { (!member.user.bot) ? humans++ : null; }
+      if (humans == 0) {
+        connection.destroy();
+        logDebug('Alone in channel; leaving voice');
+      }
+    }
+  }
+
   // presence
   join(interaction) {
     joinVoiceChannel({
@@ -105,9 +162,13 @@ export default class Player {
       const isAlone = botChannel.members?.size == 1;
 
       if (userChannel == botChannel || isAlone) {
+        for (const [, member] of botChannel.members) {
+          // console.log(member.id);
+          if (!member.user.bot) { db.saveStash(member.id, Player.#players[interaction.guild.id].queue.playhead, Player.#players[interaction.guild.id].queue.tracks); }
+        }
         const success = connection.disconnect();
         // eslint-disable-next-line no-console
-        if (!success) { console.log(`failed to disconnect connection: ${connection}`); }
+        (!success) ? console.log(`failed to disconnect connection: ${connection}`) : connection.destroy();
         return ({ content: (success) ? 'Left voice.' : 'Failed to leave voice.' });
       } else {
         return ({ content:'Bot is busy in another channel.' });

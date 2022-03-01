@@ -6,6 +6,7 @@ import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 // const { leaveVoice } = require('./music');
 import * as database from './database.js';
 import chalk from 'chalk';
+import Player from './player.js';
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES] });
@@ -46,19 +47,11 @@ client.once('ready', async () => {
         logDebug(`New user with ID ${userid}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
         await database.newUser({ id:userid, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:id, locale:member.user?.locale });
       } else {
-        if (user.discord.username.current !== member.user.username) {
-          await database.updateUser(userid, 'username', member.user.username);
-        }
-        if (user.discord.discriminator.current !== member.user.discriminator) {
-          await database.updateUser(userid, 'discriminator', member.user.discriminator);
-        }
-        if (user.discord.nickname[id]?.current !== member.nickname) {
-          await database.updateUser(userid, 'nickname', member.nickname, id);
-        }
-        // if (user.discord.locale !== member.user?.locale) {
+        if (user.discord.username.current !== member.user.username) { await database.updateUser(userid, 'username', member.user.username); }
+        if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(userid, 'discriminator', member.user.discriminator); }
+        if (user.discord.nickname[id]?.current !== member.nickname) { await database.updateUser(userid, 'nickname', member.nickname, id); }
+        // if (user.discord.locale !== member.user?.locale) { await database.updateUser(userid, 'locale', member.user?.locale); }
         // discord never actually sends us this, but will keep the code here just in case they do someday
-        //   await database.updateUser(userid, 'locale', member.user?.locale);
-        // }
       }
     }
   }
@@ -67,7 +60,6 @@ client.once('ready', async () => {
 // handle interactions
 client.on('interactionCreate', async interaction => {
   // console.log(interaction);
-  // if (!interaction.isCommand() || !interaction.isSelectMenu()) return;
   if (interaction.isCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -108,18 +100,10 @@ client.on('guildMemberUpdate', async (oldUser, member) => {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
     await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id, locale:member.user?.locale });
   } else {
-    if (user.discord.username.current !== member.user.username) {
-      await database.updateUser(member.user.id, 'username', member.user.username);
-    }
-    if (user.discord.discriminator.current !== member.user.discriminator) {
-      await database.updateUser(member.user.id, 'discriminator', member.user.discriminator);
-    }
-    if (user.discord.nickname[member.guild.id].current !== member.nickname) {
-      await database.updateUser(member.user.id, 'nickname', member.nickname, member.guild.id);
-    }
-    // if (user.discord.locale !== member.user?.locale) {
-    //   await database.updateUser(member.user.id, 'locale', member.user?.locale);
-    // }
+    if (user.discord.username.current !== member.user.username) { await database.updateUser(member.user.id, 'username', member.user.username); }
+    if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(member.user.id, 'discriminator', member.user.discriminator); }
+    if (user.discord.nickname[member.guild.id].current !== member.nickname) { await database.updateUser(member.user.id, 'nickname', member.nickname, member.guild.id); }
+    // if (user.discord.locale !== member.user?.locale) { await database.updateUser(member.user.id, 'locale', member.user?.locale); }
   }
 });
 
@@ -138,16 +122,14 @@ client.on('userUpdate', async (oldUser, newUser) => {
   if (!user) {
     await database.newUser({ id:newUser.id, username:newUser.username, discriminator:newUser.discriminator });
   } else {
-    if (user.discord.username.current !== newUser.username) {
-      await database.updateUser(newUser.id, 'username', newUser.username);
-    }
-    if (user.discord.discriminator.current !== newUser.discriminator) {
-      await database.updateUser(newUser.id, 'discriminator', newUser.discriminator);
-    }
-    // if (user.discord.locale !== newUser?.locale) {
-    //   await database.updateUser(newUser.id, 'locale', newUser?.locale);
-    // }
+    if (user.discord.username.current !== newUser.username) { await database.updateUser(newUser.id, 'username', newUser.username); }
+    if (user.discord.discriminator.current !== newUser.discriminator) { await database.updateUser(newUser.id, 'discriminator', newUser.discriminator); }
+    // if (user.discord.locale !== newUser?.locale) { await database.updateUser(newUser.id, 'locale', newUser?.locale); }
   }
+});
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  Player.voiceEventDispatch(oldState, newState, client);
 });
 
 // Login to Discord
