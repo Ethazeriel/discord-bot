@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
-import * as utils from '../../utils.js';
 import { logLine } from '../../logger.js';
 
 export const data = new SlashCommandBuilder()
@@ -30,8 +29,9 @@ export async function execute(interaction) {
       if (player && command != 'join') {
         switch (command) {
           case 'nowplaying': {
-            const track = player.getCurrent();
-            await interaction.followUp((track) ? await utils.generateTrackEmbed(player, 'Now Playing: ') : { content: 'Nothing is playing.' });
+            const embed = player.mediaEmbed();
+            interaction.message = await interaction.followUp(embed);
+            await player.register(interaction, 'media', embed);
             break;
           }
 

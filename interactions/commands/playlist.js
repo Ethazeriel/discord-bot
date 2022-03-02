@@ -142,8 +142,8 @@ export async function execute(interaction) {
         const player = await Player.getPlayer(interaction);
         if (player) {
           const length = await player.queueLast(workspace.list);
-          const message = await player.queueEmbed('Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
-          await interaction.followUp(message);
+          const embed = await player.queueEmbed('Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
+          await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
         }
         break;
       }

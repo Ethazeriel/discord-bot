@@ -70,8 +70,8 @@ export async function execute(interaction) {
               const message = await utils.generateTrackEmbed(tracks[0], 'Playing Now: ');
               await interaction.followUp(message);
             } else {
-              const message = await player.queueEmbed('Playing Now: ', 1);
-              await interaction.followUp(message);
+              const embed = await player.queueEmbed('Playing now:', Math.ceil((player.getPlayhead() + 1) / 10));
+              await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
             }
             break;
           }
@@ -82,8 +82,8 @@ export async function execute(interaction) {
               const message = await utils.generateTrackEmbed(tracks[0], 'Playing Next: ');
               await interaction.followUp(message);
             } else {
-              const message = await player.queueEmbed('Playing Next: ', 1);
-              await interaction.followUp(message);
+              const embed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10));
+              await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
             }
             break;
           }
@@ -94,8 +94,8 @@ export async function execute(interaction) {
               await interaction.followUp(message);
             } else {
               // await sleep(500);
-              const message = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
-              await interaction.followUp(message);
+              const embed = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+              await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
             }
             break;
           }
