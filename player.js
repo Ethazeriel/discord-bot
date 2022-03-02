@@ -260,13 +260,6 @@ export default class Player {
     return ({ content:'No seek yet :c' });
   }
 
-  #chalks = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'gray'];
-  #location = 0;
-  #pickChalk() {
-    if (this.#location == this.#chalks.length) { this.#location = 0; }
-    return (this.#chalks[this.#location++]);
-  }
-
   #randomizer(length) {
     const random = [];
     for (let i = 0; i < length; i++) { random[i] = [i]; }
@@ -298,7 +291,7 @@ export default class Player {
       groups[grouping].push(remainder[trackIndex]);
     }
     for (const grouping of groups) {
-      const color = this.#pickChalk();
+      const color = utils.randomHexColor();
       for (const track of grouping) { track.color = color; }
     }
     const offsets = [];
@@ -323,7 +316,7 @@ export default class Player {
     const notSparse = sparse.filter((element) => element);
 
     for (const [index, track] of notSparse.entries()) {
-      console.log(chalk[track.color](`index: ${index}, goose: ${track.goose.id}`));
+      logDebug(chalk.hex(track.color)(`index: ${index}, goose: ${track.goose.id}`));
     }
 
     tracks.splice(playhead, 0, ...notSparse);
