@@ -247,6 +247,17 @@ export async function listPlaylists() {
   }
 }
 
+export async function logPlay(id, success = true) {
+  try {
+    const tracks = db.collection(trackcol);
+    const update = success ? { $inc: { 'goose.plays': 1 } } : { $inc: { 'goose.errors': 1, 'goose.plays': 1 } };
+    await tracks.updateOne({ 'goose.id': id }, update);
+    logLine('database', [`Logging ${success ? chalk.green('successful play') : chalk.red('play error')} for track ${chalk.blue(id)}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 // *****************
 // userdb functions
 // *****************
