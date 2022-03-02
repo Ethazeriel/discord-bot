@@ -39,8 +39,8 @@ export default class Player {
         const percentage = (100 * ((elapsed < duration) ? (elapsed / duration) : (duration / elapsed)));
         if (difference > 10 || percentage < 95) {
           logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`);
-          db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.errors': 1, 'goose.plays': 1 } });
-        } else { db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.plays': 1 } }); }
+          db.logPlay(track.goose.id, false);
+        } else { db.logPlay(track.goose.id); }
 
         this.next();
       }
