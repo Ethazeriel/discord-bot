@@ -93,25 +93,14 @@ async function fromSpotify(search, partial = false) {
   let i = 0;
   let promises = [];
   const tracksInfo = [];
-  do {
-    let id;
-    tracksInfo[i] = {};
-    if (is.track) {
-      id = match[2];
-      // and we know we don't have it, cause we'd have returned it at the beginning
-    } else {
-      //   playlist                                 || album, text                       || track. spotifyResult.id collides on album and track, so goes last
-      id = spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
-      if (id) { promises[i] = db.getTrack({ 'spotify.id': id }); }
-      if (!promises[i]) {
-        const resultName = spotifyResult.tracks?.items?.[i]?.track?.name || spotifyResult.tracks?.items?.[i]?.name || spotifyResult.name;
-        const resultArtist = spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name || spotifyResult.tracks?.items?.[i]?.artists?.[0]?.name || spotifyResult.artists?.[0]?.name;
-        promises[i] = db.getTrack({ $and: [{ 'spotify.name': resultName }, { 'artist.name': resultArtist }] });
-      }
-    }
+  do {//                               playlist                                 || album, text                       || track
+    const id = (is.track) ? match[2] : spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
     tracksInfo[i] = {
       id: id,
+      title: (id) ? spotifyResult.tracks?.items?.[i]?.track?.name || spotifyResult.tracks?.items?.[i]?.name || spotifyResult.name : null,
+      artist: (id) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name || spotifyResult.tracks?.items?.[i]?.artists?.[0]?.name || spotifyResult.artists?.[0]?.name : null,
     };
+    if (tracksInfo[i].id) { promises[i] = db.getTrack({ $and: [{ 'spotify.name': tracksInfo[i].title }, { 'artist.name': tracksInfo[i].artist }] }); }
     i++;
   } while (i < spotifyResult?.tracks?.items?.length);
 
@@ -119,29 +108,17 @@ async function fromSpotify(search, partial = false) {
   const tracks = [];
   await Promise.allSettled(promises).then(values => {
     do {
-      const title =
-        (is.playlist) ? `${spotifyResult.tracks?.items?.[i]?.track?.name}` :
-          (is.album) ? `${spotifyResult.tracks?.items?.[i]?.name}` :
-            (is.track) ? `${spotifyResult.name}` :
-              (spotifyResult.tracks?.items?.[0]) ? spotifyResult.tracks?.items?.[0]?.name : search;
-      tracksInfo[i].title = title;
-
       if (values[i]?.status == 'rejected') {
-        logLine('error', ['spotify.id db.getTrack promise rejected,', `from search: ${search}`, `for [${i}]= ${title}`]);
+        logLine('error', ['db.getTrack by spotify info promise rejected,', `search: ${search}`, `for [${i}]= ${tracksInfo[i].title}`]);
       } else if (values[i]?.value) {
-        // here either by id or exact title & artist match, need to know which
-        const resultId = spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
-        if (values[i].value.spotify.id.includes(resultId)) {
-          // if it is a key and we had it, we'd have returned it at the beginning. so add key. doing nothing otherwise is intentional
+        if (values[i].value.spotify.id.includes(tracksInfo[i].id)) {
+          // a stored text search would have returned at the beginning, so store key. doing nothing otherwise is intentional
           if (!match && !partial) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
-        } else {
-          // found by exact title & artist match, but different id. so merge ids and accept existing track
-          db.addSpotifyId({ 'spotify.id': values[i].value.spotify.id }, resultId);
-        }
-        logLine('fetch', [`[${i}] have '${title}'`]);
+        } else { db.addSpotifyId({ 'spotify.id': values[i].value.spotify.id }, tracksInfo[i].id); }
+        logLine('fetch', [`[${i}] have '${tracksInfo[i].title}'`]);
         tracks[i] = values[i].value;
       } else {
-        logLine('info', [` [${i}] lack '${title}'`]);
+        logLine('info', [` [${i}] lack '${tracksInfo[i].title || search}'`]);
       }
       i++;
     } while (i < spotifyResult?.tracks?.items?.length);
@@ -189,7 +166,7 @@ async function fromSpotify(search, partial = false) {
     for (i = 0; i < values.length; i++) {
       if (values[i].value) {
         if (values[i].status == 'fulfilled') {
-          logLine('info', [` [${i}] ${tracksInfo[i].title} retrieved, id= '${values[i].value?.data?.items?.[0]?.id?.videoId}'`]);
+          logLine('info', [` [${i}] ${tracksInfo[i].title || search} retrieved, id= '${values[i].value?.data?.items?.[0]?.id?.videoId}'`]);
           youtubeResults[i] = values[i].value.data;
         } else {
           logLine('error', [`[${i}] youtube promise rejected`, `for query '${tracksInfo[i].query}'`]);
@@ -237,11 +214,11 @@ async function fromSpotify(search, partial = false) {
         },
         'artist' : {
           'id' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.id : (is.album) ? spotifyResult.artists?.[0]?.id : (is.track) ? spotifyResult.artists?.[0]?.id : spotifyResult.tracks?.items?.[0]?.artists?.[0]?.id || null,
-          'name' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name : (is.album) ? spotifyResult.artists?.[0]?.name : (is.track) ? spotifyResult.artists?.[0]?.name : spotifyResult.tracks?.items?.[0]?.artists?.[0]?.name || null,
+          'name' : tracksInfo[i].artist || null,
         },
         'spotify' : {
           'id' : (tracksInfo[i].id) ? [tracksInfo[i].id] : [],
-          'name' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.name : (is.album) ? spotifyResult.tracks?.items?.[i]?.name : (is.track) ? spotifyResult.name : spotifyResult.tracks?.items?.[0]?.name || null,
+          'name' : tracksInfo[i].title || null,
           'art' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.images?.[0]?.url : (is.album) ? spotifyResult.images?.[0]?.url : (is.track) ? spotifyResult.album?.images?.[0]?.url : spotifyResult.tracks?.items?.[0]?.album?.images?.[0]?.url || null,
           'duration' : undefined, // defined just below
         },
