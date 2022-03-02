@@ -29,9 +29,11 @@ export async function execute(interaction) {
       if (player && command != 'join') {
         switch (command) {
           case 'nowplaying': {
-            const embed = player.mediaEmbed();
-            interaction.message = await interaction.followUp(embed);
-            await player.register(interaction, 'media', embed);
+            if (player.getQueue().length) {
+              const embed = player.mediaEmbed();
+              interaction.message = await interaction.followUp(embed);
+              await player.register(interaction, 'media', embed);
+            } else { await interaction.followUp({ content: 'Queue is empty.' }); }
             break;
           }
 
