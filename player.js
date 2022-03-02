@@ -33,16 +33,17 @@ export default class Player {
         this.queue.tracks[this.queue.playhead].start = (Date.now() / 1000);
       } else if (newState.status == 'idle') {
         const track = this.queue.tracks[this.queue.playhead];
-        const elapsed = (Date.now() / 1000) - track.start;
-        const duration = track.youtube.duration;
-        const difference = Math.abs(duration - elapsed);
-        const percentage = (100 * ((elapsed < duration) ? (elapsed / duration) : (duration / elapsed)));
-        if (difference > 10 || percentage < 95) {
-          logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`);
-          db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.errors': 1, 'goose.plays': 1 } });
-        } else { db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.plays': 1 } }); }
-
-        this.next();
+        if (track) {
+          const elapsed = (Date.now() / 1000) - track.start;
+          const duration = track.youtube.duration;
+          const difference = Math.abs(duration - elapsed);
+          const percentage = (100 * ((elapsed < duration) ? (elapsed / duration) : (duration / elapsed)));
+          if (difference > 10 || percentage < 95) {
+            logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`.replace(/(?<=\d*\.\d{3})\d+/g, ''));
+            db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.errors': 1, 'goose.plays': 1 } });
+          } else { db.updateTrack({ 'goose.id': track.goose.id }, { $inc: { 'goose.plays': 1 } }); }
+        }
+        if (this.getNext()) { this.next(); }
       }
     });
 
@@ -280,10 +281,10 @@ export default class Player {
   }
 
   shuffle({ albumAware = false } = {}) { // idle check for end of non looping queue and reset, also need to handle the wrap around of a looping queue
-    const playhead = this.getPlayhead() + 1;
+    const playhead = this.getPlayhead();
     const tracks = this.getQueue();
-    const remainder = tracks.slice(playhead);
-    tracks.length = playhead;
+    const remainder = tracks.slice(playhead + 1);
+    tracks.length = playhead + 1;
 
     if (albumAware) {
       remainder.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1)
@@ -326,7 +327,7 @@ export default class Player {
       console.log(chalk[track.color](`index: ${index}, goose: ${track.goose.id}`));
     }
 
-    tracks.splice(playhead, 0, ...notSparse);
+    tracks.splice(playhead + 1, 0, ...notSparse);
     // for (const [index, track] of this.getQueue().entries()) {
     //   console.log(`index: ${index}, goose: ${track.goose.id}`);
     // }
