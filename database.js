@@ -308,7 +308,7 @@ export async function updateUser(discordid, field, data, guild) { // usage: cons
     const userdb = db.collection(usercol);
     const user = await this.getUser(discordid);
     if (!user) {return;}
-    const validfields = ['username', 'nickname', 'discriminator'];
+    const validfields = ['username', 'nickname', 'discriminator', 'locale'];
     if (!validfields.includes(field)) {
       return;
     }
@@ -319,7 +319,14 @@ export async function updateUser(discordid, field, data, guild) { // usage: cons
       why = `discord.${field}.${guild}.current`;
       why2 = `discord.${field}.${guild}.old`;
     }
-    let update = (field === 'nickname') ? { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field][guild]?.current } } : { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field].current } };
+    let update;
+    if (field === 'nickname') {
+      update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field][guild]?.current } };
+    } else if (field === 'locale') {
+      update = { $set: { 'discord.locale':data } };
+    } else {
+      update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field].current } };
+    }
     update = (field === 'locale') ? { $set: { 'discord.locale':data } } : update;
     const result = await userdb.updateOne({ 'discord.id': discordid }, update);
     logLine('database', [`Updating info for ${chalk.blue(discordid)}: ${chalk.green(field)} is now ${chalk.green(data)}`]);
