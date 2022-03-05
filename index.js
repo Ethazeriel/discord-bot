@@ -1,7 +1,9 @@
 import fs from 'fs';
+import crypto from 'crypto';
 // Require the necessary discord.js classes
 import { Client, Collection, Intents } from 'discord.js';
-const { token } = JSON.parse(fs.readFileSync('./config.json')).discord;
+const { discord, internal } = JSON.parse(fs.readFileSync('./config.json'));
+const token = discord.token;
 import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 // const { leaveVoice } = require('./music');
 import * as database from './database.js';
@@ -14,7 +16,9 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_
 // dynamic import of commands, buttons, select menus
 client.commands = new Collection();
 const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
+let commandHash = '';
 for (const file of commandFiles) {
+  commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(`./interactions/commands/${file}`)).digest('base64'));
   const command = await import(`./interactions/commands/${file}`);
   client.commands.set(command.data.name, command);
 }
@@ -34,6 +38,17 @@ for (const file of selectFiles) {
 
 // When the client is ready, run this code (only once)
 client.once('ready', async () => {
+
+  // deploy commands, if necessary
+  const hashash = crypto.createHash('sha256').update(commandHash).digest('base64');
+  if (hashash !== internal?.deployedHash) {
+    const deploy = await import('./deploy.js');
+    await deploy.deploy();
+    const config = JSON.parse(fs.readFileSync('./config.json'));
+    config.internal ? config.internal.deployedHash = hashash : config.internal = { deployedHash: hashash };
+    fs.writeFileSync('./config.json', JSON.stringify(config, '', 2));
+  } else { logLine('info', [`Commands appear up to date; hash is ${hashash}`]); }
+
   logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));
   logLine('info', ['Ready!', `Node version: ${process.version}`]);
   database.printCount();
