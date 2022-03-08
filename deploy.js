@@ -20,13 +20,13 @@ export async function deploy() {
         Routes.applicationGuildCommands(clientId, guildId),
         { body: commands },
       );
-      logLine('command', ['Successfully registered commands at scope: guild']);
+      logLine('command', ['Successfully registered commands.']);
     } else if (scope === 'global') {
       await rest.put(
         Routes.applicationCommands(clientId),
         { body: commands },
       );
-      logLine('command', ['Successfully registered commands at scope: global']);
+      logLine('command', ['Successfully registered commands.']);
     } else {
       logLine('command', ['Failed to deploy commands']);
     }
