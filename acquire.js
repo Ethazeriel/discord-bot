@@ -138,7 +138,7 @@ async function fromSpotify(search, partial = false) {
             (is.track) ? `${spotifyResult.artists?.[0]?.name} ${spotifyResult.name}` :
               (spotifyResult.tracks?.items?.[0]) ? `${spotifyResult.tracks?.items?.[0]?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[0]?.name}` : search;
       query = query.replace(sanitize, '');
-      query = query.replace(/(-)+/, ' ');
+      query = query.replace(/(-)+/g, ' ');
       tracksInfo[i].query = query;
       logLine('info', [` [${i}] youtube query: ${query}`]);
 
