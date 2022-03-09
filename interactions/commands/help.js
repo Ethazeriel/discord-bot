@@ -36,10 +36,10 @@ export function helpEmbed(section) {
 
     case 'stickers':
       name = 'Stickers:';
-      fields = [ // TODO - fix license, links
+      fields = [ // TODO - fix links
         { name: 'Overview', value: 'The /dab, /fish, and /heart commands are definitely not a ripoff of discord\'s built in sticker functionality. The entire purpose of their existence certainly isn\'t to get around the arbitrary and low limit discord places on the number of stickers you can have; We would never do such a thing. Inclusivity shouldn\'t have a monthly pricetag.' },
         { name: 'Usage', value: 'To use, invoke any one of the /dab, /fish, or /heart commands. The single, required option specifies which pride-variant to display, or select the default random to have the bot pick for you.' },
-        { name: 'Sources', value: 'The stickers used here are freely availiable under a [WHICHEVER LICENCE WE USE] license; they can be downloaded from [here](https://ethazeriel.net/pride/). Are we missing a flag that\'s important to you? Feel free to open an issue [here](https://github.com/Ethazeriel/discord-bot) and we\'ll see what we can do about adding them!' },
+        { name: 'Sources', value: 'The stickers used here are freely availiable under a [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) license; they can be downloaded from [here](https://ethazeriel.net/pride/). Are we missing a flag that\'s important to you? Feel free to open an issue [here](https://github.com/Ethazeriel/discord-bot) and we\'ll see what we can do about adding them!' },
       ];
       break;
 
@@ -50,7 +50,7 @@ export function helpEmbed(section) {
         { name: 'Search', value: 'Required. The thing you want the bot to play. Currently this can be a youtube link, spotify album/playlist/track link, internal bot playlist(see /help playlist), or a text search.' },
         { name: 'When', value: 'Optional, default "Play Last". Specifies where in the queue to place the thing you\'re searching for. "**Play Last**" is default and will append your search to the end of the queue; "**Play Next**" will append your search immediately after the currently playing track; "**Play Now**" will interrupt whatever\'s playing and start playing your new search immediately.' },
         { name: 'What', value: 'Optional, default "External search". Specifies what the search is for - either an internal bot playlist or external search. Defaults to external as that\'s most likely what you want to do.' },
-        // { name: 'Shuffle', value: '' },
+        { name: 'Shuffle', value: 'Optional, default "No". Specifies whether or not to shuffle the things you\'re adding to the queue. If yes, you can select either "tracks" or "albums"; "tracks" will shuffle individual tracks, while "albums" will keep whole albums together in order.' },
       ];
       break;
 
