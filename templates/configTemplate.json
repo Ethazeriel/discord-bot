@@ -2,7 +2,8 @@
     "discord": {
         "token": "yourbotaccesstoken",
         "clientId": "yourbotclientid",
-        "guildId": "testguildid"
+        "guildId": "testguildid",
+        "scope": "guild/global"
     },
     "spotify": {
         "client_id": "yourclientid",
@@ -18,5 +19,8 @@
         "trackcollection": "tracks",
         "usercollection": "users"
     },
-    "debug": false
+    "debug": false,
+    "translate": {
+        "apiKey": "yourcloudtranslateapikey"
+      }
 }

@@ -10,6 +10,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('What do you want help with?')
       .addChoice('General', 'index')
       .addChoice('Stickers', 'stickers')
+      .addChoice('Locale command', 'locale')
       .addChoice('Play command', 'play')
       .addChoice('Playlist command', 'playlist')
       .addChoice('Queue command', 'queue')
@@ -116,6 +117,14 @@ export function helpEmbed(section) {
       ];
       break;
 
+    case 'locale':
+      name = 'Locale command';
+      fields = [
+        { name: 'Overview', value: 'The starting point for language support. Setting a locale allows us to send messages in your preferred language, and is required to use the translation functions.' },
+        { name: 'Usage', value: 'The locale command accepts a single required option, which must be one of the options listed [here](https://cloud.google.com/translate/docs/languages). Once a locale is set, the translate comand can be used to machine-translate messages into your preferred language.' },
+      ];
+      break;
+
     default:
       name = 'You shouldn\'t see this';
       fields = [{ name: 'well fuck', value: 'clearly something has gone wrong' }];
@@ -146,6 +155,11 @@ export function helpEmbed(section) {
               'label': 'Stickers',
               'value': 'stickers',
               'description': 'Info about pride stickers',
+            },
+            {
+              'label': 'Locale command',
+              'value': 'locale',
+              'description': 'language functions',
             },
             {
               'label': 'Play command',
