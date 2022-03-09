@@ -138,8 +138,8 @@ export default class Player {
       let humans = 0;
       for (const [, member] of botChannel.members) { (!member.user.bot) ? humans++ : null; }
       if (humans == 0) {
-        connection.destroy();
         logDebug('Alone in channel; leaving voice');
+        connection.destroy();
       }
     }
   }
@@ -177,7 +177,7 @@ export default class Player {
     } else { return ({ content:'Bot is not in a voice channel.' }); }
   }
 
-  // core
+  // playback
   async play() {
     let track = this.queue.tracks[this.queue.playhead];
     track &&= await db.getTrack({ 'goose.id': track.goose.id });
@@ -201,6 +201,42 @@ export default class Player {
       }
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
     return (track);
+  }
+
+  async prev() { // prior, loop or restart current
+    // this.queue.playhead = ((playhead = this.queue.playhead) => (playhead > 0) ? --playhead : (this.queue.loop) ? this.queue.tracks.length - 1 : 0)();
+    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
+    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
+  }
+
+  async next() { // next, loop or end
+    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
+    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
+  }
+
+  async jump(position) {
+    this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
+    // this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length == 0) ? length : length - 1)();
+    return (await this.play());
+  }
+
+  seek(time) {
+    return ({ content:'No seek yet :c' });
+  }
+
+  togglePause({ force } = {}) {
+    force = (typeof force == 'boolean') ? force : undefined;
+    const condition = (force == undefined) ? this.queue.paused : !force;
+    const result = (condition) ? !this.player.unpause() : this.player.pause();
+    (condition != result) ? this.queue.paused = result : logDebug('togglePause failed');
+    return ((condition != result) ? ({ content: (result) ? 'Paused.' : 'Unpaused.' }) : ({ content:'OH NO SOMETHING\'S FUCKED' }));
+  }
+
+  async toggleLoop({ force } = {}) {
+    force = (typeof force == 'boolean') ? force : undefined;
+    this.queue.loop = (force == undefined) ? !this.queue.loop : force;
+    if (this.queue.loop && this.queue.tracks.length && (this.queue.tracks.length == this.queue.playhead)) { await this.next(); }
+    return (this.queue.loop);
   }
 
   // modification
@@ -237,28 +273,6 @@ export default class Player {
     this.queue.playhead = 0;
     this.queue.tracks.length = 0;
     this.player.stop();
-  }
-
-  // manipulation
-  async prev() { // prior, loop or restart current
-    // this.queue.playhead = ((playhead = this.queue.playhead) => (playhead > 0) ? --playhead : (this.queue.loop) ? this.queue.tracks.length - 1 : 0)();
-    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
-    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
-  }
-
-  async next() { // next, loop or end
-    this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
-    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
-  }
-
-  async jump(position) {
-    this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
-    // this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length == 0) ? length : length - 1)();
-    return (await this.play());
-  }
-
-  seek(time) {
-    return ({ content:'No seek yet :c' });
   }
 
   #randomizer(length) {
@@ -320,30 +334,14 @@ export default class Player {
       logDebug(chalk.hex(track.color)(`index: ${index}, goose: ${track.goose.id}`));
     }
 
-    tracks.splice(playhead + 1, 0, ...notSparse);
+    queue.splice(playhead + 1, 0, ...notSparse);
     // for (const [index, track] of this.getQueue().entries()) {
     //   console.log(`index: ${index}, goose: ${track.goose.id}`);
     // }
     // return ({ content:'No shuffle yet :c' });
   }
 
-  togglePause({ force } = {}) {
-    force = (typeof force == 'boolean') ? force : undefined;
-    const condition = (force == undefined) ? this.queue.paused : !force;
-    const result = (condition) ? !this.player.unpause() : this.player.pause();
-    (condition != result) ? this.queue.paused = result : logDebug('togglePause failed');
-    return ((condition != result) ? ({ content: (result) ? 'Paused.' : 'Unpaused.' }) : ({ content:'OH NO SOMETHING\'S FUCKED' }));
-  }
-
-  async toggleLoop({ force } = {}) {
-    force = (typeof force == 'boolean') ? force : undefined;
-    this.queue.loop = (force == undefined) ? !this.queue.loop : force;
-    if (this.queue.loop && this.queue.tracks.length && (this.queue.tracks.length == this.queue.playhead)) { await this.next(); }
-    return (this.queue.loop);
-  }
-
   // information
-
   getPrev() {
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
     return (this.queue.tracks[position]);
@@ -375,7 +373,6 @@ export default class Player {
   }
 
   // embeds
-
   mediaEmbed(fresh = true) {
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;
     const track = this.getCurrent();
@@ -408,12 +405,6 @@ export default class Player {
           // { type: 2, custom_id: '', style: 2, label: '', disabled: false },
         ],
       },
-      // {
-      //   type:1,
-      //   components: [
-      //     { type: 2, custom_id: 'media-showqueue', style:1, label:'Show Queue' },
-      //   ],
-      // },
     ];
     return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
   }
@@ -423,7 +414,7 @@ export default class Player {
     const queue = this.getQueue();
     page = Math.abs(page) || Math.ceil((this.getPlayhead() + 1) / 10);
     const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
-    const pages = Math.ceil(queue.length / 10); // this should be the total number of pages? rounding up
+    const pages = Math.ceil(queue.length / 10);
     const buttonEmbed = [
       {
         type: 1,
@@ -482,14 +473,6 @@ export default class Player {
       ],
     };
     return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } : { embeds: [embed], components: buttonEmbed };
-  }
-
-  // testing
-  test(interaction) {
-    // console.log(interaction.member.user.id);
-    // console.log(interaction.member.user.bot);
-    // console.log(`createdAt: ${interaction.createdAt}\n`);
-    // console.log(`createdTimestamp: ${interaction.createdTimestamp}`);
   }
 
   async decommission(interaction, type, embed, message = '\u27F3 expired') {
