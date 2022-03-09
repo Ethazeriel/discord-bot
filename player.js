@@ -287,31 +287,38 @@ export default class Player {
     return (random);
   }
 
-  shuffle({ albumAware = false } = {}) { // idle check for end of non looping queue and reset, also need to handle the wrap around of a looping queue
-    const playhead = this.getPlayhead();
-    const tracks = this.getQueue();
-    const remainder = tracks.slice(playhead + 1);
-    tracks.length = playhead + 1;
+  shuffle({ albumAware = false } = {}, alternate = undefined) { // if alternate, we shuffle and return that instead of shuffling the queue itself
+    const loop = this.getLoop() || !this.getNext(); // we're treating shuffling a queue that's over as a 1-action request to restart it, shuffled
+    const queue = (alternate) ? null : this.getQueue();
+    const current = (alternate) ? null : this.getCurrent();
+    const playhead = (alternate) ? null : (loop) ? 0 : this.getPlayhead(); // shuffle everything or just the remaining, presumably unheard queue
+    const tracks = alternate || queue.slice(playhead);
+    if (!alternate) { queue.length = playhead, this.queue.playhead = playhead; }
+    // logDebug(`current: ${(current) ? current.spotify.name || current.youtube.name : 'none'} \n`);
 
     if (albumAware) {
-      remainder.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1)
-        .sort((a, b) => (a.album.name === b.album.name) ? 0 : (a.album.name < b.album.name) ? -1 : 1);
+      tracks.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1);
+      tracks.sort((a, b) => (a.album.name === b.album.name) ? 0 : (a.album.name < b.album.name) ? -1 : 1);
+      tracks.map((track) => track.album.name ||= crypto.randomInt(tracks.length)); // null album is not an album I want to group together
     }
-    remainder.sort((a, b) => (a.artist.name === b.artist.name) ? 0 : (a.artist.name < b.artist.name) ? -1 : 1);
-    const field = (albumAware) ? 'album' : 'artist';
+    tracks.sort((a, b) => (a.artist.name === b.artist.name) ? 0 : (a.artist.name < b.artist.name) ? -1 : 1);
+    const groupBy = (albumAware) ? 'album' : 'artist';
+
     const groups = [];
-    for (let grouping = 0, trackIndex = 0; trackIndex < remainder.length; trackIndex++) {
-      if (groups[grouping] && groups[grouping][0] && groups[grouping][0][field].name !== remainder[trackIndex][field].name) grouping++;
+    for (let grouping = 0, index = 0; index < tracks.length; index++) {
+      if (groups[grouping] && groups[grouping][0][groupBy].name !== tracks[index][groupBy].name) { grouping++; }
       if (!groups[grouping]) { (groups[grouping] = []); }
-      groups[grouping].push(remainder[trackIndex]);
+      groups[grouping].push(tracks[index]);
     }
-    for (const grouping of groups) {
-      const color = utils.randomHexColor();
-      for (const track of grouping) { track.color = color; }
-    }
+
+    // for (const grouping of groups) { // visual testing
+    //   const color = utils.randomHexColor();
+    //   for (const track of grouping) { track.color = color; }
+    // }
+
     const offsets = [];
-    for (let i = 0; i < groups.length; i++) { offsets.push(crypto.randomInt(remainder.length * 100)); }
-    const sparse = new Array(remainder.length * 100);
+    for (let i = 0; i < groups.length; i++) { offsets.push(crypto.randomInt(tracks.length * 100)); }
+    const sparse = new Array(tracks.length * 100);
     for (const [index, grouping] of groups.entries()) {
       let position;
       const offset = offsets[index];
@@ -328,17 +335,33 @@ export default class Player {
         }
       }
     }
-    const notSparse = sparse.filter((element) => element);
+    let result = sparse.filter((element) => element);
 
-    for (const [index, track] of notSparse.entries()) {
-      logDebug(chalk.hex(track.color)(`index: ${index}, goose: ${track.goose.id}`));
+    if (alternate) {
+      return (result);
+    } else {
+      if (current) {
+        let start = 0;
+        while (result[start].start != current.start) {
+          start++;
+        }
+        let end = start + 1;
+        if (albumAware) {
+          while (end < result.length && result[start].album.name == result[end].album.name) { end++; }
+        }
+        const rearranged = [];
+        rearranged.push(...result.slice(start, end));
+        rearranged.push(...result.slice(end));
+        rearranged.push(...result.slice(0, start));
+        result = rearranged;
+      }
+      queue.push(...result);
     }
 
-    queue.splice(playhead + 1, 0, ...notSparse);
-    // for (const [index, track] of this.getQueue().entries()) {
-    //   console.log(`index: ${index}, goose: ${track.goose.id}`);
-    // }
-    // return ({ content:'No shuffle yet :c' });
+    // // visual testing code from elsewhere, included here so as to not need to recreate it should it be needed in future
+    // console.log(((current = this.getCurrent()) => chalk.hex(current.color || 0xFFFFFF)(`Current: #${(current) ? current.album.trackNumber : 0}: ${(current) ? current.spotify.name || current.youtube.name : 'none'}\n`))());
+    // for (const [index, track] of this.queue.tracks.entries()) {
+    //   console.log(chalk.hex(track.color || 0xFFFFFF)(`[${index}]: #${track.album.trackNumber || 0}: ${track.spotify.name || track.youtube.name}`));
   }
 
   // information
