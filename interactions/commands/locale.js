@@ -13,14 +13,14 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
-  const languages = await Translator.listLocales();
-  const locales = [];
-  for (const language of languages) {
-    locales.push(language.code);
-  }
   const choice = interaction.options.getString('code').replace(sanitize, '').trim();
-  if (locales.includes(choice)) {
+  const locales = await Translator.getLocales();
+  if (locales.filter(element => element.code === choice).length) {
     await db.updateUser(interaction.user.id, 'locale', choice);
+    const organizer = Translator.getOrganizer(interaction.channelId);
+    if (organizer && Object.keys(organizer.subscribers).includes(interaction.user.id)) {
+      organizer.changeLocale(interaction.user.id, choice);
+    }
     interaction.editReply(`Your locale is now ${choice}.`);
   } else {interaction.editReply(`${choice} doesn't appear to be a valid locale. Please check [here](https://cloud.google.com/translate/docs/languages) and try again.`);}
 }

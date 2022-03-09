@@ -9,9 +9,10 @@ import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 import * as database from './database.js';
 import chalk from 'chalk';
 import Player from './player.js';
+import Translator from './translate.js';
 
 // Create a new client instance
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.GUILD_MESSAGES] });
 
 // dynamic import of commands, buttons, select menus
 client.commands = new Collection();
@@ -145,6 +146,11 @@ client.on('userUpdate', async (oldUser, newUser) => {
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
   Player.voiceEventDispatch(oldState, newState, client);
+});
+
+client.on('messageCreate', async message => {
+  logDebug(`${chalk.blue(message.author.username)}: ${message.content}`);
+  if (!message.author.bot) { Translator.messageEventDispatch(message); }
 });
 
 // Login to Discord
