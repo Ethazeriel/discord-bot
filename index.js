@@ -23,6 +23,13 @@ for (const file of commandFiles) {
   const command = await import(`./interactions/commands/${file}`);
   client.commands.set(command.data.name, command);
 }
+const contexts = new Collection();
+const contextFiles = fs.readdirSync('./interactions/contexts').filter(file => file.endsWith('.js'));
+for (const file of contextFiles) {
+  commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(`./interactions/contexts/${file}`)).digest('base64'));
+  const context = await import(`./interactions/contexts/${file}`);
+  contexts.set(context.data.name, context);
+}
 const buttons = new Collection();
 const buttonFiles = fs.readdirSync('./interactions/buttons').filter(file => file.endsWith('.js'));
 for (const file of buttonFiles) {
@@ -105,6 +112,16 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
       logLine('error', [error.stack]);
       return interaction.update({ content: 'There was an error while processing this button press!', components: [], ephemeral: true });
+    }
+  } else if (interaction.isContextMenu()) {
+    const context = contexts.get(interaction.commandName);
+    if (!context) return;
+    try {
+      logCommand(interaction);
+      await context.execute(interaction);
+    } catch (error) {
+      logLine('error', [error.stack]);
+      return interaction.followUp({ content: 'There was an error while executing this context menu!', ephemeral: true });
     }
   } else {return;}
 });

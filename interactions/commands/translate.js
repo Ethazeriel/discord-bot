@@ -28,10 +28,10 @@ export async function execute(interaction) {
 
     case 'subscribe':
       const user = await db.getUser(interaction.user.id);
-      if (user.discord.locale) {
+      if (user.discord?.locale) {
         Translator.subscribe(interaction.channelId, interaction.user.id, user.discord.locale, interaction);
         await interaction.followUp(`Messages in this channel will now be translated to your locale: ${user.discord.locale}`);
-      } else {await interaction.followUp('You need to se your locale using "/locale" first');}
+      } else {await interaction.followUp('You need to set your locale using "/locale" first');}
       break;
 
     default:

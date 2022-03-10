@@ -62,6 +62,16 @@ export default class Translator {
     return translation;
   }
 
+  static async translate(text, target) {
+    await Translator.#refreshLocales();
+    let translation = '';
+    try { [translation] = await Translator.#GTranslate.translate(text, target); } catch (error) {
+      logLine('error', [`Translate error: ${error.message}`]);
+    }
+    // console.log(text, translation);
+    return translation;
+  }
+
   static langEmbed(src, srcloc, srcusr, dest, destloc) {
     srcloc = Translator.locales.filter(element => element.code === srcloc)[0].name;
     destloc = Translator.locales.filter(element => element.code === destloc)[0].name;
@@ -84,6 +94,7 @@ export default class Translator {
   }
 
   async messageEvent(message) {
+    await Translator.#refreshLocales();
     const messageContent = message.content;
     const translations = {};
     for (const locale of this.targets) {
