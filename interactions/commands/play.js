@@ -21,12 +21,18 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option.setName('what').setDescription('Flag as internal playlist, not external search')
       .addChoice('External Search', 'search')
-      .addChoice('Internal bot playlist', 'playlist'));
+      .addChoice('Internal bot playlist', 'playlist'))
+  .addStringOption(option =>
+    option.setName('shuffle').setDescription('Shuffle?')
+      .addChoice('No', 'no')
+      .addChoice('Yes', 'tracks')
+      .addChoice('Yes, but keep albums in order', 'albums'));
 
 export async function execute(interaction) {
   const search = interaction.options.getString('search')?.replace(sanitize, '');
   const when = interaction.options.getString('when') || 'last';
-  const what = interaction.options.getString('what') || null;
+  const what = interaction.options.getString('what') || 'search';
+  const shuffle = interaction.options.getString('shuffle') || 'no';
 
 
   if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
@@ -63,6 +69,10 @@ export async function execute(interaction) {
       }
 
       if (tracks && tracks.length > 0) {
+        if (tracks.length > 1 && (shuffle !== 'no')) {
+          tracks = player.shuffle({ albumAware: (shuffle === 'albums') }, tracks);
+        }
+
         switch (when) {
           case 'now': {
             await player.queueNow(tracks);
