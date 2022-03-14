@@ -9,8 +9,8 @@ const proddb = 'goose';
 const prodtrackcol = 'tracks';
 const produsercol = 'users';
 const testdb = 'test';
-const testtrackcol = 'tracks2';
-const testusercol = 'users2';
+const testtrackcol = 'tracks';
+const testusercol = 'users';
 let db;
 let con;
 
