@@ -2,10 +2,10 @@
 import fs from 'fs';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
-const { clientId, guildId, token } = JSON.parse(fs.readFileSync('../config.json')).discord;
+const { clientId, guildId, token } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).discord;
 const launchArg = process.argv[2];
 const commands = [];
-const commandFiles = fs.readdirSync('../interactions/commands').filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync(new URL('../interactions/commands', import.meta.url)).filter(file => file.endsWith('.js'));
 import * as database from '../database.js';
 
 if (process.argv.length > 3) {

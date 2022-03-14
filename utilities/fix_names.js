@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { MongoClient } from 'mongodb';
 import { logLine } from './logger.js';
-const mongo = JSON.parse(fs.readFileSync('./config.json')).mongo;
+const mongo = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).mongo;
 import chalk from 'chalk';
 import ytdl from 'ytdl-core';
 const url = mongo.url;

@@ -2,10 +2,10 @@ import fs from 'fs';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import { logLine } from './logger.js';
-const { clientId, guildId, token, scope } = JSON.parse(fs.readFileSync('./config.json')).discord;
+const { clientId, guildId, token, scope } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).discord;
 const commands = [];
-const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
-const contextFiles = fs.readdirSync('./interactions/contexts').filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync(new URL('./interactions/commands', import.meta.url)).filter(file => file.endsWith('.js'));
+const contextFiles = fs.readdirSync(new URL('./interactions/contexts', import.meta.url)).filter(file => file.endsWith('.js'));
 
 export async function deploy() {
   logLine('command', [`Deploying commands to ${scope} scope`]);

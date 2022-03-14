@@ -2,15 +2,15 @@
 import fs from 'fs';
 import { MongoClient } from 'mongodb';
 import { logLine } from '../logger.js';
-const mongo = JSON.parse(fs.readFileSync('../config.json')).mongo;
+const mongo = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).mongo;
 import chalk from 'chalk';
 const url = mongo.url;
 const proddb = 'goose';
 const prodtrackcol = 'tracks';
 const produsercol = 'users';
 const testdb = 'test';
-const testtrackcol = 'tracks';
-const testusercol = 'users';
+const testtrackcol = 'tracks2';
+const testusercol = 'users2';
 let db;
 let con;
 

@@ -2,7 +2,8 @@ import fs from 'fs';
 import crypto from 'crypto';
 // Require the necessary discord.js classes
 import { Client, Collection, Intents } from 'discord.js';
-const { discord, internal } = JSON.parse(fs.readFileSync('./config.json'));
+
+const { discord, internal } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
 const token = discord.token;
 import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 // const { leaveVoice } = require('./music');
@@ -16,28 +17,28 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_
 
 // dynamic import of commands, buttons, select menus
 client.commands = new Collection();
-const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync(new URL('./interactions/commands', import.meta.url)).filter(file => file.endsWith('.js'));
 let commandHash = '';
 for (const file of commandFiles) {
-  commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(`./interactions/commands/${file}`)).digest('base64'));
+  commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(new URL(`./interactions/commands/${file}`, import.meta.url))).digest('base64'));
   const command = await import(`./interactions/commands/${file}`);
   client.commands.set(command.data.name, command);
 }
 const contexts = new Collection();
-const contextFiles = fs.readdirSync('./interactions/contexts').filter(file => file.endsWith('.js'));
+const contextFiles = fs.readdirSync(new URL('./interactions/contexts', import.meta.url)).filter(file => file.endsWith('.js'));
 for (const file of contextFiles) {
-  commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(`./interactions/contexts/${file}`)).digest('base64'));
+  commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(new URL(`./interactions/contexts/${file}`, import.meta.url))).digest('base64'));
   const context = await import(`./interactions/contexts/${file}`);
   contexts.set(context.data.name, context);
 }
 const buttons = new Collection();
-const buttonFiles = fs.readdirSync('./interactions/buttons').filter(file => file.endsWith('.js'));
+const buttonFiles = fs.readdirSync(new URL('./interactions/buttons', import.meta.url)).filter(file => file.endsWith('.js'));
 for (const file of buttonFiles) {
   const button = await import(`./interactions/buttons/${file}`);
   buttons.set(button.name, button);
 }
 const selects = new Collection();
-const selectFiles = fs.readdirSync('./interactions/selects').filter(file => file.endsWith('.js'));
+const selectFiles = fs.readdirSync(new URL('./interactions/selects', import.meta.url)).filter(file => file.endsWith('.js'));
 for (const file of selectFiles) {
   const select = await import(`./interactions/selects/${file}`);
   selects.set(select.name, select);
@@ -52,9 +53,9 @@ client.once('ready', async () => {
   if (hashash !== internal?.deployedHash) {
     const deploy = await import('./deploy.js');
     await deploy.deploy();
-    const config = JSON.parse(fs.readFileSync('./config.json'));
+    const config = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
     config.internal ? config.internal.deployedHash = hashash : config.internal = { deployedHash: hashash };
-    fs.writeFileSync('./config.json', JSON.stringify(config, '', 2));
+    fs.writeFileSync(new URL('./config.json', import.meta.url), JSON.stringify(config, '', 2));
   } else { logLine('info', [`Commands appear up to date; hash is ${hashash}`]); }
 
   logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));
@@ -101,7 +102,7 @@ client.on('interactionCreate', async interaction => {
       await selectMenu.execute(interaction);
     } catch (error) {
       logLine('error', [error.stack]);
-      return interaction.update({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true });
+      return interaction.editReply({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true });
     }
   } else if (interaction.isButton()) {
     logComponent(interaction);
@@ -111,7 +112,7 @@ client.on('interactionCreate', async interaction => {
       await buttonPress.execute(interaction, match[2]);
     } catch (error) {
       logLine('error', [error.stack]);
-      return interaction.update({ content: 'There was an error while processing this button press!', components: [], ephemeral: true });
+      return interaction.editReply({ content: 'There was an error while processing this button press!', components: [], ephemeral: true });
     }
   } else if (interaction.isContextMenu()) {
     const context = contexts.get(interaction.commandName);
