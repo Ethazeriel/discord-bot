@@ -3,6 +3,8 @@ import { MessageAttachment } from 'discord.js';
 import { logLine } from './logger.js';
 import Canvas from 'canvas';
 import crypto from 'crypto';
+import axios from 'axios';
+import * as db from './database.js';
 
 export function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
   start ??= '[';
@@ -104,5 +106,44 @@ export async function generateTrackEmbed(track, messagetitle) {
     return { embeds: [npEmbed], files: [albumart] };
   } catch (error) {
     logLine('error', [error.stack]);
+  }
+}
+
+export async function mbArtistLookup(artist) {
+  // check for Artist.official in db before sending lookup
+  const track = await db.getTrack({ $and:[{ 'artist.official':{ $type:'string' } }, { 'artist.name':artist }] });
+  if (track) { return track.artist.official; } else {
+    const { data:firstdata } = await axios(`https://musicbrainz.org/ws/2/artist?query=${artist}&limit=1&offset=0&fmt=json`).catch(error => {
+      logLine('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response.headers, '', 2)}`, error.stack]);
+      return (null);
+    });
+    if (firstdata?.artists?.length) {
+      const mbid = firstdata.artists[0].id;
+      const { data } = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
+        logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response.headers, '', 2)}`, error.stack]);
+        return (null);
+      });
+      if (data?.relations?.length) {
+        let result = null;
+        for (const link of data.relations) { // return the official site first
+          if (link.type === 'official homepage') {
+            result = link.url.resource;
+            return result;
+          }
+        }
+        for (const link of data.relations) { // if no official site, return bandcamp
+          if (link.type === 'bandcamp') {
+            result = link.url.resource;
+            return result;
+          }
+        }
+        for (const link of data.relations) { // if no bandcamp, return last.fm and hope they have better links
+          if (link.type === 'last.fm') {
+            result = link.url.resource;
+            return result;
+          }
+        }
+      }
+    }
   }
 }

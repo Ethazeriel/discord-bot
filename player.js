@@ -6,10 +6,8 @@ import { MessageAttachment } from 'discord.js';
 import * as db from './database.js';
 import { logLine, logDebug } from './logger.js';
 const { useragent } = JSON.parse(fs.readFileSync('./config.json')).youtube;
-
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
-import chalk from 'chalk';
 
 export default class Player {
   // acquisition
@@ -65,7 +63,7 @@ export default class Player {
           if (media) {
             clearInterval(this.listeners[id].media.idleTimer);
             clearInterval(this.listeners[id].media.refreshTimer);
-            await this.decommission(this.listeners[id].media.interaction, 'media', this.mediaEmbed(false), 'Bot left');
+            await this.decommission(this.listeners[id].media.interaction, 'media', await this.mediaEmbed(false), 'Bot left');
           }
           if (this.listeners[id]) {delete this.listeners[id];}
         });
@@ -130,7 +128,7 @@ export default class Player {
         if (this.listeners[id]?.media) {
           clearInterval(this.listeners[id].media.idleTimer);
           clearInterval(this.listeners[id].media.refreshTimer);
-          await this.decommission(this.listeners[id].media.interaction, 'media', this.mediaEmbed(false), 'You left the channel');
+          await this.decommission(this.listeners[id].media.interaction, 'media', await this.mediaEmbed(false), 'You left the channel');
         }
         if (this.listeners[id]) {delete this.listeners[id];}
       }
@@ -396,7 +394,7 @@ export default class Player {
   }
 
   // embeds
-  mediaEmbed(fresh = true) {
+  async mediaEmbed(fresh = true) {
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;
     const track = this.getCurrent();
     const bar = {
@@ -407,12 +405,17 @@ export default class Player {
       head: track?.goose?.bar?.head,
     };
     const elapsedTime = ((Date.now() / 1000) - track?.start) || 0;
+    if (track?.artist?.name && !track?.artist?.official) {
+      const result = await utils.mbArtistLookup(track.artist.name);
+      if (result) {db.updateOfficial(track.goose.id, result);}
+      track.artist.official = result ? result : '';
+    }
     const embed = {
       color: 0x3277a8,
       author: { name: 'Current Track:', icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
-        { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})` : 'Nothing is playing.' },
+        { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.' },
         { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.youtube.duration || track.spotify.duration)}` },
       ],
     };
@@ -482,12 +485,17 @@ export default class Player {
       barafter: track?.goose?.bar?.barafter || '-',
       head: track?.goose?.bar?.head || '#',
     };
+    if (track?.artist?.name && !track?.artist?.official) {
+      const result = await utils.mbArtistLookup(track.artist.name);
+      if (result) {db.updateOfficial(track.goose.id, result);}
+      track.artist.official = result ? result : '';
+    }
     const embed = {
       color: 0x3277a8,
       author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
-        { name: 'Now Playing:', value: (track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}` : 'Nothing is playing.' },
+        { name: 'Now Playing:', value: (track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.' },
         { name: 'Queue:', value: queueStr },
         { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
@@ -608,14 +616,15 @@ export default class Player {
             idleTimer: setInterval(async () => {
               clearInterval(this.listeners[id].media.idleTimer);
               clearInterval(this.listeners[id].media.refreshTimer);
-              await this.decommission(this.listeners[id].media.interaction, 'media', this.mediaEmbed(false));
+              await this.decommission(this.listeners[id].media.interaction, 'media', await this.mediaEmbed(false));
               delete this.listeners[id].media;
               if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
             }, 870000).unref(),
             refreshTimer: setInterval(() => {
               this.listeners[id].media.update(id, 'interval');
             }, 15000).unref(),
-            update: async function(userId, description, content = this.mediaEmbed(false)) {
+            update: async function(userId, description, content) {
+              content ||= await this.mediaEmbed(false);
               const message = `${name} media: ${description}`;
               if (this.listeners[userId].media.interaction.decommission) {
                 logDebug(`decommission interrupt — ${message}`);

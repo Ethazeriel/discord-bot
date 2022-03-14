@@ -19,6 +19,6 @@ export async function execute(interaction, which) {
       const embed = (which === 'showqueue') ? await player.queueEmbed('Current Queue:', undefined, false) : await player.mediaEmbed(false);
       const action = (which === 'refresh' || which === 'showqueue') ? (async () => await interaction.editReply(embed)) : (() => player.sync(interaction, 'media', embed));
       await Promise.all([player.register(interaction, (which === 'showqueue') ? 'queue' : 'media', embed), action()]);
-    } else { await player.decommission(interaction, 'media', player.mediaEmbed(false), 'Queue is empty.'); }
+    } else { await player.decommission(interaction, 'media', await player.mediaEmbed(false), 'Queue is empty.'); }
   }
 }

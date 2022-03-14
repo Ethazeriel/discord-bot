@@ -258,6 +258,16 @@ export async function logPlay(id, success = true) {
   }
 }
 
+export async function updateOfficial(id, link) {
+  try {
+    const tracks = db.collection(trackcol);
+    await tracks.updateOne({ 'goose.id': id }, { $set: { 'artist.official': link } });
+    logLine('database', [`Updated artist link to ${link} for track ${chalk.blue(id)}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 // *****************
 // userdb functions
 // *****************

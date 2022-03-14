@@ -74,7 +74,7 @@ export async function execute(interaction) {
         case 'prev': {
           if (player.getQueue().length) {
             await player.prev();
-            const embed = player.mediaEmbed();
+            const embed = await player.mediaEmbed();
             await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
           } else { await interaction.followUp({ content: 'Queue is empty.' }); }
           break;
@@ -88,7 +88,7 @@ export async function execute(interaction) {
               return;
             }
             await player.next();
-            const embed = player.mediaEmbed();
+            const embed = await player.mediaEmbed();
             await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
           } else { await interaction.followUp({ content: 'Queue is empty.' }); }
           break;
@@ -97,7 +97,7 @@ export async function execute(interaction) {
         case 'jump': {
           if (player.getQueue().length) {
             await player.jump(Math.abs((interaction.options.getInteger('position') || 1) - 1));
-            const embed = player.mediaEmbed();
+            const embed = await player.mediaEmbed();
             await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
           } else { await interaction.followUp({ content: 'Queue is empty.' }); }
           break;
@@ -116,7 +116,7 @@ export async function execute(interaction) {
               return;
             }
             player.togglePause();
-            const embed = player.mediaEmbed();
+            const embed = await player.mediaEmbed();
             await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
           } else { await interaction.followUp({ content: 'Queue is empty.' }); }
           break;

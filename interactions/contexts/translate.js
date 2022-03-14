@@ -4,7 +4,7 @@ import Translator from '../../translate.js';
 
 export const data = new ContextMenuCommandBuilder()
   .setName('Translate this')
-  .setType(3);
+  .setType(3); // type 3 for message, 2 for user
 
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });

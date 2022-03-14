@@ -14,7 +14,8 @@ interface track {
 	},
 	artist: {
 		id: string,
-		name: string
+		name: string,
+		official: string // url link to official site, if !official then bandcamp, etc
 	},
 	spotify: {
 		id: string[],

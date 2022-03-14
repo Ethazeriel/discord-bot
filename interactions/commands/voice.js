@@ -30,7 +30,7 @@ export async function execute(interaction) {
         switch (command) {
           case 'nowplaying': {
             if (player.getQueue().length) {
-              const embed = player.mediaEmbed();
+              const embed = await player.mediaEmbed();
               interaction.message = await interaction.followUp(embed);
               await player.register(interaction, 'media', embed);
             } else { await interaction.followUp({ content: 'Queue is empty.' }); }
