@@ -26,7 +26,7 @@ export const data = new SlashCommandBuilder()
     .setName('seek')
     .setDescription('Move to a time within the current track')
     .addIntegerOption(option => option
-      .setName('time').setDescription('Position in queue').setRequired(true)))
+      .setName('time').setDescription('Time in track').setRequired(true)))
   .addSubcommand(subcommand => subcommand
     .setName('play-pause')
     .setDescription('Toggles pause'))
@@ -104,7 +104,15 @@ export async function execute(interaction) {
         }
 
         case 'seek': {
-          await interaction.followUp({ content: 'Not implemented yet.' });
+          if (player.getQueue().length) {
+            const track = player.getCurrent();
+            const time = Math.abs(interaction.options.getInteger('time'));
+            if (time > track.youtube.duration) { await interaction.followUp({ content: 'You can\'t seek beyond the end of a track.' });} else {
+              await player.seek(interaction.options.getInteger('time'));
+              const embed = await player.mediaEmbed(true, 'Seeking...');
+              await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
+            }
+          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
           break;
         }
 

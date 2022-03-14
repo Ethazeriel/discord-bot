@@ -8,6 +8,7 @@ import { logLine, logDebug } from './logger.js';
 const { useragent } = JSON.parse(fs.readFileSync('./config.json')).youtube;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
+import { stream as seekable } from 'play-dl';
 
 export default class Player {
   // acquisition
@@ -28,7 +29,7 @@ export default class Player {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'playing') {
-        this.queue.tracks[this.queue.playhead].start = (Date.now() / 1000);
+        this.queue.tracks[this.queue.playhead].start = (Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].goose.seek || 0);
       } else if (newState.status == 'idle') {
         const track = this.queue.tracks[this.queue.playhead];
         if (track) {
@@ -218,8 +219,24 @@ export default class Player {
     return (await this.play());
   }
 
-  seek(time) {
-    return ({ content:'No seek yet :c' });
+  async seek(time) {
+    let track = this.queue.tracks[this.queue.playhead];
+    track &&= await db.getTrack({ 'goose.id': track.goose.id });
+    this.queue.tracks[this.queue.playhead] &&= track;
+    if (this.getPause()) { this.togglePause({ force: false }); }
+    if (track) {
+      try {
+        const source = await seekable(`https://www.youtube.com/watch?v=${track.youtube.id}`, { seek:time });
+        const resource = createAudioResource(source.stream, { inputType: source.type });
+        this.player.play(resource);
+        logLine('track', [`Seeking to time ${time} in `, (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
+      } catch (error) {
+        logLine('error', [error.stack]);
+      }
+      track.goose.seek = time;
+      track.start = (Date.now() / 1000) - (time || 0);
+    } else if (this.player.state.status == 'playing') { this.player.stop(); }
+    return (track);
   }
 
   togglePause({ force } = {}) {
@@ -394,7 +411,7 @@ export default class Player {
   }
 
   // embeds
-  async mediaEmbed(fresh = true) {
+  async mediaEmbed(fresh = true, messageTitle = 'Current Track:') {
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;
     const track = this.getCurrent();
     const bar = {
@@ -412,11 +429,11 @@ export default class Player {
     }
     const embed = {
       color: 0x3277a8,
-      author: { name: 'Current Track:', icon_url: utils.pickPride('fish') },
+      author: { name: messageTitle, icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
         { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.' },
-        { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.youtube.duration || track.spotify.duration)}` },
+        { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.youtube?.duration || track?.spotify?.duration || 0)}` },
       ],
     };
     const buttons = [
