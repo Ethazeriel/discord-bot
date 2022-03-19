@@ -4,6 +4,7 @@ import { logLine } from './logger.js';
 import chalk from 'chalk';
 const mongo = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).mongo;
 import { sanitizePlaylists } from './regexes.js';
+import { isMainThread, workerData } from 'worker_threads';
 // Connection URL
 const url = mongo.url;
 const dbname = mongo.database;
@@ -15,7 +16,11 @@ MongoClient.connect(url, function(err, client) {
   if (err) throw err;
   con = client;
   db = client.db(dbname);
-  logLine('database', [`Connected to database: ${dbname}`]);
+  if (isMainThread) {
+    logLine('database', [`Main thread connected to db: ${dbname}`]);
+  } else {
+    logLine('database', [`${workerData?.name} worker connected to database: ${dbname}`]);
+  }
 });
 
 

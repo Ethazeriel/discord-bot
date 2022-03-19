@@ -65,7 +65,7 @@ export async function execute(interaction, which) { // button selection function
         await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
         return;
       }
-      const newtrack = await fetch(`https://www.youtube.com/watch?v=${match[2]}`);
+      const newtrack = await fetch(`https://www.youtube.com/watch?v=${match[2]}`, interaction.id);
       if (!newtrack.length) {
         await interaction.update({ content:'Invalid newtrack URL', ephemeral: true });
         return;

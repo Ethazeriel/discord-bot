@@ -88,7 +88,7 @@ export async function execute(interaction) {
           if (index && (index != workspace.list.length)) {index--;}
         }// check if our index is non-zero and not the length of our songlist
 
-        tracks = await fetch(search);
+        tracks = await fetch(search, interaction.id);
         if (!tracks) {
           await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.`, ephemeral: true });
         }

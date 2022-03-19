@@ -59,7 +59,7 @@ export async function execute(interaction) {
         }
       } else {
         try {
-          tracks = await fetch(search);
+          tracks = await fetch(search, interaction.id);
           if (!tracks || tracks.length == 0) {
             await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.` });
           }
