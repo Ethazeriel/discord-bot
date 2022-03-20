@@ -32,3 +32,7 @@ export default async function fetch(search, id = crypto.randomBytes(5).toString(
 
   return promise;
 }
+
+process.on('SIGINT' || 'SIGTERM', async () => {
+  worker.terminate();
+});

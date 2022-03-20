@@ -3,6 +3,7 @@ import fs from 'fs';
 import chalk from 'chalk';
 import { sanitize } from './regexes.js';
 const debugMode = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).debug;
+import { isMainThread } from 'worker_threads';
 
 
 function currentDT() {
@@ -68,7 +69,7 @@ export async function logLine(level, args) {
       break;
 
     case 'ERROR':
-      console.error(`${chalk.yellow(currentDT())} - ${chalk.bold.red(level)} - ${logStr}`);
+      console.error(`${chalk.yellow(currentDT())} - ${isMainThread ? chalk.blue('M') : chalk.green('W')} - ${chalk.bold.red(level)} - ${logStr}`);
       fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
@@ -162,7 +163,7 @@ export async function logDebug(...message) {
     for (let i = 0; i < message.length; i++) {
       logStr = logStr.concat(message[i] + ' ');
     }
-    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.yellow('DEBUG')} - ${logStr}`);
+    console.log(`${chalk.yellow(currentDT())} - ${isMainThread ? chalk.blue('M') : chalk.green('W')} - ${chalk.bold.yellow('DEBUG')} - ${logStr}`);
   }
 }
 
