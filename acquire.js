@@ -10,7 +10,7 @@ worker.on('exit', code => {
 }); // if it exits just spawn a new one because that's good error handling, yes
 
 export default async function fetch(search, id = crypto.randomBytes(5).toString('hex')) {
-  worker.postMessage({ search:search, id:id });
+  worker.postMessage({ action:'search', search:search, id:id });
   const promise = new Promise((resolve, reject) => {
     const action = (result) => {
       if (result.id === id) {
@@ -34,5 +34,5 @@ export default async function fetch(search, id = crypto.randomBytes(5).toString(
 }
 
 process.on('SIGINT' || 'SIGTERM', async () => {
-  worker.terminate();
+  worker.postMessage({ action:'exit' });
 });

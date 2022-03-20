@@ -10,8 +10,14 @@ import { youtubePattern, spotifyPattern, sanitize } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 
 parentPort.on('message', async data => {
-  const tracks = await fetch(data.search);
-  parentPort.postMessage({ tracks:tracks, id:data.id });
+  if (data.action === 'search') {
+    const tracks = await fetch(data.search);
+    parentPort.postMessage({ tracks:tracks, id:data.id });
+  } else if (data.action === 'exit') {
+    logLine('info', ['Worker exiting']);
+    await db.closeDB();
+    process.exit();
+  }
 });
 logDebug('New worker spawned.');
 

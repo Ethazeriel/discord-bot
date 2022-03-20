@@ -38,9 +38,9 @@ export async function connected() { // await this in your code to wait for the d
 export async function closeDB() {
   // we should really only be doing this when the program exits
   try {
-    logLine('database', [`Closing connection: ${dbname}`]);
     db = null;
     await con.close();
+    logLine('database', [`Closed connection: ${dbname}`]);
   } catch (error) {
     logLine('error', ['database error:', error.message]);
     return error;
