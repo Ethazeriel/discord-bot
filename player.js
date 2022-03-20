@@ -184,7 +184,7 @@ export default class Player {
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const resource = createAudioResource(youtubedl.raw(`https://www.youtube.com/watch?v=${track.youtube.id}`, {
+        const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube.id}`, {
           o: '-',
           q: '',
           'force-ipv4': '',
