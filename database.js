@@ -23,11 +23,23 @@ MongoClient.connect(url, function(err, client) {
   }
 });
 
+export async function connected() { // await this in your code to wait for the db to connect before doing things
+  return new Promise((resolve) => {
+    const wait = (() => {
+      if (db) {
+        resolve(true);
+      } else { setTimeout(wait, 100);}
+    });
+    wait();
+
+  });
+}
 
 export async function closeDB() {
   // we should really only be doing this when the program exits
   try {
     logLine('database', [`Closing connection: ${dbname}`]);
+    db = null;
     await con.close();
   } catch (error) {
     logLine('error', ['database error:', error.message]);
@@ -37,6 +49,7 @@ export async function closeDB() {
 
 export async function getTrack(query) {
   // returns the first track object that matches the query
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     const track = await tracks.findOne(query, { projection: { _id: 0 } });
@@ -50,11 +63,11 @@ export async function getTrack(query) {
   get track by youtubeID: await getTrack({'youtube.id': 'mdh6upXZL6c'});
   spotifyID: await getTrack({ 'spotify.id': '76nqR8hb279mkQLNkQMzK1' });
   key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
-  generally speaking we should let the client close after the query - but if there are issues with repeated queries, could try setting keepAlive to true;
   */
 
 export async function insertTrack(track) {
   // inserts a single track object into the database
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     // check if we already have this url
@@ -76,6 +89,7 @@ export async function insertTrack(track) {
 export async function addKey(query, newkey) {
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { keys: newkey.toLowerCase() } });
@@ -89,6 +103,7 @@ export async function addKey(query, newkey) {
 export async function addSpotifyId(query, newid) {
   // adds a new spotify id to a track we already have
   // silently fails if we don't have the track in the DB already
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { 'spotify.id': newid } });
@@ -104,6 +119,7 @@ export async function addPlaylist(trackarray, listname) {
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
   const name = listname.replace(sanitizePlaylists, '');
   const test = await this.getPlaylist(name);
+  await connected();
   if (!test.length) {
     try {
       const tracks = db.collection(trackcol);
@@ -124,6 +140,7 @@ export async function addPlaylist(trackarray, listname) {
 
 export async function getPlaylist(listname) {
   // returns a playlist as an array of tracks, ready for use
+  await connected();
   try {
     const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection(trackcol);
@@ -139,6 +156,7 @@ export async function getPlaylist(listname) {
 }
 
 export async function removePlaylist(listname) {
+  await connected();
   try {
     const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection(trackcol);
@@ -155,6 +173,7 @@ export async function removePlaylist(listname) {
 
 export async function updateTrack(query, update) {
   // generic update function; basically just a wrapper for updateOne
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, update);
@@ -167,6 +186,7 @@ export async function updateTrack(query, update) {
 export async function removeTrack(query) {
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     const track = await tracks.deleteOne({ 'youtube.id':query });
@@ -184,6 +204,7 @@ export async function removeTrack(query) {
 
 export async function switchAlternate(query, alternate) {
   // returns the first track object that matches the query
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     const search = { 'youtube.id':query };
@@ -207,6 +228,7 @@ export async function switchAlternate(query, alternate) {
 export async function getAlbum(request, type) {
   // returns an album as an array of tracks, ready for use
   // type can be id or name
+  await connected();
   const pattern = /^(?:id|name){1}$/g;
   if (!pattern.test(type)) {return null;}
   try {
@@ -224,6 +246,7 @@ export async function getAlbum(request, type) {
 
 export async function printCount() {
   // returns the number of tracks we have
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     const number = await tracks.count();
@@ -237,6 +260,7 @@ export async function printCount() {
 export async function listPlaylists() {
   // returns all the playlists we have as a set
   // this may take a long time to return and a lot of cpu once we've got more than a few playlists; consider revising
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     const list = await tracks.distinct('playlists');
@@ -253,6 +277,7 @@ export async function listPlaylists() {
 }
 
 export async function logPlay(id, success = true) {
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     const update = success ? { $inc: { 'goose.plays': 1 } } : { $inc: { 'goose.errors': 1, 'goose.plays': 1 } };
@@ -264,6 +289,7 @@ export async function logPlay(id, success = true) {
 }
 
 export async function updateOfficial(id, link) {
+  await connected();
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne({ 'goose.id': id }, { $set: { 'artist.official': link } });
@@ -280,6 +306,7 @@ export async function updateOfficial(id, link) {
 export async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
   // inserts a new user object into the database
   // returns null if unsuccessful
+  await connected();
   try {
     const userdb = db.collection(usercol);
     // check if we already have this user
@@ -307,6 +334,7 @@ export async function newUser(discord) { // usage: await newUser({ id:'119678070
 
 export async function getUser(discordid) { // usage: const result = await getUser('119678070222225408');
   // returns the user object with the matching id
+  await connected();
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
@@ -319,6 +347,7 @@ export async function getUser(discordid) { // usage: const result = await getUse
 export async function updateUser(discordid, field, data, guild) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
+  await connected();
   try {
     const userdb = db.collection(usercol);
     const user = await this.getUser(discordid);
@@ -354,6 +383,7 @@ export async function updateUser(discordid, field, data, guild) { // usage: cons
 export async function saveStash(discordid, playhead, queue) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
+  await connected();
   const idarray = [];
   for (const track of queue) { !track.ephemeral ? idarray.push(track.goose.id) : null; }
   const stash = { playhead: playhead, tracks: idarray };
@@ -369,6 +399,7 @@ export async function saveStash(discordid, playhead, queue) { // usage: const re
 
 export async function getStash(discordid) { // usage: const result = await getStash('119678070222225408');
   // returns the stash (playhead and full track objects) for the given id
+  await connected();
   try {
     const userdb = db.collection(usercol);
     const user = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
@@ -389,6 +420,7 @@ export async function getStash(discordid) { // usage: const result = await getSt
 
 export async function genericUpdate(query, changes, collection) {
   // generic update function; basically just a wrapper for updateOne
+  await connected();
   try {
     const coll = db.collection(collection);
     await coll.updateOne(query, changes);
@@ -400,6 +432,7 @@ export async function genericUpdate(query, changes, collection) {
 
 export async function genericGet(query, collection) { // arc v1
   // returns the first item that matches the query
+  await connected();
   try {
     const coll = db.collection(collection);
     const result = await coll.findOne(query, { projection: { _id: 0 } });
