@@ -29,7 +29,8 @@ export default class Player {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'playing') {
-        this.queue.tracks[this.queue.playhead].start = (Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].goose.seek || 0);
+        const diff = (this.queue.tracks[this.queue.playhead].pause) ? (this.queue.tracks[this.queue.playhead].pause - this.queue.tracks[this.queue.playhead].start) : 0;
+        this.queue.tracks[this.queue.playhead].start = ((Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].goose.seek || 0)) - diff;
       } else if (newState.status == 'idle') {
         const track = this.queue.tracks[this.queue.playhead];
         if (track) {
@@ -41,10 +42,13 @@ export default class Player {
             logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`.replace(/(?<=\d*\.\d{3})\d+/g, ''));
             db.logPlay(track.goose.id, false);
           } else { db.logPlay(track.goose.id); }
+          delete this.queue.tracks[this.queue.playhead].start;
           // ephemeral check
           if (track.ephemeral) { this.remove(this.queue.playhead); }
         }
         this.next();
+      } else if (newState.status == 'paused') {
+        this.queue.tracks[this.queue.playhead].pause = (Date.now() / 1000);
       }
     });
 
@@ -421,7 +425,7 @@ export default class Player {
       barafter: track?.goose?.bar?.barafter,
       head: track?.goose?.bar?.head,
     };
-    const elapsedTime = ((Date.now() / 1000) - track?.start) || 0;
+    const elapsedTime = (this.getPause() ? (track?.pause - track?.start) : ((Date.now() / 1000) - track?.start)) || 0;
     if (track?.artist?.name && !track?.artist?.official) {
       const result = await utils.mbArtistLookup(track.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
@@ -433,7 +437,7 @@ export default class Player {
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
         { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.' },
-        { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.youtube?.duration || track?.spotify?.duration || 0)}` },
+        { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.youtube?.duration || track?.spotify?.duration || 0)}` },
       ],
     };
     const buttons = [
@@ -452,7 +456,7 @@ export default class Player {
     return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
   }
 
-  async queueEmbed(messagetitle, page, fresh = true) {
+  async queueEmbed(messagetitle = 'Current Queue:', page, fresh = true) {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page) || Math.ceil((this.getPlayhead() + 1) / 10);
@@ -491,7 +495,7 @@ export default class Player {
     }
     let queueTime = 0;
     for (const item of queue) { queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration); }
-    let elapsedTime = ((Date.now() / 1000) - track?.start) || 0;
+    let elapsedTime = (this.getPause() ? (track?.pause - track?.start) : ((Date.now() / 1000) - track?.start)) || 0;
     for (const [i, item] of queue.entries()) {
       if (i < this.getPlayhead()) {
         elapsedTime = elapsedTime + Number(item.youtube.duration || item.spotify.duration);
@@ -513,12 +517,12 @@ export default class Player {
       color: 0x3277a8,
       author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
-      description: `**Now Playing:** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtu.be/${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
+      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtu.be/${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
       fields: [
         { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
         { name: '\u200b', value: `${queue.length} tracks`, inline: true },
-        { name: `\` ${utils.progressBar(45, queueTime, elapsedTime, bar)} \``, value: `Elapsed: ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(queueTime)}` },
+        { name: `\` ${utils.progressBar(45, queueTime, elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(queueTime)}` },
       ],
     };
     return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } : { embeds: [embed], components: buttonEmbed };
