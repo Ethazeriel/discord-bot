@@ -82,7 +82,9 @@ export default class Workspace {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
       const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
-      const part = `**${((page - 1) * 10 + (i + 1))}. **${(dbtrack.artist.name || ' ')} - [${(dbtrack.spotify.name || dbtrack.youtube.name)}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)} \n`;
+      let songName = dbtrack.spotify.name || dbtrack.youtube.name;
+      if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
+      const part = `**${((page - 1) * 10 + (i + 1))}. **${(dbtrack.artist.name || ' ')} - [${songName}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;
@@ -96,8 +98,8 @@ export default class Workspace {
       thumbnail: {
         url: 'attachment://thumb.jpg',
       },
+      description: queueStr,
       fields: [
-        { name: 'Horse:', value: queueStr },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
         { name: '\u200b', value: `Playlist length: ${this.list.length} tracks`, inline: true },
         { name: '\u200b', value: `Duration: ${utils.timeDisplay(queueTime)}`, inline: true },
