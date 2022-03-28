@@ -41,6 +41,8 @@ export default class Player {
             logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`.replace(/(?<=\d*\.\d{3})\d+/g, ''));
             db.logPlay(track.goose.id, false);
           } else { db.logPlay(track.goose.id); }
+          // ephemeral check
+          if (track.ephemeral) { this.remove(this.queue.playhead); }
         }
         if (this.getNext()) { this.next(); }
       }

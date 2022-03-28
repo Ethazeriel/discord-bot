@@ -6,6 +6,7 @@ import * as database from '../../database.js';
 import fetch from '../../acquire.js';
 import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
 
+
 // const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
 
 export const data = new SlashCommandBuilder()
@@ -26,13 +27,18 @@ export const data = new SlashCommandBuilder()
     option.setName('shuffle').setDescription('Shuffle?')
       .addChoice('No', 'no')
       .addChoice('Yes', 'tracks')
-      .addChoice('Yes, but keep albums in order', 'albums'));
+      .addChoice('Yes, but keep albums in order', 'albums'))
+  .addStringOption(option =>
+    option.setName('ephemeral').setDescription('Should this remain in the queue after it plays (ie. be loopable)?')
+      .addChoice('No', 'no')
+      .addChoice('Yes', 'yes'));
 
 export async function execute(interaction) {
-  const search = interaction.options.getString('search')?.replace(sanitize, '');
+  const search = interaction.options.getString('search')?.replace(sanitize, '')?.trim();
   const when = interaction.options.getString('when') || 'last';
   const what = interaction.options.getString('what') || 'search';
   const shuffle = interaction.options.getString('shuffle') || 'no';
+  const ephemeral = interaction.options.getString('ephemeral') || 'no';
 
 
   if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
@@ -71,6 +77,12 @@ export async function execute(interaction) {
       if (tracks && tracks.length > 0) {
         if (tracks.length > 1 && (shuffle !== 'no')) {
           tracks = player.shuffle({ albumAware: (shuffle === 'albums') }, tracks);
+        }
+
+        if (ephemeral === 'yes') {
+          for (const track of tracks) {
+            track.ephemeral = true;
+          }
         }
 
         switch (when) {
