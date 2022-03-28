@@ -44,7 +44,7 @@ export default class Player {
           // ephemeral check
           if (track.ephemeral) { this.remove(this.queue.playhead); }
         }
-        if (this.getNext()) { this.next(); }
+        this.next();
       }
     });
 
@@ -205,19 +205,17 @@ export default class Player {
   }
 
   async prev() { // prior, loop or restart current
-    // this.queue.playhead = ((playhead = this.queue.playhead) => (playhead > 0) ? --playhead : (this.queue.loop) ? this.queue.tracks.length - 1 : 0)();
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
-    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
+    return (await this.play());
   }
 
   async next() { // next, loop or end
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
-    return (await this.play()); // thinking to have play return track, for feedback on if there is a track at playhead
+    return (await this.play());
   }
 
   async jump(position) {
     this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
-    // this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length == 0) ? length : length - 1)();
     return (await this.play());
   }
 
@@ -281,10 +279,10 @@ export default class Player {
     if (position < this.queue.playhead) {
       this.queue.playhead--;
     } else if (position == this.queue.playhead) {
-      await this.play(); // should either this or jump check for being paused?
+      await this.play();
     }
     return (removed);
-  } // seems fine
+  }
 
   empty() {
     this.queue.playhead = 0;
@@ -382,7 +380,7 @@ export default class Player {
   }
 
   // information
-  getPrev() {
+  getPrev() { // prior, loop around or current
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
     return (this.queue.tracks[position]);
   }
@@ -391,7 +389,7 @@ export default class Player {
     return (this.queue.tracks[this.queue.playhead]);
   }
 
-  getNext() {
+  getNext() { // next, loop around or end
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
     return (this.queue.tracks[position]);
   }
