@@ -1,6 +1,6 @@
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
-import fetch from '../../acquire.js';
+import ytdl from 'ytdl-core';
 
 export const name = 'remap';
 
@@ -65,50 +65,29 @@ export async function execute(interaction, which) { // button selection function
         await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
         return;
       }
-      const newtrack = await fetch(`https://www.youtube.com/watch?v=${match[2]}`, interaction.id);
-      if (!newtrack.length) {
-        await interaction.update({ content:'Invalid newtrack URL', ephemeral: true });
-        return;
-      }
-
-      if (newtrack[0].ephemeral) { // ephemeral track - we can just do an update by spotify ID
-        const query = { 'spotify.id':newtrack[0].spotify.id };
-        const update = { $set: { 'youtube':newtrack[0].youtube } };
-        if (track.keys.length && (track.keys != newtrack[0].keys)) {
-          const newkeys = track.keys.concat(newtrack[0].keys);
-          update['$set']['keys'] = newkeys;
-        }
-        if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
-          const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
-          update['$set']['playlists'] = newplaylists;
-        }
-        if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
-          const newid = track.spotify.id.concat(newtrack[0].spotify.id);
-          update['$set']['spotify.id'] = newid;
-        }
-
-        await db.updateTrack(query, update);
-        await db.removeTrack(track.youtube.id);
+      // const newtrack = await fetch(`https://www.youtube.com/watch?v=${match[2]}`, interaction.id);
+      const newtrack = await db.getTrack({ 'youtube.id': match[2] });
+      let newtube;
+      if (newtrack?.length) {
+        newtube = newtrack.youtube;
       } else {
-        const query = { 'youtube.id':newtrack[0].youtube.id };
-        const update = { $set: {} };
-        if (track.keys.length && (track.keys != newtrack[0].keys)) {
-          const newkeys = track.keys.concat(newtrack[0].keys);
-          update['$set']['keys'] = newkeys;
+        try {
+          const ytdlResult = await ytdl.getBasicInfo(match[2], { requestOptions: { family:4 } });
+          newtube = {
+            id:match[2],
+            name:ytdlResult?.videoDetails.title,
+            art:`https://i.ytimg.com/vi/${match[2]}/hqdefault.jpg`,
+            duration:Number(ytdlResult?.videoDetails?.lengthSeconds),
+          };
+        } catch (error) {
+          await interaction.update({ content:`Error remapping: ${error.message}`, ephemeral: true });
+          return;
         }
-        if (Object.keys(track.playlists).length && (track.playlists != newtrack[0].playlists)) {
-          const newplaylists = Object.assign(track.playlists, newtrack[0].playlists);
-          update['$set']['playlists'] = newplaylists;
-        }
-        if (track.spotify.id.length && (track.spotify.id != newtrack[0].spotify.id)) {
-          const newid = track.spotify.id.concat(newtrack[0].spotify.id);
-          update['$set']['spotify.id'] = newid;
-        }
-        if (Object.keys(update.$set).length > 0) {
-          await db.updateTrack(query, update);
-        }
-        await db.removeTrack(track.youtube.id);
       }
+      const query = { 'goose.id':track.goose.id };
+      const update = { $set: { youtube:newtube } };
+      await db.updateTrack(query, update);
+
       const reply = {
         embeds: [
           {
@@ -119,7 +98,7 @@ export async function execute(interaction, which) { // button selection function
             },
             fields: [
               { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-              { name: 'To:', value: `[${newtrack[0].youtube.name}](https://youtube.com/watch?v=${newtrack[0].youtube.id}) - ${new Date(newtrack[0].youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+              { name: 'To:', value: `[${newtube.name}](https://youtube.com/watch?v=${newtube.id}) - ${new Date(newtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
             ],
             image: {
               url: 'attachment://combined.png',
