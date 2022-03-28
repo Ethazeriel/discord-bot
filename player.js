@@ -486,7 +486,9 @@ export default class Player {
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
       const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
-      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.artist.name || ' ')} - [${(dbtrack.spotify.name || dbtrack.youtube.name)}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
+      let songName = dbtrack.spotify.name || dbtrack.youtube.name;
+      if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
+      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.artist.name || ' ')} - [${songName}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;
@@ -513,9 +515,8 @@ export default class Player {
       color: 0x3277a8,
       author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
+      description: `**Now Playing:** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtu.be/${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
       fields: [
-        { name: 'Now Playing:', value: (track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.' },
-        { name: 'Queue:', value: queueStr },
         { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },
         { name: '\u200b', value: `${queue.length} tracks`, inline: true },
