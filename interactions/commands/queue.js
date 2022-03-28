@@ -2,6 +2,8 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import { logLine } from '../../logger.js';
 import * as db from '../../database.js';
+import { seekTime as seekRegex } from '../../regexes.js';
+import validator from 'validator';
 
 export const data = new SlashCommandBuilder()
   .setName('queue')
@@ -25,7 +27,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(subcommand => subcommand
     .setName('seek')
     .setDescription('Move to a time within the current track')
-    .addIntegerOption(option => option
+    .addStringOption(option => option
       .setName('time').setDescription('Time in track').setRequired(true)))
   .addSubcommand(subcommand => subcommand
     .setName('play-pause')
@@ -106,11 +108,19 @@ export async function execute(interaction) {
         case 'seek': {
           if (player.getQueue().length) {
             const track = player.getCurrent();
-            const time = Math.abs(interaction.options.getInteger('time'));
-            if (time > track.youtube.duration) { await interaction.followUp({ content: 'You can\'t seek beyond the end of a track.' });} else {
-              await player.seek(interaction.options.getInteger('time'));
-              const embed = await player.mediaEmbed(true, 'Seeking...');
-              await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
+            const usrtime = validator.escape(validator.stripLow(interaction.options.getString('time'))).trim();
+            if (!seekRegex.test(usrtime)) { await interaction.followUp({ content: 'That doesn\'t look like a valid timestamp.' }); } else {
+              const match = usrtime.match(seekRegex);
+              let time = Number(match[3]);
+              if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
+              if (match[2]) {time = (Number(match[2]) * 60) + time;}
+              if (match[1]) {time = (Number(match[1]) * 3600) + time;}
+
+              if (time > track.youtube.duration) { await interaction.followUp({ content: 'You can\'t seek beyond the end of a track.' });} else {
+                await player.seek(time);
+                const embed = await player.mediaEmbed(true, 'Seeking...');
+                await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
+              }
             }
           } else { await interaction.followUp({ content: 'Queue is empty.' }); }
           break;

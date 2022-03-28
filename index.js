@@ -1,16 +1,14 @@
 import fs from 'fs';
 import crypto from 'crypto';
-// Require the necessary discord.js classes
 import { Client, Collection, Intents } from 'discord.js';
-
 const { discord, internal } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
 const token = discord.token;
 import { logLine, logCommand, logComponent, logDebug } from './logger.js';
-// const { leaveVoice } = require('./music');
 import * as database from './database.js';
 import chalk from 'chalk';
 import Player from './player.js';
 import Translator from './translate.js';
+import validator from 'validator';
 
 // Create a new client instance
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.GUILD_MESSAGES] });
@@ -167,7 +165,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 });
 
 client.on('messageCreate', async message => {
-  logDebug(`${chalk.blue(message.author.username)}: ${message.content}`);
+  logDebug(`${chalk.blue(message.author.username)}: ${validator.escape(validator.stripLow(message.content || '')).trim()}`);
   if (!message.author.bot) { Translator.messageEventDispatch(message); }
 });
 

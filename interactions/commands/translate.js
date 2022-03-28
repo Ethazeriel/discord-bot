@@ -2,6 +2,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Translator from '../../translate.js';
 import * as db from '../../database.js';
+import validator from 'validator';
 
 export const data = new SlashCommandBuilder()
   .setName('translate')
@@ -20,10 +21,11 @@ export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: (action === 'to_english') ? false : true });
   switch (action) {
     case 'to_english':
-      const response = await Translator.toEnglish(interaction.options.getString('text')); // TODO - will need to be sanitized
-      const language = await Translator.getLang(interaction.options.getString('text'));
+      const text = validator.escape(validator.stripLow(interaction.options.getString('text') || '')).trim();
+      const response = await Translator.toEnglish(text);
+      const language = await Translator.getLang(text);
 
-      response ? await interaction.followUp({ embeds:[Translator.langEmbed(interaction.options.getString('text'), language.code, interaction.member.displayName, response, 'en')] }) : await interaction.followUp('it didn\'t work');
+      response ? await interaction.followUp({ embeds:[Translator.langEmbed(validator.unescape(text), language.code, interaction.member.displayName, validator.unescape(response), 'en')] }) : await interaction.followUp('it didn\'t work');
       break;
 
     case 'subscribe':

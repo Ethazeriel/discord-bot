@@ -3,6 +3,7 @@ import { v2 } from '@google-cloud/translate';
 import { logDebug, logLine } from './logger.js';
 import * as utils from './utils.js';
 const { apiKey } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).translate;
+import validator from 'validator';
 
 export default class Translator {
   static #organizers = {};
@@ -95,7 +96,7 @@ export default class Translator {
 
   async messageEvent(message) {
     await Translator.#refreshLocales();
-    const messageContent = message.content;
+    const messageContent = validator.escape(validator.stripLow(message.content || '')).trim();
     const translations = {};
     for (const locale of this.targets) {
       try {
@@ -108,7 +109,7 @@ export default class Translator {
     // console.log(translations);
     for (const sub in this.subscribers) {
       if (sub !== message.author.id) {
-        this.subscribers[sub].interaction.followUp({ content:translations[this.subscribers[sub].locale], ephemeral:true });
+        this.subscribers[sub].interaction.followUp({ content:validator.unescape(translations[this.subscribers[sub].locale]), ephemeral:true });
       }
     }
   }

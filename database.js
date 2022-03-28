@@ -71,16 +71,14 @@ export async function insertTrack(track) {
   try {
     const tracks = db.collection(trackcol);
     // check if we already have this url
-    if (!track.ephemeral) {
-      const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube.id }, { 'goose.id': track.goose.id }] }, { projection: { _id: 0 } });
-      if (test == null || (test.youtube.id != track.youtube.id && test.goose.id != track.goose.id)) {
-        // we don't have this in our database yet, so
-        const result = await tracks.insertOne(track);
-        logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
-        return result;
-      } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.youtube.id})`);}
-      // console.log(track);
-    } else { throw new Error('This track is ephemeral!');}
+    if (track.ephemeral) { track.ephemeral = undefined; }
+    const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube.id }, { 'goose.id': track.goose.id }] }, { projection: { _id: 0 } });
+    if (test == null || (test.youtube.id != track.youtube.id && test.goose.id != track.goose.id)) {
+      // we don't have this in our database yet, so
+      const result = await tracks.insertOne(track);
+      logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
+      return result;
+    } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.youtube.id})`);}
   } catch (error) {
     logLine('error', ['database error:', error.message]);
   }

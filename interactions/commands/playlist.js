@@ -6,6 +6,7 @@ import * as database from '../../database.js';
 import { sanitize, sanitizePlaylists } from '../../regexes.js';
 import fetch from '../../acquire.js';
 import Workspace from '../../workspace.js';
+import validator from 'validator';
 
 export const data = new SlashCommandBuilder()
   .setName('playlist')
@@ -80,7 +81,7 @@ export async function execute(interaction) {
 
       case 'add': {
         let tracks = null;
-        const search = interaction.options.getString('track')?.replace(sanitize, '');
+        const search = interaction.options.getString('track')?.replace(sanitize, '').trim();
         const input = Math.abs(interaction.options.getInteger('index') ?? workspace.list.length);
         let index;
         if (input > workspace.list.length) {index = workspace.list.length;} else {
@@ -107,7 +108,7 @@ export async function execute(interaction) {
       }
 
       case 'save': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
+        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, ''))).trim();
         const result = await database.addPlaylist(workspace.list, listname);
         if (result) {
           interaction.followUp({ content:result, ephemeral: true });
@@ -123,7 +124,7 @@ export async function execute(interaction) {
       }
 
       case 'load': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '');
+        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, ''))).trim();
         const result = await database.getPlaylist(listname);
         workspace.addTracks(result, (workspace.list.length));
         interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });

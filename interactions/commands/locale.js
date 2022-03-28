@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import Translator from '../../translate.js';
 import * as db from '../../database.js';
 import { sanitize } from '../../regexes.js';
+import validator from 'validator';
 
 export const data = new SlashCommandBuilder()
   .setName('locale')
@@ -13,7 +14,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
   await interaction.deferReply({ ephemeral: true });
-  const choice = interaction.options.getString('code').replace(sanitize, '').trim();
+  const choice = validator.escape(validator.stripLow(interaction.options.getString('code').replace(sanitize, ''))).trim();
   const locales = await Translator.getLocales();
   if (locales.filter(element => element.code === choice).length) {
     await db.updateUser(interaction.user.id, 'locale', choice);

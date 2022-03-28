@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { logLine } from '../../logger.js';
 import { sanitize, youtubePattern, sanitizePlaylists } from '../../regexes.js';
 import * as database from '../../database.js';
+import validator from 'validator';
 
 
 export const data = new SlashCommandBuilder()
@@ -26,7 +27,7 @@ export async function execute(interaction) {
     switch (interaction.options.getSubcommand()) {
 
       case 'removeplaylist': {
-        const listname = interaction.options.getString('playlist')?.replace(sanitizePlaylists, '')?.trim();
+        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '')))?.trim();
         const result = await database.removePlaylist(listname);
         interaction.followUp({ content:`Removed ${listname} from the database; ${result} tracks.`, ephemeral: true });
         break;
