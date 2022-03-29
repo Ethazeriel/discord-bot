@@ -3,6 +3,9 @@ import { logLine } from '../../logger.js';
 import { sanitize, youtubePattern, sanitizePlaylists } from '../../regexes.js';
 import * as database from '../../database.js';
 import validator from 'validator';
+import fs from 'fs';
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const roles = discord.roles;
 
 
 export const data = new SlashCommandBuilder()
@@ -22,7 +25,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === 'Admin')) {
+  if (interaction.member?.roles?.cache?.some(role => role.name === roles.admin)) {
     await interaction.deferReply({ ephemeral: true });
     switch (interaction.options.getSubcommand()) {
 

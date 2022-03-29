@@ -3,7 +3,12 @@
         "token": "yourbotaccesstoken",
         "clientId": "yourbotclientid",
         "guildId": "testguildid",
-        "scope": "guild/global"
+        "scope": "guild/global",
+        "roles": {
+            "dj":"DJ",
+            "admin":"Admin",
+            "translate":"Limited Participation"
+          }
     },
     "spotify": {
         "client_id": "yourclientid",

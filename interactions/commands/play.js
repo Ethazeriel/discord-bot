@@ -5,6 +5,9 @@ import { logLine } from '../../logger.js';
 import * as database from '../../database.js';
 import fetch from '../../acquire.js';
 import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
+import fs from 'fs';
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const roles = discord.roles;
 
 
 // const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
@@ -41,7 +44,7 @@ export async function execute(interaction) {
   const ephemeral = interaction.options.getString('ephemeral') || 'no';
 
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
+  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
 
     if (!search) {

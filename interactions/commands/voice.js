@@ -1,6 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import { logLine } from '../../logger.js';
+import fs from 'fs';
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
   .setName('voice')
@@ -18,7 +21,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
+  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
 
     const command = interaction.options.getSubcommand();

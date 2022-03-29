@@ -7,6 +7,9 @@ import { sanitize, sanitizePlaylists } from '../../regexes.js';
 import fetch from '../../acquire.js';
 import Workspace from '../../workspace.js';
 import validator from 'validator';
+import fs from 'fs';
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
   .setName('playlist')
@@ -61,7 +64,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
+  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
     const workspace = Workspace.getWorkspace(interaction.member.user.id);
     switch (interaction.options.getSubcommand()) {

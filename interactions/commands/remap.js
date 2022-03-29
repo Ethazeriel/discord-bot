@@ -7,6 +7,9 @@ import * as utils from '../../utils.js';
 import Canvas from 'canvas';
 import Player from '../../player.js';
 import ytdl from 'ytdl-core';
+import fs from 'fs';
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
   .setName('remap')
@@ -17,7 +20,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === 'DJ')) {
+  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
     const search = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
     const replace = interaction.options.getString('newtrack')?.replace(sanitize, '')?.trim();
