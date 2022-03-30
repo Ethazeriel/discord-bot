@@ -1,12 +1,12 @@
 /* eslint-disable no-console */
-const fs = require('fs');
-const { REST } = require('@discordjs/rest');
-const { Routes } = require('discord-api-types/v9');
-const { clientId, guildId, token } = require('./config.json').discord;
+import fs from 'fs';
+import { REST } from '@discordjs/rest';
+import { Routes } from 'discord-api-types/v9';
+const { clientId, guildId, token } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).discord;
 const launchArg = process.argv[2];
 const commands = [];
-const commandFiles = fs.readdirSync('./interactions/commands').filter(file => file.endsWith('.js'));
-const database = require('./database.js');
+const commandFiles = fs.readdirSync(new URL('../interactions/commands', import.meta.url)).filter(file => file.endsWith('.js'));
+import * as database from '../database.js';
 
 if (process.argv.length > 3) {
   console.log('Too many arguments');
@@ -18,7 +18,7 @@ if (process.argv.length > 3) {
 
 console.log('Deployment started with scope: ' + launchArg);
 for (const file of commandFiles) {
-  const command = require(`./interactions/commands/${file}`);
+  const command = await import(`./interactions/commands/${file}`);
   commands.push(command.data.toJSON());
 }
 

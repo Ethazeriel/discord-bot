@@ -1,8 +1,10 @@
 /* eslint-disable no-console */
-const fs = require('fs');
-const chalk = require('chalk');
-const { sanitize } = require('./regexes.js');
-const debugMode = require('./config.json').debug;
+import fs from 'fs';
+import chalk from 'chalk';
+import { sanitize } from './regexes.js';
+const debugMode = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).debug;
+import { isMainThread } from 'worker_threads';
+
 
 function currentDT() {
   const date = new Date();
@@ -19,73 +21,83 @@ function currentDT() {
   return `[${date.getFullYear()}-${month}-${day}|${hour}:${minute}:${second}]`;
 }
 
-async function logLine(level, args) {
+export async function logLine(level, args) {
   level = level.toUpperCase();
   let logStr = '';
   for (let i = 0; i < args.length; i++) {
     logStr = logStr.concat(args[i] + ' ');
   }
   switch (level) {
-  case 'INFO':
-    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.blue(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-    break;
+    case 'INFO':
+      console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.blue(level)} - ${logStr}`);
+      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      break;
 
-  case 'TRACK':
-    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.green(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-    break;
+    case 'TRACK':
+      console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.green(level)} - ${logStr}`);
+      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      break;
 
-  case 'DATABASE':
-    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.cyan(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-    break;
+    case 'FETCH':
+      console.log(`${chalk.yellow(currentDT())} - ${chalk.hex('#FF7F00').bold(level)} - ${logStr}`);
+      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      break;
 
-  case 'ERROR':
-    console.error(`${chalk.yellow(currentDT())} - ${chalk.bold.red(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-    fs.writeFile('./logs/error.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-    break;
+    case 'DATABASE':
+      console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.cyan(level)} - ${logStr}`);
+      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      break;
 
-  default:
-    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta(level)} - ${logStr}`);
-    fs.writeFile('./logs/all.log', `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-    break;
+    case 'ERROR':
+      console.error(`${chalk.yellow(currentDT())} - ${isMainThread ? chalk.blue('M') : chalk.green('W')} - ${chalk.bold.red(level)} - ${logStr}`);
+      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      fs.writeFile(new URL('./logs/error.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      break;
+
+    default:
+      console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta(level)} - ${logStr}`);
+      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+      break;
   }
 
 }
 
-async function logCommand(interaction) {
+export async function logCommand(interaction) {
   // takes an interaction, logs relevant details to file and console
   // for console
   let conStr = `Guild: ${chalk.blue(interaction.guildId ? interaction.member.guild.name.replace(sanitize, '').trim() : 'DM')}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Command: ${chalk.cyan(interaction.commandName)}`;
@@ -114,7 +126,7 @@ async function logCommand(interaction) {
     }
   }
   console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta('COMMAND')} - ${conStr}`);
-  fs.writeFile('./logs/all.log', `${currentDT()} - ${'COMMAND'} - ${logStr}\n`, { flag: 'a' }, err => {
+  fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${'COMMAND'} - ${logStr}\n`, { flag: 'a' }, err => {
     if (err) {
       console.error(err);
       return;
@@ -122,12 +134,12 @@ async function logCommand(interaction) {
   });
 }
 
-async function logComponent(interaction) {
+export async function logComponent(interaction) {
   // takes an interaction, logs relevant details to file and console
   // for console
-  let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan(interaction.message.interaction.commandName)}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;
+  let conStr = `Guild: ${chalk.blue(interaction.member.guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan(interaction.message.interaction?.commandName || 'component')}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;
   // for file
-  let logStr = `Guild: ${interaction.member.guild.name.replace(sanitize, '').trim()}(${interaction.guildId}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Source: ${interaction.message.interaction.commandName}(${interaction.message.interaction.id}), Type: ${interaction.componentType}, ID: ${interaction.customId}`;
+  let logStr = `Guild: ${interaction.member.guild.name.replace(sanitize, '').trim()}(${interaction.guildId}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Source: ${interaction.message.interaction?.commandName || 'component'}(${interaction.message.id}), Type: ${interaction.componentType}, ID: ${interaction.customId}`;
   if (interaction.componentType == 'SELECT_MENU') {
     logStr = logStr.concat(', Values: ');
     conStr = conStr.concat(', Values: ');
@@ -137,7 +149,7 @@ async function logComponent(interaction) {
     });
   }
   console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta('COMPONENT')} - ${conStr}`);
-  fs.writeFile('./logs/all.log', `${currentDT()} - ${'COMPONENT'} - ${logStr}\n`, { flag: 'a' }, err => {
+  fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${'COMPONENT'} - ${logStr}\n`, { flag: 'a' }, err => {
     if (err) {
       console.error(err);
       return;
@@ -145,22 +157,16 @@ async function logComponent(interaction) {
   });
 }
 
-async function logDebug(...message) {
+export async function logDebug(...message) {
   if (debugMode) {
     let logStr = '';
     for (let i = 0; i < message.length; i++) {
       logStr = logStr.concat(message[i] + ' ');
     }
-    console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.yellow('DEBUG')} - ${logStr}`);
+    console.log(`${chalk.yellow(currentDT())} - ${isMainThread ? chalk.blue('M') : chalk.green('W')} - ${chalk.bold.yellow('DEBUG')} - ${logStr}`);
   }
 }
 
-async function logSpace() {
+export async function logSpace() {
   console.log();
 }
-
-exports.logLine = logLine;
-exports.logCommand = logCommand;
-exports.logComponent = logComponent;
-exports.logDebug = logDebug;
-exports.logSpace = logSpace;

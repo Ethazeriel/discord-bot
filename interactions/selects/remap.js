@@ -1,16 +1,14 @@
-const db = require('../../database.js');
-const utils = require('../../utils.js');
+import * as db from '../../database.js';
+import * as utils from '../../utils.js';
 
-module.exports = {
-  name: 'remap',
+export const name = 'remap';
 
-  async execute(interaction) { // dropdown selection function
-    const choice = interaction.values[0];
-    if (choice < 4) {
-      const track = await db.getTrack({ 'youtube.id': interaction.message.embeds[0].footer.text });
-      const reply = {
-        embeds:
-      [
+export async function execute(interaction) { // dropdown selection function
+  const choice = interaction.values[0];
+  if (choice < 4) {
+    const track = await db.getTrack({ 'youtube.id': interaction.message.embeds[0].footer.text });
+    const reply = {
+      embeds: [
         {
           color: 0xd64004,
           author: {
@@ -31,31 +29,30 @@ module.exports = {
           },
         },
       ],
-        components:
-  [
-    {
-      'type': 1,
-      'components': [
+      components: [
         {
-          'type': 2,
-          'custom_id': 'remap-db',
-          'style':3,
-          'label':'Confirm',
-        },
-        {
-          'type': 2,
-          'custom_id': 'remap-no',
-          'style':4,
-          'label':'Cancel',
+          'type': 1,
+          'components': [
+            {
+              'type': 2,
+              'custom_id': 'remap-db',
+              'style':3,
+              'label':'Confirm',
+            },
+            {
+              'type': 2,
+              'custom_id': 'remap-no',
+              'style':4,
+              'label':'Cancel',
+            },
+          ],
         },
       ],
-    },
-  ] };
-      await interaction.update(reply);
-    } else {
-      const reply = {
-        embeds:
-      [
+    };
+    await interaction.update(reply);
+  } else {
+    const reply = {
+      embeds: [
         {
           color: 0xd64004,
           author: {
@@ -72,8 +69,8 @@ module.exports = {
           },
         },
       ],
-        components:[] };
-      await interaction.update(reply);
-    }
-  },
-};
+      components:[],
+    };
+    await interaction.update(reply);
+  }
+}

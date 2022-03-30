@@ -1,21 +1,31 @@
 {
-  "discord": {
-      "token": "yourbotaccesstoken",
-      "clientId": "yourbotclientid",
-      "guildId": "testguildid"
-  },
-  "spotify": {
-    "client_id": "yourclientid",
-    "client_secret": "yourclientsecret"
-  },
-  "youtube": {
-    "apiKey": "youryoutubeapikey",
-    "useragent": "yourbrowseruseragentstring"
-  },
-  "mongo": {
-    "url": "mongodb://username:password@localhost:27017/?authSource=admin",
-    "database": "test",
-    "collection": "tracks"
-  },
-  "debug": false
+    "discord": {
+        "token": "yourbotaccesstoken",
+        "clientId": "yourbotclientid",
+        "guildId": "testguildid",
+        "scope": "guild/global",
+        "roles": {
+            "dj":"DJ",
+            "admin":"Admin",
+            "translate":"Limited Participation"
+          }
+    },
+    "spotify": {
+        "client_id": "yourclientid",
+        "client_secret": "yourclientsecret"
+    },
+    "youtube": {
+        "apiKey": "youryoutubeapikey",
+        "useragent": "yourbrowseruseragentstring"
+    },
+    "mongo": {
+        "url": "mongodb://username:password@localhost:27017/?authSource=admin",
+        "database": "test",
+        "trackcollection": "tracks",
+        "usercollection": "users"
+    },
+    "debug": false,
+    "translate": {
+        "apiKey": "yourcloudtranslateapikey"
+      }
 }

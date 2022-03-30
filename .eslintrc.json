@@ -5,7 +5,8 @@
 		"es6": true
 	},
 	"parserOptions": {
-		"ecmaVersion": 2021
+		"ecmaVersion": "latest",
+		"sourceType": "module"
 	},
 	"rules": {
 		"arrow-spacing": ["warn", { "before": true, "after": true }],
@@ -16,7 +17,7 @@
 		"curly": ["error", "multi-line", "consistent"],
 		"dot-location": ["error", "property"],
 		"handle-callback-err": "warn",
-		"indent": ["error", 2],
+		"indent": ["error", 2, { "SwitchCase": 1 }],
 		"keyword-spacing": "error",
 		"max-nested-callbacks": ["error", { "max": 4 }],
 		"max-statements-per-line": ["error", { "max": 2 }],

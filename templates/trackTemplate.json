@@ -15,7 +15,8 @@
 	},
 	"artist" : {
 		"id" : "string",
-		"name" : "string"
+		"name" : "string",
+		"official" : "string"
 	},
 	"spotify" : {
 		"id" : ["strings"],

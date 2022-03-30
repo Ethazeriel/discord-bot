@@ -1,8 +1,8 @@
 const request = require('request');
 const { writeFile } = require('fs/promises');
-const { spotifyPattern, sanitize } = require('./regexes.js');
+const { spotifyPattern, sanitize } = require('../regexes.js');
 
-const auth = require('./config.json');
+const auth = require('../config.json');
 auth.spotify.authOptions = {
   'url': 'https://accounts.spotify.com/api/token',
   'headers': {
