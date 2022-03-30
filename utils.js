@@ -113,14 +113,14 @@ export async function mbArtistLookup(artist) {
   // check for Artist.official in db before sending lookup
   const track = await db.getTrack({ $and:[{ 'artist.official':{ $type:'string' } }, { 'artist.name':artist }] });
   if (track) { return track.artist.official; } else {
-    const { data:firstdata } = await axios(`https://musicbrainz.org/ws/2/artist?query=${artist}&limit=1&offset=0&fmt=json`).catch(error => {
-      logLine('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response.headers, '', 2)}`, error.stack]);
+    const { data:firstdata } = await axios(`https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(artist)}&limit=1&offset=0&fmt=json`).catch(error => {
+      logLine('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response?.headers, '', 2)}`, error.stack]);
       return (null);
     });
     if (firstdata?.artists?.length) {
       const mbid = firstdata.artists[0].id;
       const { data } = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
-        logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response.headers, '', 2)}`, error.stack]);
+        logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, '', 2)}`, error.stack]);
         return (null);
       });
       if (data?.relations?.length) {

@@ -9,21 +9,75 @@ export async function execute(interaction, which) {
   const player = await Player.getPlayer(interaction);
   if (player) {
     if (player.getQueue().length) {
-      const match = interaction.message.embeds[0].fields[3]?.value.match(embedPage);
+      const match = interaction.message.embeds[0]?.fields?.[1]?.value.match(embedPage);
       let page = (match) ? Number(match[1]) : 1;
       switch (which) {
-        case 'refresh': break;
-        case 'prev': page--; break;
-        case 'home': page = Math.ceil((player.getPlayhead() + 1) / 10); break;
-        case 'next': page++; break;
-        case 'loop': player.toggleLoop(); break;
-        case 'shuffle': player.shuffle(); break;
-        case 'showmedia': /* empty case as is handled through ternaries */ break;
+        case 'refresh': {
+          const queueEmbed = await player.queueEmbed(undefined, page, false);
+          interaction.message = await interaction.editReply(queueEmbed);
+          player.register(interaction, 'queue', queueEmbed);
+          break;
+        }
+
+        case 'prev': {
+          const queueEmbed = await player.queueEmbed(undefined, --page, false);
+          interaction.message = await interaction.editReply(queueEmbed);
+          player.register(interaction, 'queue', queueEmbed);
+          break;
+        }
+
+        case 'home': {
+          page = Math.ceil((player.getPlayhead() + 1) / 10);
+          const queueEmbed = await player.queueEmbed(undefined, page, false);
+          interaction.message = await interaction.editReply(queueEmbed);
+          player.register(interaction, 'queue', queueEmbed);
+          break;
+        }
+
+        case 'next': {
+          const queueEmbed = await player.queueEmbed(undefined, ++page, false);
+          interaction.message = await interaction.editReply(queueEmbed);
+          player.register(interaction, 'queue', queueEmbed);
+          break;
+        }
+
+        case 'loop': {
+          if (player.getCurrent()) {
+            await player.toggleLoop();
+            const queueEmbed = await player.queueEmbed(undefined, undefined, false);
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+          } else {
+            await player.toggleLoop();
+            const mediaEmbed = await player.mediaEmbed(false);
+            const queueEmbed = await player.queueEmbed(undefined, undefined, false);
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+          }
+          break;
+        }
+
+        case 'shuffle': {
+          if (player.getCurrent()) {
+            player.shuffle();
+            const queueEmbed = await player.queueEmbed(undefined, undefined, false);
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+          } else {
+            player.shuffle();
+            const mediaEmbed = await player.mediaEmbed(false);
+            const queueEmbed = await player.queueEmbed(undefined, undefined, false);
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+          }
+          break;
+        }
+
+        case 'showmedia': {
+          const mediaEmbed = await player.mediaEmbed();
+          interaction.message = await interaction.editReply(mediaEmbed);
+          player.register(interaction, 'media', mediaEmbed);
+          break;
+        }
+
         default: logDebug(`queue buttons—bad case: ${which}`); return;
       }
-      const embed = (which === 'showmedia') ? await player.mediaEmbed() : await player.queueEmbed('Current Queue:', page, false);
-      const action = (which === 'loop' || which === 'shuffle') ? (() => player.sync(interaction, 'queue')) : (async () => await interaction.editReply(embed));
-      await Promise.all([player.register(interaction, (which === 'showmedia') ? 'media' : 'queue', embed), action()]);
-    } else { player.decommission(interaction, 'queue', await player.queueEmbed(), 'Queue is empty.'); }
+    } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
   }
 }

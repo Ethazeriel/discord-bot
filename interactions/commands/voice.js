@@ -23,10 +23,9 @@ export async function execute(interaction) {
 
   if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
-
     const command = interaction.options.getSubcommand();
     if (command == 'leave') {
-      await interaction.followUp(Player.leave(interaction));
+      await interaction.editReply(Player.leave(interaction));
     } else {
       const player = await Player.getPlayer(interaction, { explicitJoin: (command == 'join') });
       if (player && command != 'join') {
@@ -34,15 +33,15 @@ export async function execute(interaction) {
           case 'nowplaying': {
             if (player.getQueue().length) {
               const embed = await player.mediaEmbed();
-              interaction.message = await interaction.followUp(embed);
+              interaction.message = await interaction.editReply(embed);
               await player.register(interaction, 'media', embed);
-            } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+            } else { await player.decommission(interaction, 'media', await player.mediaEmbed(false), 'Queue is empty.'); }
             break;
           }
 
           default: {
             logLine('error', ['OH NO SOMETHING\'S FUCKED']);
-            await interaction.followUp({ content: 'Something broke. Please try again', ephemeral: true });
+            await interaction.editReply({ content: 'Something broke. Please try again', ephemeral: true });
           }
         }
       }

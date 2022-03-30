@@ -6,7 +6,7 @@ export const name = 'list';
 export async function execute(interaction, which) {
   await interaction.deferUpdate({ ephemeral: true });
   const workspace = Workspace.getWorkspace(interaction.member.user.id);
-  let match = interaction.message.embeds[0].fields[1]?.value.match(embedPage);
+  let match = interaction.message.embeds[0].fields?.[0]?.value?.match(embedPage);
   if (!match) { match = [0, 1]; }
   const currentPage = Number(match[1]);
   let reply = 'uhoh';

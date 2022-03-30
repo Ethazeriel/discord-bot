@@ -69,42 +69,42 @@ export async function execute(interaction) {
         case 'show': {
           if (player.getQueue().length) {
             const page = Math.abs(interaction.options.getInteger('page')) || 1;
-            const embed = await player.queueEmbed('Current Queue:', page);
-            interaction.message = await interaction.followUp(embed);
-            player.register(interaction, 'queue', embed);
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+            const queueEmbed = await player.queueEmbed(undefined, page);
+            interaction.message = await interaction.editReply(queueEmbed);
+            player.register(interaction, 'queue', queueEmbed);
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'prev': {
           if (player.getQueue().length) {
             await player.prev();
-            const embed = await player.mediaEmbed();
-            await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+            const mediaEmbed = await player.mediaEmbed();
+            const queueEmbed = await player.queueEmbed();
+            await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'next': {
-          const length = player.getQueue().length;
-          if (length) {
-            if (length == player.getPlayhead()) {
-              await interaction.followUp({ content: 'Queue is over, and not set to loop.' });
-              return;
-            }
-            await player.next();
-            const embed = await player.mediaEmbed();
-            await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+          if (player.getQueue().length) {
+            if (player.getCurrent()) {
+              await player.next();
+              const mediaEmbed = await player.mediaEmbed();
+              const queueEmbed = await player.queueEmbed();
+              await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+            } else { await interaction.editReply({ content: 'Queue is over, and not set to loop.' }); } // rework; next on ended queue should restart
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'jump': {
           if (player.getQueue().length) {
             await player.jump(Math.abs((interaction.options.getInteger('position') || 1) - 1));
-            const embed = await player.mediaEmbed();
-            await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+            const mediaEmbed = await player.mediaEmbed();
+            const queueEmbed = await player.queueEmbed();
+            await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
@@ -112,85 +112,113 @@ export async function execute(interaction) {
           if (player.getQueue().length) {
             const track = player.getCurrent();
             const usrtime = validator.escape(validator.stripLow(interaction.options.getString('time'))).trim();
-            if (!seekRegex.test(usrtime)) { await interaction.followUp({ content: 'That doesn\'t look like a valid timestamp.' }); } else {
+            if (!seekRegex.test(usrtime)) { await interaction.editReply({ content: 'That doesn\'t look like a valid timestamp.' }); } else {
               const match = usrtime.match(seekRegex);
               let time = Number(match[3]);
               if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
               if (match[2]) {time = (Number(match[2]) * 60) + time;}
               if (match[1]) {time = (Number(match[1]) * 3600) + time;}
 
-              if (time > track.youtube.duration) { await interaction.followUp({ content: 'You can\'t seek beyond the end of a track.' });} else {
+              if (time > track.youtube.duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
                 await player.seek(time);
-                const embed = await player.mediaEmbed(true, 'Seeking...');
-                await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
+                const mediaEmbed = await player.mediaEmbed(true, 'Seeking...');
+                const queueEmbed = await player.queueEmbed();
+                await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
               }
             }
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'play-pause': {
-          const length = player.getQueue().length;
-          if (length) {
-            if (length == player.getPlayhead()) {
-              await interaction.followUp({ content: 'Queue is over.' });
-              return;
-            }
-            player.togglePause();
-            const embed = await player.mediaEmbed();
-            await Promise.all([player.register(interaction, 'media', embed), player.sync(interaction, 'media', embed)]);
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+          if (player.getQueue().length) {
+            if (player.getCurrent()) {
+              player.togglePause();
+              const mediaEmbed = await player.mediaEmbed();
+              const queueEmbed = await player.queueEmbed();
+              await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+            } else { await interaction.editReply({ content: 'Queue is over.' }); } // rework; play-pause on ended queue should restart
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'loop': {
-          await player.toggleLoop();
-          await Promise.all([player.register(interaction, 'queue'), player.sync(interaction, 'queue')]);
+          if (player.getQueue().length) {
+            if (player.getCurrent()) {
+              await player.toggleLoop();
+              const queueEmbed = await player.queueEmbed();
+              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+            } else {
+              await player.toggleLoop();
+              const mediaEmbed = await player.mediaEmbed();
+              const queueEmbed = await player.queueEmbed();
+              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+            }
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'shuffle': {
-          const length = player.getQueue().length;
-          if (length) {
-            if (length == player.getPlayhead()) {
-              await interaction.followUp({ content: 'Queue is over.' });
-              return;
+          if (player.getQueue().length) {
+            if (player.getCurrent()) {
+              player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
+              const queueEmbed = await player.queueEmbed();
+              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+            } else {
+              player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
+              const mediaEmbed = await player.mediaEmbed();
+              const queueEmbed = await player.queueEmbed();
+              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
             }
-            const embed = await player.queueEmbed('Current Queue:', Math.ceil((player.getPlayhead() + 1) / 10));
-            player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
-            await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue')]);
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'remove': {
           if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
-            const removed = await player.remove(Math.abs((interaction.options.getInteger('position') || 1) - 1)); // was Math.abs(interaction.options.getInteger('track') - 1)
-            await interaction.followUp({ content: (removed.length) ? `Removed: ${(removed[0].spotify.name || removed[0].youtube.name)}` : 'Remove failed. Most likely your input is too high.' });
-          } else { await interaction.followUp({ content: 'Queue is empty.' }); }
+            const position = Math.abs((interaction.options.getInteger('position') || 1) - 1);
+            const removed = await player.remove(position); // we'll be refactoring remove later
+            await interaction.editReply({ content: (removed.length) ? `Removed: ${(removed[0].spotify.name || removed[0].youtube.name)}` : 'Remove failed. Most likely your input is too high.' });
+
+            if (position == player.getPlayhead()) {
+              const mediaEmbed = await player.mediaEmbed();
+              const queueEmbed = await player.queueEmbed();
+              player.sync(interaction, 'media', queueEmbed, mediaEmbed);
+            } else {
+              const queueEmbed = await player.queueEmbed();
+              player.sync(interaction, 'queue', queueEmbed);
+            }
+          } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
 
         case 'empty': {
           player.empty();
-          await interaction.followUp({ content: 'Emptied Queue.' });
+          await interaction.editReply({ content: 'Emptied Queue.' });
+
+          const mediaEmbed = await player.mediaEmbed();
+          const queueEmbed = await player.queueEmbed();
+          player.sync(interaction, 'media', queueEmbed, mediaEmbed);
           break;
         }
 
         case 'recall': {
           if (!player.getQueue().length) {
             const result = await db.getStash(interaction.user.id);
-            player.queue.tracks = result.tracks;
-            await player.jump(result.playhead);
-            const embed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
-            await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue')]);
-          } else { await interaction.followUp({ content: 'This command can only be called with an empty queue.' }); }
+            if (result.tracks.length) {
+              player.queue.tracks = result.tracks;
+              await player.jump(result.playhead);
+              const mediaEmbed = await player.mediaEmbed();
+              const queueEmbed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
+              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+            } else { await interaction.editReply({ content: 'Your stash is empty.' }); }
+          } else { await interaction.editReply({ content: 'This command can only be called with an empty queue.' }); }
           break;
         }
 
         default: {
           logLine('error', ['OH NO SOMETHING\'S FUCKED']);
-          await interaction.followUp({ content: 'Something broke. Please try again' });
+          await interaction.editReply({ content: 'Something broke. Please try again' });
         }
 
       }

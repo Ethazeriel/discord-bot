@@ -143,12 +143,14 @@ export async function execute(interaction) {
       }
 
       case 'play': {
-        const player = await Player.getPlayer(interaction);
-        if (player) {
-          const length = await player.queueLast(workspace.list);
-          const embed = await player.queueEmbed('Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
-          await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
-        }
+        if (workspace.list.length) {
+          const player = await Player.getPlayer(interaction);
+          if (player) {
+            const length = await player.queueLast(workspace.list);
+            const embed = await player.queueEmbed('Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
+            await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
+          }
+        } else { await interaction.editReply('Your workspace is empty.'); }
         break;
       }
 
