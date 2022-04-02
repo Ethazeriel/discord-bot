@@ -91,7 +91,7 @@ export async function addKey(query, newkey) {
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { keys: newkey.toLowerCase() } });
-    logLine('database', [`Adding key ${chalk.blue(newkey.toLowerCase())} to ${chalk.green(query)}`]);
+    logLine('database', [`Adding key ${chalk.blue(newkey.toLowerCase())} to ${chalk.green(JSON.stringify(query))}`]);
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
   }
@@ -388,7 +388,7 @@ export async function saveStash(discordid, playhead, queue) { // usage: const re
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
-    logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green(stash.tracks.length)} tracks`]);
+    logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length - 1))} tracks`]);
     return result;
   } catch (error) {
     logLine('error', ['database error:', error.stack]);
