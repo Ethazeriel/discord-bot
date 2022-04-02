@@ -1,0 +1,20 @@
+.small {
+  display: flex;
+}
+
+.smallArt {
+  height: 12vh;
+  width: 12vh;
+  margin-right: 0.5em;
+}
+
+.small h2 {
+  margin: 0px;
+  font-size: 4vh;
+}
+
+.small p {
+  margin: 0px;
+  text-align: left;
+  font-size: 2.5vh;
+}

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { Client, Collection, Intents } from 'discord.js';
-const { discord, internal } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+const { discord, internal, functions } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
 const token = discord.token;
 import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 import * as database from './database.js';
@@ -59,7 +59,11 @@ client.once('ready', async () => {
   logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));
   logLine('info', ['Ready!', `Node version: ${process.version}`]);
   database.printCount();
-  // console.log(client);
+
+  if (functions.web) { // this is bad code because it doesn't let things load asynchronously; consider revising
+    import('./webserver.js');
+  }
+
   for (const [id, guild] of client.guilds._cache) {
     logDebug(`Checking users for ${id}`);
     for (const [userid, member] of guild.members._cache) {
