@@ -1,4 +1,10 @@
 {
+    "debug": false,
+    "functions": {
+        "web": true,
+        "music": true,
+        "translate": true
+      },
     "discord": {
         "token": "yourbotaccesstoken",
         "clientId": "yourbotclientid",
@@ -24,7 +30,6 @@
         "trackcollection": "tracks",
         "usercollection": "users"
     },
-    "debug": false,
     "translate": {
         "apiKey": "yourcloudtranslateapikey"
       }
