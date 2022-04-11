@@ -14,9 +14,7 @@ worker.on('message', async (message) => {
 
   switch (message.type) {
     case 'player': {
-      console.log(message);
       const player = Player.retrievePlayer(message.playerId);
-      console.log(player);
       if (player) {
         switch (message.action) {
           case 'previous': {
