@@ -426,6 +426,10 @@ export default class Player {
     return (this.queue.playhead);
   }
 
+  getStatus() {
+    return this.queue;
+  }
+
   // embeds
   async mediaEmbed(fresh = true, messageTitle = 'Current Track:') {
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;

@@ -1,43 +1,121 @@
-import * as db from './database.js';
-import helmet from 'helmet';
-import express from 'express';
-import path from 'path';
-import { logLine } from './logger.js';
-import chalk from 'chalk';
+import { Worker } from 'worker_threads';
+import { logDebug } from './logger.js';
+import Player from './player.js';
+import { seekTime as seekRegex } from './regexes.js';
+import validator from 'validator';
 
-const app = express();
-const port = 2468;
+let worker = new Worker('./workers/webserver.js', { workerData:{ name:'WebServer' } });
+worker.on('exit', code => {
+  logDebug(`Worker exited with code ${code}.`);
+  worker = new Worker('./workers/webserver.js', { workerData:{ name:'WebServer' } });
+}); // if it exits just spawn a new one because that's good error handling, yes
 
-app.use(helmet());
-app.use(express.static('./react/build'));
-app.use(express.json());
+worker.on('message', async (message) => {
 
-app.get('/', (req, res) => {
-  logLine('get', [`Endpoint ${chalk.blue('/')}`]);
-  res.sendFile(path.resolve(__dirname, './react/build', 'index.html'));
+  switch (message.type) {
+    case 'player': {
+      const player = Player.retrievePlayer(message.playerId);
+      if (player) {
+        switch (message.action) {
+          case 'previous': {
+            await player.prev();
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          case 'next': {
+            await player.next();
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          case 'jump': {
+            const target = Math.abs(Number(message.target));
+            await player.jump(target);
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          case 'seek': { // copied wholesale from interaction/queue/seek
+            const track = player.getCurrent();
+            const usrtime = validator.escape(validator.stripLow(message.target + '')).trim();
+            if (!seekRegex.test(usrtime)) { worker.postMessage({ id:message.id, error:'Invalid timestamp' }); } else {
+              const match = usrtime.match(seekRegex);
+              let time = Number(match[3]);
+              if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
+              if (match[2]) {time = (Number(match[2]) * 60) + time;}
+              if (match[1]) {time = (Number(match[1]) * 3600) + time;}
+
+              if (time > track.youtube.duration) { worker.postMessage({ id:message.id, error:'Can\'t seek beyond end of track' });} else {
+                await player.seek(time);
+                const status = player.getStatus();
+                worker.postMessage({ id:message.id, status:status });
+              }
+            }
+            break;
+          }
+
+          case 'togglePause': {
+            await player.togglePause();
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          case 'toggleLoop': {
+            await player.toggleLoop();
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          case 'queue':
+            // yeah I have no idea what the fuck I want to do here
+            break;
+
+          case 'remove': {
+            if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
+              const position = Math.abs((Number(message.target)));
+              const removed = await player.remove(position); // we'll be refactoring remove later
+              if (removed.length) {
+                const status = player.getStatus();
+                worker.postMessage({ id:message.id, status:status });
+              } else { worker.postMessage({ id:message.id, error:'Remove failed' }); }
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
+            break;
+          }
+
+          case 'empty': {
+            await player.empty();
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          case 'shuffle': {
+            await player.shuffle({ albumAware: (message.albumAware == 1) });
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
+          default:
+            logDebug('Hit webserver player message default case,', JSON.stringify(message, '', 2));
+            break;
+        }
+      } else { worker.postMessage({ id:message.id, error:'Invalid player id' }); }
+      break;
+    }
+
+    default:
+      logDebug('Hit webserver worker default case,', JSON.stringify(message, '', 2));
+      break;
+  }
 });
 
-// returns a track for the given id
-app.get('/tracks/:type(youtube|goose|spotify)-:id([\\w-]{11}|[a-zA-Z0-9]{22}|[0-9a-f]{10})', async (req, res) => {
-  logLine('get', [`Endpoint ${chalk.blue('/tracks')}, type ${chalk.green(req.params.type)}, id ${chalk.green(req.params.id)}`]);
-  const search = `${req.params.type}.id`;
-  const track = await db.getTrack({ [search]:req.params.id });
-  res.json(track);
-});
-
-// returns a playlist
-// this regex should match sanitizePlaylists, but without the not
-app.get('/playlist/:name([\\w :/?=&-]+)', async (req, res) => {
-  logLine('get', [`Endpoint ${chalk.blue('/playlist')}, name ${chalk.green(req.params.name)}`]);
-  const result = await db.getPlaylist(req.params.name);
-  res.json(result);
-});
-
-app.get('/playlists', async (req, res) => {
-  logLine('get', [`Endpoint ${chalk.blue('/playlists')}`]);
-  res.json(Array.from(await db.listPlaylists()));
-});
-
-app.listen(port, () => {
-  logLine('info', [`Web server active at http://localhost:${port}`]);
+process.on('SIGINT' || 'SIGTERM', async () => {
+  worker.postMessage({ action:'exit' });
 });
