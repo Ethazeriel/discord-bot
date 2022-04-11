@@ -55,10 +55,11 @@ app.get('/playlists', async (req, res) => {
 
 app.post('/player', async (req, res) => {
   const action = req.body?.action?.replace(sanitize, '');
+  const playerId = req.body?.playerId?.replace(sanitize, '') || '888246961097048065';
   logLine(req.method, [req.originalUrl, chalk.green(action)]);
   // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
   const id = crypto.randomBytes(5).toString('hex');
-  parentPort.postMessage({ type: 'player', action:action, id:id });
+  parentPort.postMessage({ type: 'player', action:action, id:id, playerId:playerId });
   const messageAction = (result) => {
     if (result?.id === id) {
       res.json(result);

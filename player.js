@@ -109,7 +109,7 @@ export default class Player {
     }
   }
 
-  static async retrievePlayer(guildId) {
+  static retrievePlayer(guildId) {
     return Player.#players[guildId];
   }
 
