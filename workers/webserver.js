@@ -47,23 +47,35 @@ app.get('/playlist/:name([\\w :/?=&-]+)', async (req, res) => {
   res.json(result);
 });
 
+// returns the list of playlists
 app.get('/playlists', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/playlists')}`]);
   res.json(Array.from(await db.listPlaylists()));
 });
 
+// returns the queue for the player with the given id
+app.get('/player-:playerId([0-9]{18})', async (req, res) => {
+  logLine(req.method, [req.originalUrl]);
+  const id = crypto.randomBytes(5).toString('hex');
+  parentPort.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
+  const messageAction = (result) => {
+    if (result?.id === id) { res.json(result); }
+    parentPort.removeListener('message', messageAction);
+  };
+  parentPort.on('message', messageAction);
+});
+
+// take actions on the player with the given id
 app.post('/player', async (req, res) => {
   const action = req.body?.action?.replace(sanitize, '');
   const playerId = req.body?.playerId?.replace(sanitize, '') || '888246961097048065';
   logLine(req.method, [req.originalUrl, chalk.green(action)]);
   // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
   const id = crypto.randomBytes(5).toString('hex');
-  parentPort.postMessage({ type: 'player', action:action, id:id, playerId:playerId });
+  parentPort.postMessage({ type:'player', action:action, id:id, playerId:playerId });
   const messageAction = (result) => {
-    if (result?.id === id) {
-      res.json(result);
-    }
+    if (result?.id === id) { res.json(result); }
     parentPort.removeListener('message', messageAction);
   };
   parentPort.on('message', messageAction);

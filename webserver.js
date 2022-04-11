@@ -17,6 +17,12 @@ worker.on('message', async (message) => {
       const player = Player.retrievePlayer(message.playerId);
       if (player) {
         switch (message.action) {
+          case 'get': {
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            break;
+          }
+
           case 'previous': {
             await player.prev();
             const status = player.getStatus();
@@ -104,6 +110,7 @@ worker.on('message', async (message) => {
 
           default:
             logDebug('Hit webserver player message default case,', JSON.stringify(message, '', 2));
+            worker.postMessage({ id:message.id, error:'Invalid player action' });
             break;
         }
       } else { worker.postMessage({ id:message.id, error:'Invalid player id' }); }
@@ -112,6 +119,7 @@ worker.on('message', async (message) => {
 
     default:
       logDebug('Hit webserver worker default case,', JSON.stringify(message, '', 2));
+      worker.postMessage({ id:message.id, error:'Invalid server action' });
       break;
   }
 });
