@@ -18,3 +18,4 @@ export const sanitize = /([^\w :/.?=&-])+/g;
 export const sanitizePlaylists = /([^\w :/?=&-])+/g;
 export const embedPage = /(?:Page )(\d+)(?: of )(\d+)/;
 export const seekTime = /^(?:(\d+):)?(?:(\d+):)?(\d+)$/;
+export const webClientId = /^([\da-f]){128}$/;

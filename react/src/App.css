@@ -1,8 +1,8 @@
 .App {
   text-align: center;
-  min-height: 100vh;
+  min-height: 100%;
   background-color: #282c34;
-  width: 100vw;
+  width: 100%;
   font-size: calc(10px + 2vmin);
   color: white;
 }
@@ -10,4 +10,22 @@
 
 .App-link {
   color: #61dafb;
+}
+
+.Error {
+  color: red;
+}
+
+.UserBox {
+  font-size: calc(10px + 1vmin);
+  text-align: right;
+  position: fixed;
+  right: 0;
+  top: 0;
+  padding: 2vmin;
+  background-color: #404347;
+}
+
+.UserBox p {
+  margin: 0px;
 }

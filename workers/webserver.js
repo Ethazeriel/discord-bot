@@ -6,11 +6,11 @@ import cookieParser from 'cookie-parser';
 import validator from 'validator';
 import { logDebug, logLine } from '../logger.js';
 import chalk from 'chalk';
-import { sanitize } from '../regexes.js';
+import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord, debug } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const { discord } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
 
 parentPort.on('message', async data => {
   if (data.action === 'exit') {
@@ -32,6 +32,29 @@ app.get('/', (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/')}`]);
   res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
+});
+
+app.get('/loaduser', async (req, res) => {
+  logLine(req.method, [req.originalUrl]);
+  const webId = req.signedCookies.id;
+  logDebug(`Client load event with id ${webId}`);
+  if (webIdRegex.test(webId)) {
+    const user = await db.getUserWeb(webId);
+    if (user) {
+      user.status = 'known';
+      res.json(user);
+    } else {
+      const stateId = crypto.randomBytes(16).toString('hex');
+      // TODO - save this in a way that's useful to us here and can be referenced in the oauth flow - currently unused
+      res.json({ status:'new', id:stateId });
+    } // I hate having this duplicate else here but I can't think of a better way right now
+  } else {
+    // either id doesn't match spec or none was sent - assume this is new user and send id for use as discord state
+    // https://discord.com/developers/docs/topics/oauth2#state-and-security
+    const stateId = crypto.randomBytes(16).toString('hex');
+    // TODO - save this in a way that's useful to us here and can be referenced in the oauth flow - currently unused
+    res.json({ status:'new', id:stateId });
+  }
 });
 
 // Oauth2 authentication flow
@@ -69,9 +92,10 @@ app.get('/oauth2', async (req, res) => {
       if (userdata?.data) {
         userdata = userdata.data;
         const webClientId = crypto.randomBytes(64).toString('hex');
+        logDebug(`outgoing web client id is ${webClientId}`);
         await db.saveToken(discordtoken, userdata, webClientId);
         // set a cookie for the web client to hold on to
-        res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:(!debug), secure:true, signed:true });
+        res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
         res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
       } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
     } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }

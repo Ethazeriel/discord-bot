@@ -1,0 +1,6 @@
+{
+  "discord":{
+    "client_id":"889385475188617227",
+    "redirect_uri":"http%3A%2F%2Flocalhost%3A2468%2Foauth2"
+  }
+}

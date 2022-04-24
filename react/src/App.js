@@ -1,6 +1,7 @@
 import './App.css';
 import React from 'react';
 import { TrackSmall } from './trackdisplay.js';
+import clientconfig from './clientconfig.json';
 
 
 export default class App extends React.Component {
@@ -10,6 +11,9 @@ export default class App extends React.Component {
     this.state = {
       track:{},
       playerStatus:{},
+      user:{},
+      stateId:'notgeneratedyet',
+      error: null,
     };
     this.playerClick = this.playerClick.bind(this);
   }
@@ -33,7 +37,7 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
-    fetch('./tracks/goose-d316c88251', {
+    fetch('./loaduser', {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -41,8 +45,14 @@ export default class App extends React.Component {
       },
     }).then((response) => response.json())
       .then((json) => {
+        if (json.status === 'known') {
+          this.setState({ user:json });
+        } else if (json.status === 'new') {
+          this.setState({ stateId:json.id });
+        } else {
+          this.setState({ error:'unexpected loaduser response' });
+        }
         // console.log(json);
-        this.setState({ track:json });
       })
       .catch((error) => {
         console.error(error);
@@ -52,7 +62,8 @@ export default class App extends React.Component {
   render() {
     return (
       <div className="App">
-        <a href="https://discord.com/oauth2/authorize?client_id=889385475188617227&redirect_uri=http%3A%2F%2Flocalhost%3A2468%2Foauth2&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read">Login with discord</a>
+        <ErrorDisplay error={this.state.error} />
+        <UserBox user={this.state.user} stateId={this.state.stateId} />
         <TrackSmall track={this.state.track} />
         <button type="button" name="previous" onClick={this.playerClick}>Prev</button>
         <button type="button" name="next" onClick={this.playerClick}>Next</button>
@@ -75,4 +86,25 @@ function QueueSmall(props) {
       {queue}
     </div>
   );
+}
+
+function UserBox(props) {
+  let content = null;
+  if (Object.keys(props.user).length) {
+    content = <p>{props.user.username}#{props.user.discriminator}</p>;
+  } else {
+    const authLink = `https://discord.com/oauth2/authorize?client_id=${clientconfig.discord.client_id}&redirect_uri=${clientconfig.discord.redirect_uri}&state=${props.stateId}&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read`;
+    content = <a href={authLink}>Login with discord</a>;
+  }
+  return (
+    <div className="UserBox">
+      {content}
+    </div>
+  );
+}
+
+function ErrorDisplay(props) {
+  if (props.error) {
+    return <div className="Error">{props.error}</div>;
+  } else { return null;}
 }

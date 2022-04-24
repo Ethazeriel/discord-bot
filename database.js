@@ -471,6 +471,25 @@ export async function updateToken(user) {
   }
 }
 
+export async function getUserWeb(webid) {
+  // functions like getUser, but takes a web client ID and only returns basic user info - not everything we have
+  await connected();
+  try {
+    const userdb = db.collection(usercol);
+    const result = await userdb.findOne({ webClientId: webid }, { projection: { _id: 0 } });
+    if (result && Object.keys(result).length) {
+      const basicuser = {
+        id: result.discord.id,
+        username: result.discord.username.current,
+        discriminator: result.discord.discriminator.current,
+      };
+      return basicuser;
+    } else { return null; }
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 // *****************
 // generic functions
 // *****************

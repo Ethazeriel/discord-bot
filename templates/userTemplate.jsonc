@@ -15,14 +15,14 @@
     "discriminator":{
       "current":"string",
       "old":[]
-    },
-    "token": {
-      "access":"string - the current access token",
-      "renew":"string - the token to use for renewal",
-      "expiry":"integer - unix time that our token expires"
-    },
-    "webClientId": ["strings"]
+    }
   },
+  "token": {
+    "access":"string - the current access token",
+    "renew":"string - the token to use for renewal",
+    "expiry":"integer - unix time that our token expires"
+  },
+  "webClientId": ["strings"],
   "stash": {
     "playhead": "integer", // playhead index
     "tracks": [] // our unique ids for each track in queue (history, current, enqueued) when user or bot ends their session
