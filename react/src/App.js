@@ -52,6 +52,7 @@ export default class App extends React.Component {
   render() {
     return (
       <div className="App">
+        <a href="https://discord.com/oauth2/authorize?client_id=889385475188617227&redirect_uri=http%3A%2F%2Flocalhost%3A2468%2Foauth2&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read">Login with discord</a>
         <TrackSmall track={this.state.track} />
         <button type="button" name="previous" onClick={this.playerClick}>Prev</button>
         <button type="button" name="next" onClick={this.playerClick}>Next</button>

@@ -8,6 +8,7 @@
     "discord": {
         "token": "yourbotaccesstoken",
         "clientId": "yourbotclientid",
+        "secret": "yourbotclientsecret",
         "guildId": "testguildid",
         "scope": "guild/global",
         "roles": {
