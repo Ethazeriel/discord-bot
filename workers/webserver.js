@@ -57,8 +57,8 @@ app.get('/loaduser', async (req, res) => {
   }
 });
 
-// Oauth2 authentication flow
-app.get('/oauth2', async (req, res) => {
+// discord Oauth2 authentication flow
+app.get('/discord-oauth2', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   if (!req?.query?.code) {
     res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
@@ -69,7 +69,7 @@ app.get('/oauth2', async (req, res) => {
       url: 'https://discord.com/api/v9/oauth2/token',
       method: 'post',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      data:`client_id=${discord.clientId}&client_secret=${discord.secret}&grant_type=authorization_code&code=${code}&redirect_uri=http://localhost:2468/oauth2`,
+      data:`client_id=${discord.clientId}&client_secret=${discord.secret}&grant_type=authorization_code&code=${code}&redirect_uri=http://localhost:2468/discord-oauth2`,
       timeout: 10000,
     }).catch(error => {
       logLine('error', ['discordOauth: ', error.stack, error?.data]);
@@ -93,7 +93,7 @@ app.get('/oauth2', async (req, res) => {
         userdata = userdata.data;
         const webClientId = crypto.randomBytes(64).toString('hex');
         logDebug(`outgoing web client id is ${webClientId}`);
-        await db.saveToken(discordtoken, userdata, webClientId);
+        await db.saveTokenDiscord(discordtoken, userdata, webClientId);
         // set a cookie for the web client to hold on to
         res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
         res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);

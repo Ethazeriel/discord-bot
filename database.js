@@ -418,7 +418,7 @@ export async function getStash(discordid) { // usage: const result = await getSt
 // *****************
 // I'm not sure if this is where these should go, but here for now
 
-export async function saveToken(authtoken, userdata, webClientId) {
+export async function saveTokenDiscord(authtoken, userdata, webClientId) {
   // intended to be called by the webserver oauth flow - arguments are the auth and data object returned by the discord api
   // first pass - consider revising - I'm not thinking super clearly right now
   await connected();
@@ -429,7 +429,7 @@ export async function saveToken(authtoken, userdata, webClientId) {
       renew:authtoken.refresh_token,
       expiry:Date.parse(userdata.expires),
     };
-    const result = await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ token:token }, $addToSet:{ webClientId:webClientId } });
+    const result = await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ 'tokens.discord':token }, $addToSet:{ webClientId:webClientId } });
     logLine('database', [`Saving Oauth2 token for ${chalk.blue(userdata.user.id)}: expires ${chalk.green(token.expiry)}`]);
     return result;
   } catch (error) {
@@ -437,18 +437,18 @@ export async function saveToken(authtoken, userdata, webClientId) {
   }
 }
 
-export async function updateToken(user) {
+export async function updateTokenDiscord(user) {
   // takes a user object from our db, and updates their token if it expires in less than a day
   // saves the new token to the database and returns for immediate use
   await connected();
   try { // I have not tested this function but I assume it works
     const userdb = db.collection(usercol);
-    if ((user.token.expiry - Date.now()) < 86400000) {
+    if ((user.tokens.discord.expiry - Date.now()) < 86400000) {
       const { data:newtoken } = await axios({
         url: 'https://discord.com/api/v9/oauth2/token',
         method: 'post',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data:`client_id=${botdiscord.clientId}&client_secret=${botdiscord.secret}&grant_type=refresh_token&refresh_token=${user.token.renew}`,
+        data:`client_id=${botdiscord.clientId}&client_secret=${botdiscord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord.renew}`,
         timeout: 10000,
       }).catch(error => {
         logLine('error', ['Oauth2: ', error.stack, error?.data]);
@@ -459,7 +459,7 @@ export async function updateToken(user) {
         renew:newtoken.refresh_token,
         expiry: ((Date.now() - 1000) + (newtoken.expires_in * 1000)),
       };
-      await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ token:token } });
+      await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ 'tokens.discord':token } });
       logLine('database', [`Renewed Oauth2 token for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
       return token.access;
     } else {

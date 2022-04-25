@@ -17,10 +17,12 @@
       "old":[]
     }
   },
-  "token": {
-    "access":"string - the current access token",
-    "renew":"string - the token to use for renewal",
-    "expiry":"integer - unix time that our token expires"
+  "tokens": {
+    "discord" :{
+      "access":"string - the current access token",
+      "renew":"string - the token to use for renewal",
+      "expiry":"integer - unix time that our token expires"
+    }
   },
   "webClientId": ["strings"],
   "stash": {
