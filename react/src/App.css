@@ -29,3 +29,17 @@
 .UserBox p {
   margin: 0px;
 }
+
+.UserBox2 {
+  font-size: calc(10px + 1vmin);
+  text-align: right;
+  position: fixed;
+  right: 0;
+  top: 100px;
+  padding: 2vmin;
+  background-color: #404347;
+}
+
+.UserBox2 p {
+  margin: 0px;
+}

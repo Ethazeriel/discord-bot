@@ -10,7 +10,7 @@ import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
 
 parentPort.on('message', async data => {
   if (data.action === 'exit') {
@@ -42,6 +42,7 @@ app.get('/loaduser', async (req, res) => {
     const user = await db.getUserWeb(webId);
     if (user) {
       user.status = 'known';
+      user.id = crypto.randomBytes(16).toString('hex');
       res.json(user);
     } else {
       const stateId = crypto.randomBytes(16).toString('hex');
@@ -64,7 +65,7 @@ app.get('/discord-oauth2', async (req, res) => {
     res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
   } else {
     const code = validator.escape(validator.stripLow(req.query.code.replace(sanitize, ''))).trim();
-    logDebug(code);
+    logDebug(`discord code ${code}`);
     let discordtoken = await axios({
       url: 'https://discord.com/api/v9/oauth2/token',
       method: 'post',
@@ -98,6 +99,51 @@ app.get('/discord-oauth2', async (req, res) => {
         res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
         res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
       } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
+    } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
+  }
+});
+
+// spotify Oauth2 authentication flow
+app.get('/spotify-oauth2', async (req, res) => {
+  logLine(req.method, [req.originalUrl]);
+  if (!req?.query?.code && req.signedCookies.id) {
+    res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
+  } else {
+    const code = validator.escape(validator.stripLow(req.query.code.replace(sanitize, ''))).trim();
+    logDebug(`spotify code ${code}`);
+    let spotifytoken = await axios({
+      url: 'https://accounts.spotify.com/api/token',
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
+      },
+      data:`&grant_type=authorization_code&code=${code}&redirect_uri=http://localhost:2468/spotify-oauth2`,
+      timeout: 10000,
+    }).catch(error => {
+      logLine('error', ['spotifyOauth: ', error.stack, error?.data]);
+      return;
+    });
+    if (spotifytoken?.data) {
+      spotifytoken = spotifytoken.data;
+      logDebug('successful spotify auth');
+      await db.saveTokenSpotify(spotifytoken, req.signedCookies.id);
+      let spotifyuser = await axios({
+        url: 'https://api.spotify.com/v1/me',
+        method: 'get',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Bearer ${spotifytoken.access_token}`,
+        },
+      }).catch(error => {
+        logLine('error', ['spotifyOauth: ', error.stack, error?.data]);
+        return;
+      });
+      if (spotifyuser?.data) {
+        spotifyuser = spotifyuser.data;
+        await db.updateSpotifyUser({ webClientId: req.signedCookies.id }, spotifyuser);
+      }
+      res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
     } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
   }
 });

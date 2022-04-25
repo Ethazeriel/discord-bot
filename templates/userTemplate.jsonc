@@ -21,8 +21,20 @@
     "discord" :{
       "access":"string - the current access token",
       "renew":"string - the token to use for renewal",
-      "expiry":"integer - unix time that our token expires"
+      "expiry":"integer - unix time that our token expires",
+      "scope": "string - the scopes this token gives us access too"
+    },
+    "spotify" :{
+      "access":"string - the current access token",
+      "renew":"string - the token to use for renewal",
+      "expiry":"integer - unix time that our token expires",
+      "scope": "string - the scopes this token gives us access too"
     }
+  },
+  "spotify": {
+    "id":"string",
+    "username":"string",
+    "locale":"string"
   },
   "webClientId": ["strings"],
   "stash": {

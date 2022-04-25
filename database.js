@@ -413,8 +413,27 @@ export async function getStash(discordid) { // usage: const result = await getSt
   }
 }
 
+export async function updateSpotifyUser(target, spotifyInfo) { // usage: updateSpotifyUser({discord.id:''}, {...})
+  // updates spotify user info from object formatted as per
+  // https://api.spotify.com/v1/me
+
+  const spotify = {
+    id:spotifyInfo.id,
+    username:spotifyInfo.display_name,
+    locale:spotifyInfo.country,
+  };
+  await connected();
+  try {
+    const userdb = db.collection(usercol);
+    await userdb.updateOne(target, { $set: { spotify:spotify } });
+    logLine('database', [`Updating Spotify userdata for ${chalk.green(spotify.username)}`]);
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 // *****************
-// discord oauth functions
+// oauth functions
 // *****************
 // I'm not sure if this is where these should go, but here for now
 
@@ -428,6 +447,7 @@ export async function saveTokenDiscord(authtoken, userdata, webClientId) {
       access:authtoken.access_token,
       renew:authtoken.refresh_token,
       expiry:Date.parse(userdata.expires),
+      scope:authtoken.scope,
     };
     const result = await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ 'tokens.discord':token }, $addToSet:{ webClientId:webClientId } });
     logLine('database', [`Saving Oauth2 token for ${chalk.blue(userdata.user.id)}: expires ${chalk.green(token.expiry)}`]);
@@ -458,6 +478,7 @@ export async function updateTokenDiscord(user) {
         access:newtoken.access_token,
         renew:newtoken.refresh_token,
         expiry: ((Date.now() - 1000) + (newtoken.expires_in * 1000)),
+        scope:newtoken.scope,
       };
       await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ 'tokens.discord':token } });
       logLine('database', [`Renewed Oauth2 token for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
@@ -471,6 +492,26 @@ export async function updateTokenDiscord(user) {
   }
 }
 
+export async function saveTokenSpotify(authtoken, webClientId) {
+  // intended to be called by the webserver oauth flow - arguments are the auth and data object returned by the discord api
+  // first pass - consider revising - I'm not thinking super clearly right now
+  await connected();
+  try {
+    const userdb = db.collection(usercol);
+    const token = {
+      access:authtoken.access_token,
+      renew:authtoken.refresh_token,
+      expiry:((Date.now() - 10000) + (authtoken.expires_in * 1000)), // I'm not sure this logic makes a ton of sense
+      scope:authtoken.scope,
+    };
+    const result = await userdb.updateOne({ webClientId: webClientId }, { $set:{ 'tokens.spotify':token } });
+    logLine('database', [`Saving spotify Oauth2 token: expires ${chalk.green(token.expiry)}`]);
+    return result;
+  } catch (error) {
+    logLine('error', ['database error:', error.stack]);
+  }
+}
+
 export async function getUserWeb(webid) {
   // functions like getUser, but takes a web client ID and only returns basic user info - not everything we have
   await connected();
@@ -479,9 +520,12 @@ export async function getUserWeb(webid) {
     const result = await userdb.findOne({ webClientId: webid }, { projection: { _id: 0 } });
     if (result && Object.keys(result).length) {
       const basicuser = {
-        id: result.discord.id,
-        username: result.discord.username.current,
-        discriminator: result.discord.discriminator.current,
+        discord: {
+          id: result.discord.id,
+          username: result.discord.username.current,
+          discriminator: result.discord.discriminator.current,
+        },
+        spotify: result.spotify,
       };
       return basicuser;
     } else { return null; }
