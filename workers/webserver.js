@@ -49,35 +49,6 @@ app.get('/load', async (req, res) => {
   }
 });
 
-// this should just be /load, called every time a client loads
-// should set a cookie if doesn't already exist
-// then /oauth should hash that cookie and use as state, so that we can compare hashes to a cookie easily
-// should only have a single /oauth that works with ?discord or ?spotify
-// move the full axios flows to a helper function so we can call them from anywhere - have the ability to do oauth fully through discord and have a /export command?
-app.get('/loaduser', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
-  const webId = req.signedCookies.id;
-  logDebug(`Client load event with id ${webId}`);
-  if (webIdRegex.test(webId)) {
-    const user = await db.getUserWeb(webId);
-    if (user) {
-      user.status = 'known';
-      user.id = crypto.randomBytes(16).toString('hex');
-      res.json(user);
-    } else {
-      const stateId = crypto.randomBytes(16).toString('hex');
-      // TODO - save this in a way that's useful to us here and can be referenced in the oauth flow - currently unused
-      res.json({ status:'new', id:stateId });
-    } // I hate having this duplicate else here but I can't think of a better way right now
-  } else {
-    // either id doesn't match spec or none was sent - assume this is new user and send id for use as discord state
-    // https://discord.com/developers/docs/topics/oauth2#state-and-security
-    const stateId = crypto.randomBytes(16).toString('hex');
-    // TODO - save this in a way that's useful to us here and can be referenced in the oauth flow - currently unused
-    res.json({ status:'new', id:stateId });
-  }
-});
-
 // oauth flow
 app.get('/oauth2', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
