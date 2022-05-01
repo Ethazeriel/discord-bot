@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
-const { clientId, guildId, token } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).discord;
+const { client_id, guildId, token } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).discord;
 const launchArg = process.argv[2];
 const commands = [];
 const commandFiles = fs.readdirSync(new URL('../interactions/commands', import.meta.url)).filter(file => file.endsWith('.js'));
@@ -28,13 +28,13 @@ const rest = new REST({ version: '9' }).setToken(token);
   try {
     if (launchArg == 'guild') {
       await rest.put(
-        Routes.applicationGuildCommands(clientId, guildId),
+        Routes.applicationGuildCommands(client_id, guildId),
         { body: commands },
       );
       console.log('Successfully registered commands at scope: guild');
     } else if (launchArg == 'global') {
       await rest.put(
-        Routes.applicationCommands(clientId),
+        Routes.applicationCommands(client_id),
         { body: commands },
       );
       console.log('Successfully registered commands at scope: global');

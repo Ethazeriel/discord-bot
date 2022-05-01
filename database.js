@@ -468,7 +468,7 @@ export async function updateTokenDiscord(user) {
         url: 'https://discord.com/api/v9/oauth2/token',
         method: 'post',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data:`client_id=${botdiscord.clientId}&client_secret=${botdiscord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord.renew}`,
+        data:`client_id=${botdiscord.client_id}&client_secret=${botdiscord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord.renew}`,
         timeout: 10000,
       }).catch(error => {
         logLine('error', ['Oauth2: ', error.stack, error?.data]);
@@ -526,6 +526,7 @@ export async function getUserWeb(webid) {
           discriminator: result.discord.discriminator.current,
         },
         spotify: result.spotify,
+        status: 'known',
       };
       return basicuser;
     } else { return null; }

@@ -2,7 +2,7 @@ import fs from 'fs';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import { logLine } from './logger.js';
-const { clientId, guildId, token, scope } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).discord;
+const { client_id, guildId, token, scope } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).discord;
 const commands = [];
 const commandFiles = fs.readdirSync(new URL('./interactions/commands', import.meta.url)).filter(file => file.endsWith('.js'));
 const contextFiles = fs.readdirSync(new URL('./interactions/contexts', import.meta.url)).filter(file => file.endsWith('.js'));
@@ -22,13 +22,13 @@ export async function deploy() {
   try {
     if (scope === 'guild') {
       await rest.put(
-        Routes.applicationGuildCommands(clientId, guildId),
+        Routes.applicationGuildCommands(client_id, guildId),
         { body: commands },
       );
       logLine('command', ['Successfully registered commands.']);
     } else if (scope === 'global') {
       await rest.put(
-        Routes.applicationCommands(clientId),
+        Routes.applicationCommands(client_id),
         { body: commands },
       );
       logLine('command', ['Successfully registered commands.']);

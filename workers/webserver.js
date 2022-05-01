@@ -1,5 +1,4 @@
 import * as db from '../database.js';
-import axios from 'axios';
 import helmet from 'helmet';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -11,6 +10,7 @@ import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
 const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+import * as oauth2 from '../oauth2.js';
 
 parentPort.on('message', async data => {
   if (data.action === 'exit') {
@@ -34,6 +34,26 @@ app.get('/', (req, res) => {
   res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
 });
 
+app.get('/load', async (req, res) => {
+  logLine(req.method, [req.originalUrl]);
+  const webId = req.signedCookies.id;
+  logDebug(`Client load event with id ${webId}`);
+  if (webId && webIdRegex.test(webId)) {
+    const user = await db.getUserWeb(webId);
+    user ? res.json(user) : res.json({ status:'new' });
+  } else {
+    // this user doesn't have a cookie or their cookie isn't valid
+    const webClientId = crypto.randomBytes(64).toString('hex');
+    res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
+    res.json({ status:'new' });
+  }
+});
+
+// this should just be /load, called every time a client loads
+// should set a cookie if doesn't already exist
+// then /oauth should hash that cookie and use as state, so that we can compare hashes to a cookie easily
+// should only have a single /oauth that works with ?discord or ?spotify
+// move the full axios flows to a helper function so we can call them from anywhere - have the ability to do oauth fully through discord and have a /export command?
 app.get('/loaduser', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
@@ -58,93 +78,42 @@ app.get('/loaduser', async (req, res) => {
   }
 });
 
-// discord Oauth2 authentication flow
-app.get('/discord-oauth2', async (req, res) => {
+// oauth flow
+app.get('/oauth2', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
-  if (!req?.query?.code) {
-    res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
-  } else {
-    const code = validator.escape(validator.stripLow(req.query.code.replace(sanitize, ''))).trim();
-    logDebug(`discord code ${code}`);
-    let discordtoken = await axios({
-      url: 'https://discord.com/api/v9/oauth2/token',
-      method: 'post',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      data:`client_id=${discord.clientId}&client_secret=${discord.secret}&grant_type=authorization_code&code=${code}&redirect_uri=http://localhost:2468/discord-oauth2`,
-      timeout: 10000,
-    }).catch(error => {
-      logLine('error', ['discordOauth: ', error.stack, error?.data]);
-      return;
-    });
-    if (discordtoken?.data) {
-      discordtoken = discordtoken.data;
-      logDebug('successful auth - getting user data');
-      let userdata = await axios({
-        url: 'https://discord.com/api/v9/oauth2/@me',
-        method: 'get',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Bearer ${discordtoken.access_token}`,
-        },
-      }).catch(error => {
-        logLine('error', ['discordOauth: ', error.stack, error?.data]);
-        return;
-      });
-      if (userdata?.data) {
-        userdata = userdata.data;
-        const webClientId = crypto.randomBytes(64).toString('hex');
-        logDebug(`outgoing web client id is ${webClientId}`);
-        await db.saveTokenDiscord(discordtoken, userdata, webClientId);
-        // set a cookie for the web client to hold on to
-        res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
-        res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
-      } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
-    } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
-  }
-});
-
-// spotify Oauth2 authentication flow
-app.get('/spotify-oauth2', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
-  if (!req?.query?.code && req.signedCookies.id) {
-    res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
-  } else {
-    const code = validator.escape(validator.stripLow(req.query.code.replace(sanitize, ''))).trim();
-    logDebug(`spotify code ${code}`);
-    let spotifytoken = await axios({
-      url: 'https://accounts.spotify.com/api/token',
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
-      },
-      data:`&grant_type=authorization_code&code=${code}&redirect_uri=http://localhost:2468/spotify-oauth2`,
-      timeout: 10000,
-    }).catch(error => {
-      logLine('error', ['spotifyOauth: ', error.stack, error?.data]);
-      return;
-    });
-    if (spotifytoken?.data) {
-      spotifytoken = spotifytoken.data;
-      logDebug('successful spotify auth');
-      await db.saveTokenSpotify(spotifytoken, req.signedCookies.id);
-      let spotifyuser = await axios({
-        url: 'https://api.spotify.com/v1/me',
-        method: 'get',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Bearer ${spotifytoken.access_token}`,
-        },
-      }).catch(error => {
-        logLine('error', ['spotifyOauth: ', error.stack, error?.data]);
-        return;
-      });
-      if (spotifyuser?.data) {
-        spotifyuser = spotifyuser.data;
-        await db.updateSpotifyUser({ webClientId: req.signedCookies.id }, spotifyuser);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('This function requires a client ID cookie'); } else {
+    const type = validator.escape(validator.stripLow((req.query?.type?.replace(sanitize, '') || ''))).trim(); // should always have this
+    const idHash = crypto.createHash('sha256').update(webId).digest('base64'); // hash of the client's id to use for the oauth CSRF check
+    const code = validator.escape(validator.stripLow(req.query?.code?.replace(sanitize, '') || '')).trim(); // only exists after the client approves, so use this to know what stage we're at
+    const state = validator.escape(validator.stripLow(req.query?.state?.replace(sanitize, '') || '')).trim(); // only exists after client approval, use this to check for CSRF
+    switch (type) {
+      case 'discord': {
+        if (!code) {
+          res.redirect(303, `https://discord.com/oauth2/authorize?client_id=${discord.client_id}&redirect_uri=${discord.redirect_uri}&state=${idHash}&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read`);
+        } else if (state !== idHash) { // if these don't match, something is very wrong and we need to not attempt auth
+          res.status(409).end();
+        } else {
+          const auth = await oauth2.flow(type, code, webId);
+          auth ? res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname) : res.status(500).send('Server error during oauth2 flow');
+        }
+        break;
       }
-      res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
-    } else { res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname); }
+
+      case 'spotify': {
+        if (!code) {
+          res.redirect(303, `https://accounts.spotify.com/authorize?client_id=${spotify.client_id}&redirect_uri=${spotify.redirect_uri}&state=${idHash}&show_dialog=true&response_type=code&scope=playlist-modify-private%20user-read-private`);
+        } else if (state !== idHash) {
+          res.status(409).end();
+        } else {
+          const auth = await oauth2.flow(type, code, webId);
+          auth ? res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname) : res.status(500).send('Server error during oauth2 flow');
+        }
+        break;
+      }
+
+      default: { res.status(400).end; break; }
+    }
   }
 });
 

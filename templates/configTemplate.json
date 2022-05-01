@@ -7,7 +7,7 @@
       },
     "discord": {
         "token": "yourbotaccesstoken",
-        "clientId": "yourbotclientid",
+        "client_id": "yourbotclientid",
         "secret": "yourbotclientsecret",
         "guildId": "testguildid",
         "scope": "guild/global",
@@ -15,11 +15,13 @@
             "dj":"DJ",
             "admin":"Admin",
             "translate":"Limited Participation"
-          }
+          },
+          "redirect_uri":"http://localhost:2468/oauth2?type=discord"
     },
     "spotify": {
         "client_id": "yourclientid",
-        "client_secret": "yourclientsecret"
+        "client_secret": "yourclientsecret",
+        "redirect_uri":"http://localhost:2468/oauth2?type=spotify"
     },
     "youtube": {
         "apiKey": "youryoutubeapikey",

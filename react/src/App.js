@@ -1,7 +1,6 @@
 import './App.css';
 import React from 'react';
 import { TrackSmall } from './trackdisplay.js';
-import clientconfig from './clientconfig.json';
 
 
 export default class App extends React.Component {
@@ -38,7 +37,7 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
-    fetch('./loaduser', {
+    fetch('./load', {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -47,9 +46,9 @@ export default class App extends React.Component {
     }).then((response) => response.json())
       .then((json) => {
         if (json.status === 'known') {
-          this.setState((json.spotify) ? { stateId:json.id, discord:json.discord, spotify:json.spotify } : { stateId:json.id, discord:json.discord });
+          this.setState((json.spotify) ? { discord:json.discord, spotify:json.spotify } : { discord:json.discord });
         } else if (json.status === 'new') {
-          this.setState({ stateId:json.id });
+          // could do a new user welcome message?
         } else {
           this.setState({ error:'unexpected loaduser response' });
         }
@@ -95,7 +94,7 @@ function UserBoxDiscord(props) {
   if (Object.keys(props.user).length) {
     content = <p>{props.user.username}#{props.user.discriminator}</p>;
   } else {
-    const authLink = `https://discord.com/oauth2/authorize?client_id=${clientconfig.discord.client_id}&redirect_uri=${clientconfig.discord.redirect_uri}&state=${props.stateId}&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read`;
+    const authLink = './oauth2?type=discord';
     content = <a href={authLink}>Link discord</a>;
   }
   return (
@@ -110,7 +109,7 @@ function UserBoxSpotify(props) {
   if (Object.keys(props.user).length) {
     content = <p>{props.user.username}</p>;
   } else {
-    const authLink = `https://accounts.spotify.com/authorize?client_id=${clientconfig.spotify.client_id}&redirect_uri=${clientconfig.spotify.redirect_uri}&state=${props.stateId}&show_dialog=true&response_type=code&scope=playlist-modify-private%20user-read-private`;
+    const authLink = './oauth2?type=spotify';
     content = <a href={authLink}>Link spotify</a>;
   }
   return (
