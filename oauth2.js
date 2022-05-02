@@ -70,9 +70,10 @@ export async function flow(type, code, webClientId) {
         Authorization: `Bearer ${token.access_token}`,
       },
     }).catch(error => {
-      logLine('error', ['discordOauth: ', error.stack, error?.data]);
+      logLine('error', ['Oauth2: ', error.stack, error?.data]);
       return;
     });
+
     if (user?.data) {
       user = user.data;
       logDebug('got user data, saving to db');

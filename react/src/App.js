@@ -12,7 +12,6 @@ export default class App extends React.Component {
       playerStatus:{},
       discord:{},
       spotify:{},
-      stateId:'notgeneratedyet',
       error: null,
     };
     this.playerClick = this.playerClick.bind(this);
@@ -26,14 +25,10 @@ export default class App extends React.Component {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-    }).then((response) => response.json())
-      .then((json) => {
-        // console.log(json);
-        this.setState({ playerStatus:json.status });
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    }).then((response) => response.json()).then((json) => {
+      // console.log(json);
+      this.setState({ playerStatus:json.status });
+    }).catch((error) => { console.error(error); });
   }
 
   componentDidMount() {
@@ -43,28 +38,22 @@ export default class App extends React.Component {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-    }).then((response) => response.json())
-      .then((json) => {
-        if (json.status === 'known') {
-          this.setState((json.spotify) ? { discord:json.discord, spotify:json.spotify } : { discord:json.discord });
-        } else if (json.status === 'new') {
-          // could do a new user welcome message?
-        } else {
-          this.setState({ error:'unexpected loaduser response' });
-        }
-        // console.log(json);
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    }).then((response) => response.json()).then((json) => {
+      if (json.status === 'known') {
+        this.setState((json.spotify) ? { discord:json.discord, spotify:json.spotify } : { discord:json.discord });
+      } else if (json.status === 'new') {
+        // could do a new user welcome message?
+      } else { this.setState({ error:'unexpected loaduser response' }); }
+      // console.log(json);
+    }).catch((error) => { console.error(error); });
   }
 
   render() {
     return (
       <div className="App">
         <ErrorDisplay error={this.state.error} />
-        <UserBoxDiscord user={this.state.discord} stateId={this.state.stateId} />
-        <UserBoxSpotify user={this.state.spotify} stateId={this.state.stateId} />
+        <UserBoxDiscord user={this.state.discord} />
+        <UserBoxSpotify user={this.state.spotify} />
         <TrackSmall track={this.state.track} />
         <button type="button" name="previous" onClick={this.playerClick}>Prev</button>
         <button type="button" name="next" onClick={this.playerClick}>Next</button>
