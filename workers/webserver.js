@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
 import * as oauth2 from '../oauth2.js';
+import { fileURLToPath } from 'url';
 
 parentPort.on('message', async data => {
   if (data.action === 'exit') {
@@ -31,7 +32,7 @@ app.use(cookieParser(discord.secret));
 app.get('/', (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/')}`]);
-  res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname);
+  res.sendFile(fileURLToPath(new URL('../react/build/index.html', import.meta.url)));
 });
 
 app.get('/load', async (req, res) => {
@@ -55,7 +56,7 @@ app.get('/oauth2', async (req, res) => {
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('This function requires a client ID cookie'); } else {
     const type = validator.escape(validator.stripLow((req.query?.type?.replace(sanitize, '') || ''))).trim(); // should always have this
-    const idHash = crypto.createHash('sha256').update(webId).digest('base64'); // hash of the client's id to use for the oauth CSRF check
+    const idHash = crypto.createHash('sha256').update(webId).digest('hex'); // hash of the client's id to use for the oauth CSRF check
     const code = validator.escape(validator.stripLow(req.query?.code?.replace(sanitize, '') || '')).trim(); // only exists after the client approves, so use this to know what stage we're at
     const state = validator.escape(validator.stripLow(req.query?.state?.replace(sanitize, '') || '')).trim(); // only exists after client approval, use this to check for CSRF
     switch (type) {
@@ -66,7 +67,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.sendFile(fileURLToPath(new URL('../react/build/index.html', import.meta.url))) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }
@@ -78,7 +79,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(new URL('../react/build/index.html', import.meta.url).pathname) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.sendFile(fileURLToPath(new URL('../react/build/index.html', import.meta.url))) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }
