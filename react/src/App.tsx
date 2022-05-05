@@ -1,11 +1,39 @@
 import './App.css';
-import React from 'react';
-import { TrackSmall } from './trackdisplay.js';
+import * as React from 'react';
+import { TrackSmall } from './trackdisplay';
 
+type AppState = {
+  track: {},
+  playerStatus: QueueProps | {},
+  discord: DiscordProps | {},
+  spotify: { username: string } | {},
+  error: null | string,
+}
 
-export default class App extends React.Component {
+type DiscordProps = {
+    id: string,
+    username: string,
+    discriminator: string,
+}
 
-  constructor(props) {
+type QueueProps = {
+  tracks: {}[];
+  playhead: number,
+  loop: boolean,
+  paused: boolean,
+}
+
+type LoadResponse = {
+  discord: DiscordProps | {},
+  spotify: { username: string } | {},
+  player: QueueProps | {},
+  error: undefined | string,
+  status: 'known'|'new',
+}
+
+export default class App extends React.Component<any, any> {
+
+  constructor(props:AppState) {
     super(props);
     this.state = {
       track:{},
@@ -17,7 +45,7 @@ export default class App extends React.Component {
     this.playerClick = this.playerClick.bind(this);
   }
 
-  playerClick(event) {
+  playerClick(event: React.MouseEvent<HTMLButtonElement, MouseEvent> & { target: HTMLButtonElement}) {
     fetch('./player', {
       method: 'POST',
       body: JSON.stringify({ action: event.target.name }),
@@ -38,7 +66,7 @@ export default class App extends React.Component {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-    }).then((response) => response.json()).then((json) => {
+    }).then((response) => response.json()).then((json: LoadResponse) => {
       if (json.status === 'known') {
         this.setState((json.spotify) ? { discord:json.discord, spotify:json.spotify } : { discord:json.discord });
         this.setState({ playerStatus: json.player || {} });
@@ -65,7 +93,11 @@ export default class App extends React.Component {
 
 }
 
-function QueueSmall(props) {
+// function StatusBar(props) {
+
+// }
+
+function QueueSmall(props:any) {
   const queue = [];
   if (props?.queue?.tracks) {
     for (const [i, track] of props.queue.tracks.entries()) {
@@ -79,7 +111,8 @@ function QueueSmall(props) {
   );
 }
 
-function UserBoxDiscord(props) {
+
+function UserBoxDiscord(props: { user: DiscordProps }) {
   let content = null;
   if (Object.keys(props.user).length) {
     content = <p>{props.user.username}#{props.user.discriminator}</p>;
@@ -94,7 +127,7 @@ function UserBoxDiscord(props) {
   );
 }
 
-function UserBoxSpotify(props) {
+function UserBoxSpotify(props: { user:{ username: string } }) {
   let content = null;
   if (Object.keys(props.user).length) {
     content = <p>{props.user.username}</p>;
@@ -109,7 +142,7 @@ function UserBoxSpotify(props) {
   );
 }
 
-function ErrorDisplay(props) {
+function ErrorDisplay(props: { error: null | string }) {
   if (props.error) {
     return <div className="Error">{props.error}</div>;
   } else { return null;}

@@ -46,7 +46,6 @@ app.get('/load', async (req, res) => {
       parentPort.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id });
       const messageAction = (result) => {
         if (result?.id === id) {
-          console.log(result);
           if (!result.error) { user.player = result.status; }
           res.json(user);
           parentPort.removeListener('message', messageAction);

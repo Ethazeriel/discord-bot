@@ -1,10 +1,10 @@
 // I have some vague idea that this might help our IDE with autofill, and if not should help for the eventual typescript migration
-interface track {
+export interface track {
 	goose: {
 		id:string
 	},
   keys: string[],
-	playlists: { 
+	playlists: {
 		name:number // "name" : "position"
 	},
 	album: {
@@ -32,29 +32,4 @@ interface youtubeObject {
   name: string,
   art: string,
   duration: number
-}
-
-interface user {
-	discord: {
-		id: string,
-		locale: string,
-		nickname: {
-			guildid?: { // new object per guild where this user exists
-				current: string,
-				old?: string[]
-			}
-		}
-		username: {
-			current: string,
-			old?: string[]
-		}
-		discriminator: {
-			current: string,
-			old?: string[]
-		}
-	}
-	stash?: {
-		playhead: number, // playhead index
-		tracks: string[] // our unique ids for each track in queue (history, current, enqueued) when user or bot ends their session
-	}
 }
