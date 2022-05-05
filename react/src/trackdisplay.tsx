@@ -4,17 +4,27 @@ import './tracks.css';
 
 type Track = import('./types').track;
 
+export default class TrackSmall extends React.Component<{track: Track}, void> {
+  constructor(props: { track: Track}) {
+    super(props);
+    this.trackClick = this.trackClick.bind(this);
+  }
 
-export function TrackSmall(props: { track:Track }) {
-  if (props.track) {
-    return (
-      <div className="small">
-        <img src={props.track?.spotify?.art || props.track?.youtube?.art} className="smallArt" alt="Track album art" />
-        <div>
-          <h2>{props.track?.spotify?.name || props.track?.youtube?.name}</h2>
-          <p>{props.track?.artist?.name} - {props.track?.album?.name}</p>
+  trackClick() {
+    //
+  }
+
+  render() {
+    if (Object.keys(this.props.track).length) {
+      return (
+        <div className="small">
+          <img src={this.props.track?.spotify?.art || this.props.track?.youtube?.art} className="smallArt" alt="Track album art" />
+          <div>
+            <h2>{this.props.track?.spotify?.name || this.props.track?.youtube?.name}</h2>
+            <p>{this.props.track?.artist?.name} - {this.props.track?.album?.name}</p>
+          </div>
         </div>
-      </div>
-    );
-  } else {return null;}
+      );
+    } else {return null;}
+  }
 }
