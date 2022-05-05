@@ -2,7 +2,7 @@ import './App.css';
 import * as React from 'react';
 import { TrackSmall } from './trackdisplay';
 
-type Track = import('./types').track;
+import type { Track, PlayerClick } from './types';
 
 type AppState = {
   track?: Track,
@@ -47,10 +47,10 @@ export default class App extends React.Component<{}, AppState> {
     this.playerClick = this.playerClick.bind(this);
   }
 
-  playerClick(event: React.MouseEvent<HTMLButtonElement, MouseEvent> & { target: HTMLButtonElement}) {
+  playerClick(playerClick: PlayerClick) {
     fetch('./player', {
       method: 'POST',
-      body: JSON.stringify({ action: event.target.name }),
+      body: JSON.stringify({ action: playerClick.action, parameter: playerClick.parameter }),
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
@@ -86,9 +86,7 @@ export default class App extends React.Component<{}, AppState> {
         <ErrorDisplay error={this.state.error} />
         <UserBoxDiscord user={this.state.discord} />
         <UserBoxSpotify user={this.state.spotify} />
-        <button type="button" name="previous" onClick={this.playerClick}>Prev</button>
-        <button type="button" name="next" onClick={this.playerClick}>Next</button>
-        <QueueSmall queue={this.state.playerStatus} />
+        <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
       </div>
     );
   }
@@ -99,20 +97,25 @@ export default class App extends React.Component<{}, AppState> {
 
 // }
 
-function QueueSmall(props: { queue?: QueueProps }) {
-  const queue = [];
-  if (props?.queue?.tracks) {
-    for (const [i, track] of props.queue.tracks.entries()) {
-      queue.push(<TrackSmall track={track} key={i} />);
-    }
+class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: QueueProps}, never> {
+  constructor(props: {playerClick:(a: PlayerClick) => void, queue: QueueProps}) {
+    super(props);
   }
-  return (
-    <div className="Queue">
-      {queue}
-    </div>
-  );
-}
 
+  render() {
+    const queue = [];
+    if (this.props?.queue?.tracks) {
+      for (const [i, track] of this.props.queue.tracks.entries()) {
+        queue.push(<TrackSmall playerClick={this.props.playerClick} track={track} key={i} id={i} />);
+      }
+    }
+    return (
+      <div className="Queue">
+        {queue}
+      </div>
+    );
+  }
+}
 
 function UserBoxDiscord(props: { user?: DiscordProps }) {
   let content = null;
