@@ -47,17 +47,17 @@ app.get('/load', async (req, res) => {
       const messageAction = (result) => {
         if (result?.id === id) {
           if (!result.error) { user.player = result.status; }
-          res.json(user);
+          res.json({ user: user, player:result.status });
           parentPort.removeListener('message', messageAction);
         }
       };
       parentPort.on('message', messageAction);
-    } else { res.json({ status: 'new' }); }
+    } else { res.json({ user: { status: 'new' } }); }
   } else {
     // this user doesn't have a cookie or their cookie isn't valid
     const webClientId = crypto.randomBytes(64).toString('hex');
     res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
-    res.json({ status: 'new' });
+    res.json({ user: { status: 'new' } });
   }
 });
 

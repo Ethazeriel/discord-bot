@@ -1,36 +1,19 @@
 import './App.css';
 import * as React from 'react';
 import { TrackSmall } from './trackdisplay';
-
-import type { Track, PlayerClick } from './types';
-
+import type { Track, PlayerClick, PlayerStatus, User } from './types';
+import { StatusBar } from './StatusBar';
 type AppState = {
   track?: Track,
-  playerStatus?: QueueProps,
-  discord?: DiscordProps,
-  spotify?: { username: string },
+  playerStatus?: PlayerStatus,
+  user: User,
   error: null | string,
 }
 
-type DiscordProps = {
-    id?: string,
-    username?: string,
-    discriminator?: string,
-}
-
-type QueueProps = {
-  tracks: Track[];
-  playhead: number,
-  loop: boolean,
-  paused: boolean,
-}
-
 type LoadResponse = {
-  discord: DiscordProps,
-  spotify: { username: string },
-  player: QueueProps,
+  player?: PlayerStatus,
+  user: User,
   error: undefined | string,
-  status: 'known'|'new',
 }
 
 export default class App extends React.Component<{}, AppState> {
@@ -40,9 +23,8 @@ export default class App extends React.Component<{}, AppState> {
     this.state = {
       track:undefined,
       playerStatus:undefined,
-      discord:undefined,
-      spotify:undefined,
       error: null,
+      user: { status: 'new' },
     };
     this.playerClick = this.playerClick.bind(this);
   }
@@ -61,7 +43,7 @@ export default class App extends React.Component<{}, AppState> {
     }).catch((error) => { console.error(error); });
   }
 
-  componentDidMount() {
+  componentDidMount(): void {
     fetch('./load', {
       method: 'GET',
       headers: {
@@ -69,11 +51,10 @@ export default class App extends React.Component<{}, AppState> {
         'Content-Type': 'application/json',
       },
     }).then((response) => response.json()).then((json: LoadResponse) => {
-      if (json.status === 'known') {
-        this.setState({ spotify: json.spotify });
-        this.setState({ discord: json.discord });
+      if (json?.user?.status === 'known') {
+        this.setState({ user: json.user });
         this.setState({ playerStatus: json.player });
-      } else if (json.status === 'new') {
+      } else if (json.user.status === 'new') {
         // could do a new user welcome message?
       } else { this.setState({ error:'unexpected loaduser response' }); }
       // console.log(json);
@@ -83,9 +64,9 @@ export default class App extends React.Component<{}, AppState> {
   render() {
     return (
       <div className="App">
+        <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
         <ErrorDisplay error={this.state.error} />
-        <UserBoxDiscord user={this.state.discord} />
-        <UserBoxSpotify user={this.state.spotify} />
+        <UserBoxSpotify user={this.state.user?.spotify} />
         <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
       </div>
     );
@@ -97,8 +78,8 @@ export default class App extends React.Component<{}, AppState> {
 
 // }
 
-class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: QueueProps}, never> {
-  constructor(props: {playerClick:(a: PlayerClick) => void, queue: QueueProps}) {
+class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
+  constructor(props: {playerClick:(a: PlayerClick) => void, queue: PlayerStatus}) {
     super(props);
   }
 
@@ -115,21 +96,6 @@ class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, 
       </div>
     );
   }
-}
-
-function UserBoxDiscord(props: { user?: DiscordProps }) {
-  let content = null;
-  if (props.user) {
-    content = <p>{props.user.username}#{props.user.discriminator}</p>;
-  } else {
-    const authLink = './oauth2?type=discord';
-    content = <a href={authLink}>Link discord</a>;
-  }
-  return (
-    <div className="UserBox">
-      {content}
-    </div>
-  );
 }
 
 function UserBoxSpotify(props: { user?:{ username: string } }) {
