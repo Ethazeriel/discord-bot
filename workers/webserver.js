@@ -41,12 +41,24 @@ app.get('/load', async (req, res) => {
   logDebug(`Client load event with id ${webId}`);
   if (webId && webIdRegex.test(webId)) {
     const user = await db.getUserWeb(webId);
-    user ? res.json(user) : res.json({ status:'new' });
+    if (user) {
+      const id = crypto.randomBytes(5).toString('hex');
+      parentPort.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id });
+      const messageAction = (result) => {
+        if (result?.id === id) {
+          console.log(result);
+          if (!result.error) { user.player = result.status; }
+          res.json(user);
+          parentPort.removeListener('message', messageAction);
+        }
+      };
+      parentPort.on('message', messageAction);
+    } else { res.json({ status: 'new' }); }
   } else {
     // this user doesn't have a cookie or their cookie isn't valid
     const webClientId = crypto.randomBytes(64).toString('hex');
     res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
-    res.json({ status:'new' });
+    res.json({ status: 'new' });
   }
 });
 
@@ -120,26 +132,35 @@ app.get('/player-:playerId([0-9]{18})', async (req, res) => {
   const id = crypto.randomBytes(5).toString('hex');
   parentPort.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
   const messageAction = (result) => {
-    if (result?.id === id) { res.json(result); }
-    parentPort.removeListener('message', messageAction);
+    if (result?.id === id) {
+      res.json(result);
+      parentPort.removeListener('message', messageAction);
+    }
   };
   parentPort.on('message', messageAction);
 });
 
 // take actions on the player with the given id
 app.post('/player', async (req, res) => {
-  const action = req.body?.action?.replace(sanitize, '');
-  const playerId = req.body?.playerId?.replace(sanitize, '') || '888246961097048065';
-  logLine(req.method, [req.originalUrl, chalk.green(action)]);
-  // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
-  const id = crypto.randomBytes(5).toString('hex');
-  parentPort.postMessage({ type:'player', action:action, id:id, playerId:playerId });
-  const messageAction = (result) => {
-    if (result?.id === id) { res.json(result); }
-    parentPort.removeListener('message', messageAction);
-  };
-  parentPort.on('message', messageAction);
-  // res.json(result);
+  const webId = req.signedCookies.id;
+  logDebug(`Client load event with id ${webId}`);
+  if (webId && webIdRegex.test(webId)) {
+    const user = await db.getUserWeb(webId);
+    if (user) {
+      const action = validator.escape(validator.stripLow(req.body?.action?.replace(sanitize, '') || '')).trim();
+      logLine(req.method, [req.originalUrl, chalk.green(action)]);
+      // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
+      const id = crypto.randomBytes(5).toString('hex');
+      parentPort.postMessage({ type:'player', action:action, id:id, userId: user.discord.id });
+      const messageAction = (result) => {
+        if (result?.id === id) {
+          res.json(result);
+          parentPort.removeListener('message', messageAction);
+        }
+      };
+      parentPort.on('message', messageAction);
+    } else { res.status(400).json({ error: 'You need to authenticate with Discord; click in the top-right.' }); }
+  } else { res.status(400).json({ error: 'Probably your cookies are disabled.' }); }
 });
 
 app.listen(port, () => {

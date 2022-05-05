@@ -41,6 +41,7 @@ export default class App extends React.Component {
     }).then((response) => response.json()).then((json) => {
       if (json.status === 'known') {
         this.setState((json.spotify) ? { discord:json.discord, spotify:json.spotify } : { discord:json.discord });
+        this.setState({ playerStatus: json.player || {} });
       } else if (json.status === 'new') {
         // could do a new user welcome message?
       } else { this.setState({ error:'unexpected loaduser response' }); }

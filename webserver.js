@@ -14,7 +14,7 @@ worker.on('message', async (message) => {
 
   switch (message.type) {
     case 'player': {
-      const player = Player.retrievePlayer(message.playerId);
+      const player = Player.retrievePlayer(message.userId, 'user');
       if (player) {
         switch (message.action) {
           case 'get': {
