@@ -21,7 +21,8 @@ export default class Player {
       paused: false,
     };
     this.guildID = interaction.guild.id;
-    this.listeners = {};
+    this.embeds = {};
+    this.listeners = new Set();
 
     this.player = createAudioPlayer();
     this.player.on('error', error => { logLine('error', [error.stack ]); });
@@ -58,22 +59,22 @@ export default class Player {
     connection.on('stateChange', async (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
-        if (Object.keys(this.listeners).length) {
+        if (Object.keys(this.embeds).length) {
           const mediaEmbed = await this.mediaEmbed(false);
           const queueEmbed = await this.queueEmbed(undefined, undefined, false);
-          Object.keys(this.listeners).map(async (id) => {
-            const { media, queue } = this.listeners[id];
+          Object.keys(this.embeds).map(async (id) => {
+            const { media, queue } = this.embeds[id];
             if (media) {
-              clearTimeout(this.listeners[id].media.idleTimer);
-              clearInterval(this.listeners[id].media.refreshTimer);
-              await this.decommission(this.listeners[id].media.interaction, 'media', mediaEmbed, 'Bot left');
+              clearTimeout(this.embeds[id].media.idleTimer);
+              clearInterval(this.embeds[id].media.refreshTimer);
+              await this.decommission(this.embeds[id].media.interaction, 'media', mediaEmbed, 'Bot left');
             }
             if (queue) {
-              clearTimeout(this.listeners[id].queue.idleTimer);
-              clearInterval(this.listeners[id].queue.refreshTimer);
-              await this.decommission(this.listeners[id].queue.interaction, 'queue', queueEmbed, 'Bot left');
+              clearTimeout(this.embeds[id].queue.idleTimer);
+              clearInterval(this.embeds[id].queue.refreshTimer);
+              await this.decommission(this.embeds[id].queue.interaction, 'queue', queueEmbed, 'Bot left');
             }
-            if (this.listeners[id]) {delete this.listeners[id];}
+            if (this.embeds[id]) {delete this.embeds[id];}
           });
         }
         logDebug(`Removing player with id ${this.guildID}`);
@@ -109,44 +110,62 @@ export default class Player {
     }
   }
 
-  static retrievePlayer(guildId) {
-    return Player.#players[guildId];
+  static retrievePlayer(id, type) {
+    if (type === 'guild') {
+      return Player.#players[id];
+    } else if (type === 'user') {
+      let player;
+      Object.keys(Player.#players).map((playerId) => {
+        if (Player.#players[playerId].listeners.has(id)) {
+          player = Player.#players[playerId];
+        }
+      });
+      return (player);
+    } else { logLine('error', [`invalid retrievePlayer type: ${type}`]); }
   }
 
   static async voiceEventDispatch(oldState, newState, client) {
     logDebug(`Voice state update for server ${oldState.guild.id}, user ${oldState.member.displayName}`);
-    if (Player.#players[oldState.guild.id]) {Player.#players[oldState.guild.id].voiceEvent(oldState, newState, client);} else {
+    const player = Player.#players[oldState.guild.id] || (Player.#players[newState.guild.id]);
+    if (player) {
+      player.voiceEvent(oldState, newState, client);
+    } else {
       logDebug(`No player currently active in server ${oldState.guild.id}`);
     }
   }
 
   // events
   async voiceEvent(oldState, newState, client) {
-    // console.log('player function called');
     const connection = getVoiceConnection(newState.guild.id);
-    if ((connection.joinConfig.channelId === oldState.channelId) && (newState.channelId != connection.joinConfig.channelId)) {
-      // console.log('channel matches, this is a leave event');
+    if (connection && (connection.joinConfig.channelId === oldState.channelId) && (newState.channelId != connection.joinConfig.channelId)) {
       if (!newState.member.user.bot) {
         const id = newState.member.id;
+        this.listeners.delete(id);
         await db.saveStash(id, this.queue.playhead, this.queue.tracks);
-        if (this.listeners[id]?.queue) {
-          clearTimeout(this.listeners[id].queue.idleTimer);
-          clearInterval(this.listeners[id].queue.refreshTimer);
-          await this.decommission(this.listeners[id].queue.interaction, 'queue', await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false), 'You left the channel');
+        if (this.embeds[id]?.queue) {
+          clearTimeout(this.embeds[id].queue.idleTimer);
+          clearInterval(this.embeds[id].queue.refreshTimer);
+          await this.decommission(this.embeds[id].queue.interaction, 'queue', await this.queueEmbed('Current Queue:', this.embeds[id].queue.getPage(), false), 'You left the channel');
         }
-        if (this.listeners[id]?.media) {
-          clearTimeout(this.listeners[id].media.idleTimer);
-          clearInterval(this.listeners[id].media.refreshTimer);
-          await this.decommission(this.listeners[id].media.interaction, 'media', await this.mediaEmbed(false), 'You left the channel');
+        if (this.embeds[id]?.media) {
+          clearTimeout(this.embeds[id].media.idleTimer);
+          clearInterval(this.embeds[id].media.refreshTimer);
+          await this.decommission(this.embeds[id].media.interaction, 'media', await this.mediaEmbed(false), 'You left the channel');
         }
-        if (this.listeners[id]) {delete this.listeners[id];}
+        if (this.embeds[id]) {delete this.embeds[id];}
       }
-      const botChannel = (connection) ? client.channels.cache.get(connection.joinConfig.channelId) : null;
-      let humans = 0;
-      for (const [, member] of botChannel.members) { (!member.user.bot) ? humans++ : null; }
-      if (humans == 0) {
-        logDebug('Alone in channel; leaving voice');
-        connection.destroy();
+      if (!this.listeners.size) { logDebug('Alone in channel; leaving voice'), connection.destroy(); }
+    } else if (connection && (connection.joinConfig.channelId === newState.channelId) && (oldState.channelId != connection.joinConfig.channelId)) {
+      const id = newState.member.id;
+      if (!newState.member.user.bot) {
+        this.listeners.add(id);
+      } else if (client.user.id == id) {
+        this.listeners.clear();
+        const botChannel = client.channels.cache.get(connection.joinConfig.channelId);
+        for (const [, member] of botChannel.members) {
+          if (!member.user.bot) { this.listeners.add(member.user.id); }
+        }
+        if (!this.listeners.size) { logDebug('Alone in channel; leaving voice'), connection.destroy(); }
       }
     }
   }
@@ -575,58 +594,58 @@ export default class Player {
 
   async register(interaction, type, embed) {
     const id = interaction.member.user.id;
-    if (!this.listeners[id]) { this.listeners[id] = {}; }
+    if (!this.embeds[id]) { this.embeds[id] = {}; }
 
     const name = interaction.member.user.username;
 
     switch (type) {
       case 'queue': {
         const match = embed.embeds[0].fields[1]?.value.match(embedPage);
-        if (this.listeners[id].queue) {
-          this.listeners[id].queue.idleTimer.refresh();
-          this.listeners[id].queue.refreshTimer.refresh();
-          this.listeners[id].queue.refreshCount = 0;
-          this.listeners[id].queue.userPage = (match) ? Number(match[1]) : 1;
-          this.listeners[id].queue.followPlayhead = (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10));
-          if (this.listeners[id].queue.interaction.message.id != interaction.message?.id) {
-            const temp = this.listeners[id].queue.interaction;
-            this.listeners[id].queue.interaction = undefined;
+        if (this.embeds[id].queue) {
+          this.embeds[id].queue.idleTimer.refresh();
+          this.embeds[id].queue.refreshTimer.refresh();
+          this.embeds[id].queue.refreshCount = 0;
+          this.embeds[id].queue.userPage = (match) ? Number(match[1]) : 1;
+          this.embeds[id].queue.followPlayhead = (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10));
+          if (this.embeds[id].queue.interaction.message.id != interaction.message?.id) {
+            const temp = this.embeds[id].queue.interaction;
+            this.embeds[id].queue.interaction = undefined;
             (async () => this.decommission(temp, type, embed))();
           }
-          this.listeners[id].queue.interaction = interaction;
+          this.embeds[id].queue.interaction = interaction;
         } else {
-          this.listeners[id].queue = {
+          this.embeds[id].queue = {
             userPage : (match) ? Number(match[1]) : 1,
             followPlayhead : (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10)),
             refreshCount: 0,
             interaction: interaction,
             idleTimer: setTimeout(async () => {
-              clearInterval(this.listeners[id].queue.refreshTimer);
-              await this.decommission(this.listeners[id].queue.interaction, 'queue', await this.queueEmbed(undefined, undefined, false));
-              delete this.listeners[id].queue;
-              if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
+              clearInterval(this.embeds[id].queue.refreshTimer);
+              await this.decommission(this.embeds[id].queue.interaction, 'queue', await this.queueEmbed(undefined, undefined, false));
+              delete this.embeds[id].queue;
+              if (!Object.keys(this.embeds[id]).length) { delete this.embeds[id]; }
             }, 870000).unref(),
             refreshTimer: setInterval(async () => {
-              this.listeners[id].queue.refreshCount++;
-              this.listeners[id].queue.update(id, 'interval');
+              this.embeds[id].queue.refreshCount++;
+              this.embeds[id].queue.update(id, 'interval');
             }, 15000).unref(),
             getPage: function() {
-              if (this.listeners[id].queue.followPlayhead || this.listeners[id].queue.refreshCount > 2) {
-                this.listeners[id].queue.userPage = Math.ceil((this.getPlayhead() + 1) / 10);
-                this.listeners[id].queue.refreshCount = 0;
-                this.listeners[id].queue.followPlayhead = true;
+              if (this.embeds[id].queue.followPlayhead || this.embeds[id].queue.refreshCount > 2) {
+                this.embeds[id].queue.userPage = Math.ceil((this.getPlayhead() + 1) / 10);
+                this.embeds[id].queue.refreshCount = 0;
+                this.embeds[id].queue.followPlayhead = true;
               }
-              return (this.listeners[id].queue.userPage);
+              return (this.embeds[id].queue.userPage);
             }.bind(this),
             update: async function(userId, description, content) {
               logDebug(`${name} queue: ${description}`);
               const contentPage = (content) ? content.embeds[0]?.fields?.[1]?.value?.match(embedPage) : null;
-              const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.listeners[id].queue.getPage()) : null;
-              if (!content || differentPage) { content = await this.queueEmbed('Current Queue:', this.listeners[id].queue.getPage(), false); }
+              const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.embeds[id].queue.getPage()) : null;
+              if (!content || differentPage) { content = await this.queueEmbed('Current Queue:', this.embeds[id].queue.getPage(), false); }
               const { embeds, components, files } = content;
-              if (!this.listeners[userId].queue.interaction.replied && files) {
-                this.listeners[userId].queue.interaction.message = await this.listeners[userId].queue.interaction.editReply({ embeds: embeds, components: components, files: files });
-              } else { this.listeners[userId].queue.interaction.message = await this.listeners[userId].queue.interaction.editReply({ embeds: embeds, components: components }); }
+              if (!this.embeds[userId].queue.interaction.replied && files) {
+                this.embeds[userId].queue.interaction.message = await this.embeds[userId].queue.interaction.editReply({ embeds: embeds, components: components, files: files });
+              } else { this.embeds[userId].queue.interaction.message = await this.embeds[userId].queue.interaction.editReply({ embeds: embeds, components: components }); }
             }.bind(this),
           };
         }
@@ -634,34 +653,34 @@ export default class Player {
       }
 
       case 'media': {
-        if (this.listeners[id].media) {
-          this.listeners[id].media.idleTimer.refresh();
-          this.listeners[id].media.refreshTimer.refresh();
-          if (this.listeners[id].media.interaction.message.id != interaction.message?.id) {
-            const temp = this.listeners[id].media.interaction;
-            this.listeners[id].media.interaction = undefined;
+        if (this.embeds[id].media) {
+          this.embeds[id].media.idleTimer.refresh();
+          this.embeds[id].media.refreshTimer.refresh();
+          if (this.embeds[id].media.interaction.message.id != interaction.message?.id) {
+            const temp = this.embeds[id].media.interaction;
+            this.embeds[id].media.interaction = undefined;
             (async () => this.decommission(temp, type, embed))();
           }
-          this.listeners[id].media.interaction = interaction;
+          this.embeds[id].media.interaction = interaction;
         } else {
-          this.listeners[id].media = {
+          this.embeds[id].media = {
             interaction: interaction,
             idleTimer: setTimeout(async () => {
-              clearInterval(this.listeners[id].media.refreshTimer);
-              await this.decommission(this.listeners[id].media.interaction, 'media', await this.mediaEmbed(false));
-              delete this.listeners[id].media;
-              if (!Object.keys(this.listeners[id]).length) { delete this.listeners[id]; }
+              clearInterval(this.embeds[id].media.refreshTimer);
+              await this.decommission(this.embeds[id].media.interaction, 'media', await this.mediaEmbed(false));
+              delete this.embeds[id].media;
+              if (!Object.keys(this.embeds[id]).length) { delete this.embeds[id]; }
             }, 870000).unref(),
             refreshTimer: setInterval(() => {
-              this.listeners[id].media.update(id, 'interval');
+              this.embeds[id].media.update(id, 'interval');
             }, 15000).unref(),
             update: async function(userId, description, content) {
               content ||= await this.mediaEmbed(false);
               logDebug(`${name} media: ${description}`);
               const { embeds, components, files } = content;
-              if (!this.listeners[userId].media.interaction.replied && files) {
-                this.listeners[userId].media.interaction.message = await this.listeners[userId].media.interaction.editReply({ embeds: embeds, components: components, files: files });
-              } else { this.listeners[userId].media.interaction.message = await this.listeners[userId].media.interaction.editReply({ embeds: embeds, components: components }); }
+              if (!this.embeds[userId].media.interaction.replied && files) {
+                this.embeds[userId].media.interaction.message = await this.embeds[userId].media.interaction.editReply({ embeds: embeds, components: components, files: files });
+              } else { this.embeds[userId].media.interaction.message = await this.embeds[userId].media.interaction.editReply({ embeds: embeds, components: components }); }
             }.bind(this),
           };
         }
@@ -678,14 +697,14 @@ export default class Player {
   async sync(interaction, type, queueEmbed, mediaEmbed) {
     switch (type) {
       case 'queue': { // strip non-false parameter thing
-        Object.keys(this.listeners).map(async (id) => {
-          this.listeners[id]?.queue?.update(id, 'sync', queueEmbed);
+        Object.keys(this.embeds).map(async (id) => {
+          this.embeds[id]?.queue?.update(id, 'sync', queueEmbed);
         });
         break;
       }
       case 'media': {
-        Object.keys(this.listeners).map(async (id) => {
-          const { queue, media } = this.listeners[id];
+        Object.keys(this.embeds).map(async (id) => {
+          const { queue, media } = this.embeds[id];
           await Promise.all([queue?.update(id, 'sync', queueEmbed), media?.update(id, 'sync', mediaEmbed)]);
         });
         break;
