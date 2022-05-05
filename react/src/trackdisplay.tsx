@@ -2,10 +2,10 @@ import * as React from 'react';
 import './App.css';
 import './tracks.css';
 
-type track = import('./types').track;
+type Track = import('./types').track;
 
 
-export function TrackSmall(props: { track:track }) {
+export function TrackSmall(props: { track:Track }) {
   if (Object.keys(props.track).length) {
     return (
       <div className="small">

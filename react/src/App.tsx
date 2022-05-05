@@ -2,8 +2,10 @@ import './App.css';
 import * as React from 'react';
 import { TrackSmall } from './trackdisplay';
 
+type Track = import('./types').track;
+
 type AppState = {
-  track: {},
+  track: Track | {},
   playerStatus: QueueProps | {},
   discord: DiscordProps | {},
   spotify: { username: string } | {},
@@ -17,16 +19,16 @@ type DiscordProps = {
 }
 
 type QueueProps = {
-  tracks: {}[];
+  tracks: Track[];
   playhead: number,
   loop: boolean,
   paused: boolean,
 }
 
 type LoadResponse = {
-  discord: DiscordProps | {},
-  spotify: { username: string } | {},
-  player: QueueProps | {},
+  discord: DiscordProps,
+  spotify: { username: string },
+  player: QueueProps,
   error: undefined | string,
   status: 'known'|'new',
 }
@@ -68,7 +70,8 @@ export default class App extends React.Component<any, any> {
       },
     }).then((response) => response.json()).then((json: LoadResponse) => {
       if (json.status === 'known') {
-        this.setState((json.spotify) ? { discord:json.discord, spotify:json.spotify } : { discord:json.discord });
+        this.setState({ spotify: json.spotify || {} });
+        this.setState({ discord: json.discord || {} });
         this.setState({ playerStatus: json.player || {} });
       } else if (json.status === 'new') {
         // could do a new user welcome message?
