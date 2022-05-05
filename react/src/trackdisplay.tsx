@@ -6,7 +6,7 @@ type Track = import('./types').track;
 
 
 export function TrackSmall(props: { track:Track }) {
-  if (Object.keys(props.track).length) {
+  if (props.track) {
     return (
       <div className="small">
         <img src={props.track?.spotify?.art || props.track?.youtube?.art} className="smallArt" alt="Track album art" />

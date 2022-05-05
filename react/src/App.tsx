@@ -5,17 +5,17 @@ import { TrackSmall } from './trackdisplay';
 type Track = import('./types').track;
 
 type AppState = {
-  track: Track | {},
-  playerStatus: QueueProps | {},
-  discord: DiscordProps | {},
-  spotify: { username: string } | {},
+  track?: Track,
+  playerStatus?: QueueProps,
+  discord?: DiscordProps,
+  spotify?: { username: string },
   error: null | string,
 }
 
 type DiscordProps = {
-    id: string,
-    username: string,
-    discriminator: string,
+    id?: string,
+    username?: string,
+    discriminator?: string,
 }
 
 type QueueProps = {
@@ -33,15 +33,15 @@ type LoadResponse = {
   status: 'known'|'new',
 }
 
-export default class App extends React.Component<any, any> {
+export default class App extends React.Component<{}, AppState> {
 
   constructor(props:AppState) {
     super(props);
     this.state = {
-      track:{},
-      playerStatus:{},
-      discord:{},
-      spotify:{},
+      track:undefined,
+      playerStatus:undefined,
+      discord:undefined,
+      spotify:undefined,
       error: null,
     };
     this.playerClick = this.playerClick.bind(this);
@@ -70,9 +70,9 @@ export default class App extends React.Component<any, any> {
       },
     }).then((response) => response.json()).then((json: LoadResponse) => {
       if (json.status === 'known') {
-        this.setState({ spotify: json.spotify || {} });
-        this.setState({ discord: json.discord || {} });
-        this.setState({ playerStatus: json.player || {} });
+        this.setState({ spotify: json.spotify });
+        this.setState({ discord: json.discord });
+        this.setState({ playerStatus: json.player });
       } else if (json.status === 'new') {
         // could do a new user welcome message?
       } else { this.setState({ error:'unexpected loaduser response' }); }
@@ -86,7 +86,6 @@ export default class App extends React.Component<any, any> {
         <ErrorDisplay error={this.state.error} />
         <UserBoxDiscord user={this.state.discord} />
         <UserBoxSpotify user={this.state.spotify} />
-        <TrackSmall track={this.state.track} />
         <button type="button" name="previous" onClick={this.playerClick}>Prev</button>
         <button type="button" name="next" onClick={this.playerClick}>Next</button>
         <QueueSmall queue={this.state.playerStatus} />
@@ -100,7 +99,7 @@ export default class App extends React.Component<any, any> {
 
 // }
 
-function QueueSmall(props:any) {
+function QueueSmall(props: { queue?: QueueProps }) {
   const queue = [];
   if (props?.queue?.tracks) {
     for (const [i, track] of props.queue.tracks.entries()) {
@@ -115,9 +114,9 @@ function QueueSmall(props:any) {
 }
 
 
-function UserBoxDiscord(props: { user: DiscordProps }) {
+function UserBoxDiscord(props: { user?: DiscordProps }) {
   let content = null;
-  if (Object.keys(props.user).length) {
+  if (props.user) {
     content = <p>{props.user.username}#{props.user.discriminator}</p>;
   } else {
     const authLink = './oauth2?type=discord';
@@ -130,9 +129,9 @@ function UserBoxDiscord(props: { user: DiscordProps }) {
   );
 }
 
-function UserBoxSpotify(props: { user:{ username: string } }) {
+function UserBoxSpotify(props: { user?:{ username: string } }) {
   let content = null;
-  if (Object.keys(props.user).length) {
+  if (props.user) {
     content = <p>{props.user.username}</p>;
   } else {
     const authLink = './oauth2?type=spotify';
