@@ -1,4 +1,4 @@
-export interface track {
+export interface Track {
 	goose: {
 		id:string
 		plays?:number
@@ -34,3 +34,8 @@ interface youtubeObject {
   art: string,
   duration: number
 }
+
+export type PlayerClick = {
+  action: string,
+  parameter?: any
+};

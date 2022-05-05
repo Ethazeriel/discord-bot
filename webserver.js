@@ -38,8 +38,8 @@ worker.on('message', async (message) => {
           }
 
           case 'jump': {
-            const target = Math.abs(Number(message.target));
-            await player.jump(target);
+            const position = Math.abs(Number(message.parameter));
+            await player.jump(position);
             const status = player.getStatus();
             worker.postMessage({ id:message.id, status:status });
             break;
@@ -47,7 +47,7 @@ worker.on('message', async (message) => {
 
           case 'seek': { // copied wholesale from interaction/queue/seek
             const track = player.getCurrent();
-            const usrtime = validator.escape(validator.stripLow(message.target + '')).trim();
+            const usrtime = validator.escape(validator.stripLow(message.parameter + '')).trim();
             if (!seekRegex.test(usrtime)) { worker.postMessage({ id:message.id, error:'Invalid timestamp' }); } else {
               const match = usrtime.match(seekRegex);
               let time = Number(match[3]);
@@ -84,7 +84,7 @@ worker.on('message', async (message) => {
 
           case 'remove': {
             if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
-              const position = Math.abs((Number(message.target)));
+              const position = Math.abs((Number(message.parameter)));
               const removed = await player.remove(position); // we'll be refactoring remove later
               if (removed.length) {
                 const status = player.getStatus();
@@ -102,7 +102,7 @@ worker.on('message', async (message) => {
           }
 
           case 'shuffle': {
-            await player.shuffle({ albumAware: (message.albumAware == 1) });
+            await player.shuffle({ albumAware: (message.parameter == 1) });
             const status = player.getStatus();
             worker.postMessage({ id:message.id, status:status });
             break;

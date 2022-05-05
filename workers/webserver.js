@@ -147,10 +147,11 @@ app.post('/player', async (req, res) => {
     const user = await db.getUserWeb(webId);
     if (user) {
       const action = validator.escape(validator.stripLow(req.body?.action?.replace(sanitize, '') || '')).trim();
+      const parameter = validator.escape(validator.stripLow(('' + req.body?.parameter)?.replace(sanitize, '') || '')).trim();
       logLine(req.method, [req.originalUrl, chalk.green(action)]);
       // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
       const id = crypto.randomBytes(5).toString('hex');
-      parentPort.postMessage({ type:'player', action:action, id:id, userId: user.discord.id });
+      parentPort.postMessage({ type:'player', action:action, parameter:parameter, id:id, userId: user.discord.id });
       const messageAction = (result) => {
         if (result?.id === id) {
           res.json(result);
