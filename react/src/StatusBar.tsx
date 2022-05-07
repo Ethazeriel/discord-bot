@@ -17,7 +17,6 @@ display: flex;
 align-items: center;
 justify-content: center;
 font-size: 2vh;
-z-index: 0;
 > div {
   max-height: 100%;
   width: 100%;
@@ -54,29 +53,41 @@ padding-right:1em;
 z-index:3;
 height: 6vh;
 min-height: 20px;
+background-color: #404347;
 `;
 
 const Connections = styled.div`
 position: absolute;
 right:0px;
-top:-3.5em;
+top:-5em;
 overflow-y:visible;
 width: fit-content;
+max-width: 33vw;
 min-height: 6em;
 padding-right:1em;
-padding-top:3.5em;
+padding-top:4em;
 padding-left:1em;
 padding-bottom:0.5em;
 background-color: #404347;
-z-index: -1;
+z-index: 1;
 //transform: translateY(100%);
 transition: 0.2s transform;
 &:hover,:focus-within {
-  transform: translateY(3.5em);
+  transform: translateY(4.5em);
 }
 ${AlwaysVisible}:hover + & {
-  transform: translateY(3.5em);
+  transform: translateY(4.5em);
 }
+`;
+
+const ConBlock = styled.div`
+background-color: #404347;
+height:6vh;
+width:33vw;
+z-index:2;
+position: absolute;
+top: 0;
+right: 0;
 `;
 
 export function StatusBar(props: { status: Status }) {
@@ -92,6 +103,7 @@ export function StatusBar(props: { status: Status }) {
         <div>text here about something</div>
         <div>player controls?</div>
         <div>
+          <ConBlock />
           <AlwaysVisible>
               Connections ▼ <br />
             <ConLogo type='discord' active={(props?.status?.user?.discord?.username ? true : false)} />
