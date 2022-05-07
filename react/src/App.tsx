@@ -66,7 +66,6 @@ export default class App extends React.Component<{}, AppState> {
       <div className="App">
         <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
         <ErrorDisplay error={this.state.error} />
-        <UserBoxSpotify user={this.state.user?.spotify} />
         <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
       </div>
     );
@@ -96,21 +95,6 @@ class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, 
       </div>
     );
   }
-}
-
-function UserBoxSpotify(props: { user?:{ username: string } }) {
-  let content = null;
-  if (props.user) {
-    content = <p>{props.user.username}</p>;
-  } else {
-    const authLink = './oauth2?type=spotify';
-    content = <a href={authLink}>Link spotify</a>;
-  }
-  return (
-    <div className="UserBox2">
-      {content}
-    </div>
-  );
 }
 
 function ErrorDisplay(props: { error: null | string }) {
