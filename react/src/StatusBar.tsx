@@ -8,10 +8,11 @@ type Status = {
 };
 
 const Bar = styled.div`
-background-color: #404347;
+background-color: #242526;
+border-bottom: 2px solid #373839;
 overflow: visible;
 width: 100%;
-height: 6vh;
+height: calc(6vh + 2px);
 min-height: 20px;
 display: flex;
 align-items: center;
@@ -53,7 +54,7 @@ padding-right:1em;
 z-index:3;
 height: 6vh;
 min-height: 20px;
-background-color: #404347;
+background-color: #242526;
 `;
 
 const Connections = styled.div`
@@ -68,7 +69,9 @@ padding-right:1em;
 padding-top:4em;
 padding-left:1em;
 padding-bottom:0.5em;
-background-color: #404347;
+background-color: #242526;
+border-bottom: 2px solid #373839;
+border-left: 2px solid #373839;
 z-index: 1;
 //transform: translateY(100%);
 transition: 0.2s transform;
@@ -81,7 +84,7 @@ ${AlwaysVisible}:hover + & {
 `;
 
 const ConBlock = styled.div`
-background-color: #404347;
+background-color: #242526;
 height:6vh;
 width:33vw;
 z-index:2;
