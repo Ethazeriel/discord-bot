@@ -3,10 +3,10 @@ import crypto from 'crypto';
 import { logLine, logDebug } from './logger.js';
 
 
-let worker = new Worker('./workers/acquire.js', { workerData:{ name:'Acquire' } });
+let worker = new Worker(new URL('./workers/acquire.js', import.meta.url), { workerData:{ name:'Acquire' } });
 worker.on('exit', code => {
   logDebug(`Worker exited with code ${code}.`);
-  worker = new Worker('./workers/acquire.js', { workerData:{ name:'Acquire' } });
+  worker = new Worker(new URL('./workers/acquire.js', import.meta.url), { workerData:{ name:'Acquire' } });
 }); // if it exits just spawn a new one because that's good error handling, yes
 
 export default async function fetch(search, id = crypto.randomBytes(5).toString('hex')) {

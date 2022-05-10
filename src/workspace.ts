@@ -1,12 +1,17 @@
 import Player from './player.js';
-import { MessageAttachment } from 'discord.js';
+import { CommandInteraction, MessageAttachment } from 'discord.js';
 import * as utils from './utils.js';
 import * as db from './database.js';
 import { logDebug } from './logger.js';
 
 export default class Workspace {
-  static #workspaces = {};
-  constructor(userid) {
+  
+  list:Track[]
+  id:string
+  expiry:NodeJS.Timeout
+
+  static #workspaces: Record<string, Workspace> = {};
+  constructor(userid:string) {
     this.list = [];
     this.id = userid;
     this.expiry = setTimeout(() => {
@@ -15,16 +20,16 @@ export default class Workspace {
     }, 3600000).unref(); // hour timeout to clear workspaces that haven't been interacted with
   }
 
-  static getWorkspace(userid) {
+  static getWorkspace(userid:string) {
     const workspace = Workspace.#workspaces[userid] || (Workspace.#workspaces[userid] = new Workspace(userid));
     return workspace;
   }
 
-  static clearWorkspace(userid) {
+  static clearWorkspace(userid:string) {
     delete Workspace.#workspaces[userid];
   }
 
-  removeTrack(index) {
+  removeTrack(index:number) {
     this.expiry.refresh();
     this.list.splice(index, 1);
   }
@@ -34,7 +39,7 @@ export default class Workspace {
     this.list.length = 0;
   }
 
-  async importQueue(interaction) {
+  async importQueue(interaction:CommandInteraction) {
     this.expiry.refresh();
     const player = await Player.getPlayer(interaction);
     if (player) {
@@ -44,7 +49,7 @@ export default class Workspace {
     }
   }
 
-  addTracks(tracks, index) {
+  addTracks(tracks:Track[], index:number) {
     this.expiry.refresh();
     let where = index;
     for (const track of tracks) {
@@ -54,17 +59,17 @@ export default class Workspace {
     return this.list.length;
   }
 
-  moveTrack(fromindex, toindex) {
+  moveTrack(fromindex:number, toindex:number) {
     this.expiry.refresh();
     const track = this.list.splice(fromindex, 1);
     this.list.splice(toindex, 0, track[0]);
     return track;
   }
 
-  async makeEmbed(messagetitle, page, fresh = true) {
+  async makeEmbed(messagetitle:string, page:number, fresh = true) {
     this.expiry.refresh();
     page = Math.abs(page) || 1;
-    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'thumb.jpg')) : null;
+    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab')as any, 'thumb.jpg')) : null;
     const pages = Math.ceil(this.list.length / 10); // this should be the total number of pages? rounding up
     const buttonEmbed = [ {
       type: 1,
