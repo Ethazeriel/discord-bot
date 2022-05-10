@@ -19,50 +19,6 @@ function timeDisplay(seconds:number) {
   }
 }
 
-const Small = styled.div`
-  display: flex;
-  background-color: #18191a;
-  &:nth-child(even) {
-    background-color: #1c1d1f;
-  }
-  &:hover {
-    background-color: #202124;
-    > div > img.hover {
-      visibility: visible;
-      &:hover {
-        filter: drop-shadow(2px 4px 8px #282c34);
-      }
-    }
-  }
-  > img {
-    height: 12vh;
-    width: 12vh;
-    margin-right: 0.5em;
-  }
-  > div {
-    width: 20%;
-  }
-  > div > h2 {
-    margin: 0px;
-    text-align: left;
-    // height: 1em;
-    // inline-size: 20vw;
-
-    // writing-mode: horizontal-tb;
-    white-space: nowrap;
-    overflow: hidden;
-    font-size: 4vh;
-  }
-  > div > p {
-    margin: 0px;
-    text-align: left;
-    font-size: 2.5vh;
-  }
-  div > img {
-    visibility: hidden;
-  }
-`;
-
 export class TrackSmall extends React.Component<{playerClick:(a: PlayerClick) => void, track: Track, id: number}, never> {
   constructor(props: {playerClick:(a: PlayerClick) => void, track: Track, id: number}) {
     super(props);
@@ -85,7 +41,7 @@ export class TrackSmall extends React.Component<{playerClick:(a: PlayerClick) =>
           </ButtonContainer>
           <Details>
             <Title>{this.props.track?.spotify?.name || this.props.track?.youtube?.name}</Title>
-            <Artist>{this.props.track?.artist?.name} - <em>{this.props.track?.album?.name}</em></Artist>
+            <AlbumInfo>{this.props.track?.artist?.name} - <em>{this.props.track?.album?.name}</em></AlbumInfo>
           </Details>
           <Duration>{timeDisplay(this.props.track?.youtube?.duration)}</Duration>
         </TrackStyle>
@@ -148,17 +104,17 @@ const Title = styled.h2`
   font-size: 2vh;
 `;
 
-const Artist = styled.p`
+const AlbumInfo = styled.p` // was Artist
   margin: 0px;
   font-size: 1.5vh;
 `;
 
-const Album = styled.p`
-  margin: 0px;
-  font-size: 1.5vh;
-  font-style: italic;
-  display: inline;
-`;
+// const Album = styled.p`
+//   margin: 0px;
+//   font-size: 1.5vh;
+//   font-style: italic;
+//   display: inline;
+// `;
 
 const Duration = styled.p`
   margin: 0px;
