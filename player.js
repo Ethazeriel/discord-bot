@@ -715,4 +715,32 @@ export default class Player {
       }
     }
   }
+
+  async webSync(type) {
+    const keys = Object.keys(this.embeds);
+    if (keys.length) {
+      console.log('have embeds');
+      switch (type) {
+        case 'queue': {
+          const queueEmbed = await this.queueEmbed(undefined, undefined, false);
+          keys.map(async (id) => {
+            this.embeds[id]?.queue?.update(id, 'web sync', queueEmbed);
+          });
+          break;
+        }
+        case 'media': {
+          const mediaEmbed = await this.mediaEmbed(false);
+          const queueEmbed = await this.queueEmbed(undefined, undefined, false);
+          keys.map(async (id) => {
+            this.embeds[id]?.queue?.update(id, 'web sync', queueEmbed);
+            this.embeds[id]?.media?.update(id, 'web sync', mediaEmbed);
+          });
+          break;
+        }
+        default: {
+          logDebug(`web sync—bad case: ${type}`);
+        }
+      }
+    } else { console.log('no embeds'); }
+  }
 }

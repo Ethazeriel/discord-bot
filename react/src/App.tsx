@@ -44,6 +44,21 @@ export default class App extends React.Component<{}, AppState> {
   }
 
   componentDidMount(): void {
+    // fetch('./playlist/boop', {
+    //   method: 'GET',
+    //   headers: {
+    //     Accept: 'application/json',
+    //     'Content-Type': 'application/json',
+    //   },
+    // }).then((response) => response.json()).then((json: any) => {
+    //   this.setState({ playerStatus: {
+    //     tracks: json,
+    //     playhead: 0,
+    //     loop: false,
+    //     paused: false,
+    //   } });
+    // }).catch((error) => { console.error(error); });
+    //
     fetch('./load', {
       method: 'GET',
       headers: {

@@ -40,6 +40,7 @@ worker.on('message', async (message) => {
           case 'jump': {
             const position = Math.abs(Number(message.parameter));
             await player.jump(position);
+            player.webSync('media');
             const status = player.getStatus();
             worker.postMessage({ id:message.id, status:status });
             break;
@@ -85,7 +86,9 @@ worker.on('message', async (message) => {
           case 'remove': {
             if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
               const position = Math.abs((Number(message.parameter)));
+              const playhead = player.getPlayhead();
               const removed = await player.remove(position); // we'll be refactoring remove later
+              player.webSync((playhead == position) ? 'media' : 'queue');
               if (removed.length) {
                 const status = player.getStatus();
                 worker.postMessage({ id:message.id, status:status });

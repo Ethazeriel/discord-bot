@@ -139,25 +139,25 @@ function ConLogo(props:{ type:'spotify' | 'discord', active:boolean }) {
 
 function Account(props:{ type:'spotify' | 'discord', user:User}) {
   switch (props.type) {
-  case 'spotify': {
-    if (props.user?.spotify) {
-      return (
-        <ConAccount><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />{props.user?.spotify?.username}</ConAccount>
+    case 'spotify': {
+      if (props.user?.spotify) {
+        return (
+          <ConAccount><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />{props.user?.spotify?.username}</ConAccount>
 
-      );
-    } else {
+        );
+      } else {
+        return (
+          <div>
+            <AuthLink href='./oauth2?type=spotify'><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
+          </div>
+        );
+      }
+    }
+
+    case 'discord': { // don't need an if/else here as this should always be true
       return (
-        <div>
-          <AuthLink href='./oauth2?type=spotify'><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
-        </div>
+        <ConAccount><ConLogo type='discord' active={(props.user?.discord?.username ? true : false)} />{props.user?.discord?.username}#{props.user?.discord?.discriminator}</ConAccount>
       );
     }
-  }
-
-  case 'discord': { // don't need an if/else here as this should always be true
-    return (
-      <ConAccount><ConLogo type='discord' active={(props.user?.discord?.username ? true : false)} />{props.user?.discord?.username}#{props.user?.discord?.discriminator}</ConAccount>
-    );
-  }
   }
 }
