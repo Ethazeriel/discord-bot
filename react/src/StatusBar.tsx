@@ -103,7 +103,7 @@ export function StatusBar(props: { status: Status }) {
   } else {
     return (
       <Bar>
-        <div>text here about something</div>
+        <div><Clock /></div>
         <div>player controls?</div>
         <div>
           <ConBlock />
@@ -160,4 +160,30 @@ function Account(props:{ type:'spotify' | 'discord', user:User}) {
       );
     }
   }
+}
+
+const Clockh2 = styled.h2`
+font-family: 'Courier New', Courier, monospace;
+margin:0px;
+text-align: left;
+align-items: center;
+`;
+function Clock() {
+  const [time, setTime] = React.useState(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+  const [tock, setTock] = React.useState(false);
+
+  const tick = () => {
+    if (tock) {
+      setTime(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+      setTock(false);
+    } else {
+      setTime(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(':', ' '));
+      setTock(true);
+    }
+  };
+  React.useEffect(() => {
+    const timer = setInterval(() => tick(), 1000);
+    return () => {clearInterval(timer);};
+  });
+  return (<Clockh2>{time}</Clockh2>);
 }
