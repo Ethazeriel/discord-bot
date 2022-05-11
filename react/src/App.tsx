@@ -1,6 +1,6 @@
 import './App.css';
 import * as React from 'react';
-import { TrackSmall } from './trackdisplay';
+import { TrackSmall } from './TrackSmall';
 import type { Track, PlayerClick, PlayerStatus, User } from './types';
 import { StatusBar } from './StatusBar';
 type AppState = {
