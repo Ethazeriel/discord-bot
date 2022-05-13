@@ -127,6 +127,12 @@ worker.on('message', async (message) => {
   }
 });
 
+export async function sendWebUpdate(type, data) {
+  if (type === 'player') {
+    worker.postMessage({ action: 'websync', queue:data });
+  }
+}
+
 process.on('SIGINT' || 'SIGTERM', async () => {
   worker.postMessage({ action:'exit' });
 });

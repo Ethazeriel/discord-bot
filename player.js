@@ -5,10 +5,12 @@ import crypto from 'crypto';
 import { MessageAttachment } from 'discord.js';
 import * as db from './database.js';
 import { logLine, logDebug } from './logger.js';
-const { useragent } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).youtube;
+const { youtube, functions } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import { stream as seekable } from 'play-dl';
+
 
 export default class Player {
   // acquisition
@@ -118,6 +120,8 @@ export default class Player {
       Object.keys(Player.#players).map((playerId) => {
         if (Player.#players[playerId].listeners.has(id)) {
           player = Player.#players[playerId];
+          // if you're here to add print lines because /load isn't working it's because the bot hasn't had time to idle out of the channel after you restarted it
+          // boot the bot, everything is fine
         }
       });
       return (player);
@@ -714,12 +718,14 @@ export default class Player {
         break;
       }
     }
+    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
   }
 
   async webSync(type) {
+    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
     const keys = Object.keys(this.embeds);
     if (keys.length) {
-      console.log('have embeds');
+      logDebug('have embeds');
       switch (type) {
         case 'queue': {
           const queueEmbed = await this.queueEmbed(undefined, undefined, false);
@@ -741,6 +747,6 @@ export default class Player {
           logDebug(`web sync—bad case: ${type}`);
         }
       }
-    } else { console.log('no embeds'); }
+    } else { logDebug('no embeds'); }
   }
 }
