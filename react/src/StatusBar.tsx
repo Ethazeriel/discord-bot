@@ -104,7 +104,7 @@ export function StatusBar(props: { status: Status }) {
     return (
       <Bar>
         <div><Clock /></div>
-        <div>player controls?</div>
+        <div>Current track: {props.status.player?.tracks[props.status.player?.playhead].spotify.name}</div>
         <div>
           <ConBlock />
           <AlwaysVisible>
