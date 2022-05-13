@@ -605,8 +605,8 @@ export default class Player {
           this.embeds[id].queue.idleTimer.refresh();
           this.embeds[id].queue.refreshTimer.refresh();
           this.embeds[id].queue.refreshCount = 0;
-          this.embeds[id].queue.userPage = (match) ? Number(match[1]) : 1;
-          this.embeds[id].queue.followPlayhead = (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10));
+          this.embeds[id].queue.userPage = Number(match[1]);
+          this.embeds[id].queue.followPlayhead = (Number(match[1]) == Math.ceil((this.getPlayhead() + 1) / 10));
           if (this.embeds[id].queue.interaction.message.id != interaction.message?.id) {
             const temp = this.embeds[id].queue.interaction;
             this.embeds[id].queue.interaction = undefined;
@@ -615,8 +615,8 @@ export default class Player {
           this.embeds[id].queue.interaction = interaction;
         } else {
           this.embeds[id].queue = {
-            userPage : (match) ? Number(match[1]) : 1,
-            followPlayhead : (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10)),
+            userPage : Number(match[1]),
+            followPlayhead : (Number(match[1]) == Math.ceil((this.getPlayhead() + 1) / 10)),
             refreshCount: 0,
             interaction: interaction,
             idleTimer: setTimeout(async () => {

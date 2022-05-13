@@ -4,7 +4,6 @@ import playButton from './media/placeholder/dark_play.png';
 import removeButton from './media/placeholder/dark_remove.png';
 
 import './App.css';
-import './tracks.css';
 
 import type { Track, PlayerClick } from './types';
 type Action = 'jump' | 'remove';
