@@ -26,7 +26,15 @@ parentPort.on('message', async data => {
 const app = express();
 const port = 2468;
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      // eslint-disable-next-line quotes
+      'img-src': ["'self'", 'https://i.scdn.co', 'https://i.ytimg.com'],
+    },
+  },
+}));
 app.use(express.static('./react/build'));
 app.use(express.json());
 app.use(cookieParser(discord.secret));
