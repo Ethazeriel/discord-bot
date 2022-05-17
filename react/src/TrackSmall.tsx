@@ -32,7 +32,7 @@ export class TrackSmall extends React.Component<{playerClick:(a: PlayerClick) =>
     if (Object.keys(this.props.track).length) {
       return (
         <TrackStyle>
-          <Art src={this.props.track?.spotify?.art || this.props.track?.youtube?.art} alt="album art" />
+          <Art src={this.props.track?.spotify?.art || this.props.track?.youtube?.art} alt="album art" crossOrigin='anonymous'/>
           <ButtonContainer>
             <Button src={playButton} onClick={() => this.trackClick('jump')} />
             <Number>{(this.props.id + 1)}</Number>
