@@ -179,11 +179,11 @@ app.on('upgrade', (request, socket, head) => {
 const wssInterval = setInterval(() => {
   for (const client of wss.clients) {
     if (client.isAlive === false) {
-      logDebug(`wssInterval, terminating client ${client}`);
+      logDebug('wssInterval, terminating client');
       client.terminate();
       logDebug(`clients' size: ${wss.clients.size}`);
     } else {
-      logDebug(`wssInterval, pinging client ${client}`);
+      logDebug('wssInterval, pinging client');
       client.isAlive = false;
       client.ping();
     }
