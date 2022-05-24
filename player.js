@@ -472,7 +472,7 @@ export default class Player {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page) || Math.ceil((this.getPlayhead() + 1) / 10);
-    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
+    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab'), 'art.jpg'));
     const pages = Math.ceil(queue.length / 10);
     const buttonEmbed = [
       {
