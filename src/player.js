@@ -5,10 +5,12 @@ import crypto from 'crypto';
 import { MessageAttachment } from 'discord.js';
 import * as db from './database.js';
 import { logLine, logDebug } from './logger.js';
-const { useragent } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).youtube;
+const { youtube, functions } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import { stream as seekable } from 'play-dl';
+
 
 export default class Player {
   // acquisition
@@ -118,6 +120,8 @@ export default class Player {
       Object.keys(Player.#players).map((playerId) => {
         if (Player.#players[playerId].listeners.has(id)) {
           player = Player.#players[playerId];
+          // if you're here to add print lines because /load isn't working it's because the bot hasn't had time to idle out of the channel after you restarted it
+          // boot the bot, everything is fine
         }
       });
       return (player);
@@ -495,7 +499,7 @@ export default class Player {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page) || Math.ceil((this.getPlayhead() + 1) / 10);
-    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : null;
+    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab'), 'art.jpg'));
     const pages = Math.ceil(queue.length / 10);
     const buttonEmbed = [
       {
@@ -605,8 +609,8 @@ export default class Player {
           this.embeds[id].queue.idleTimer.refresh();
           this.embeds[id].queue.refreshTimer.refresh();
           this.embeds[id].queue.refreshCount = 0;
-          this.embeds[id].queue.userPage = (match) ? Number(match[1]) : 1;
-          this.embeds[id].queue.followPlayhead = (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10));
+          this.embeds[id].queue.userPage = Number(match[1]);
+          this.embeds[id].queue.followPlayhead = (Number(match[1]) == Math.ceil((this.getPlayhead() + 1) / 10));
           if (this.embeds[id].queue.interaction.message.id != interaction.message?.id) {
             const temp = this.embeds[id].queue.interaction;
             this.embeds[id].queue.interaction = undefined;
@@ -615,8 +619,8 @@ export default class Player {
           this.embeds[id].queue.interaction = interaction;
         } else {
           this.embeds[id].queue = {
-            userPage : (match) ? Number(match[1]) : 1,
-            followPlayhead : (((match) ? Number(match[1]) : 1) == Math.ceil((this.getPlayhead() + 1) / 10)),
+            userPage : Number(match[1]),
+            followPlayhead : (Number(match[1]) == Math.ceil((this.getPlayhead() + 1) / 10)),
             refreshCount: 0,
             interaction: interaction,
             idleTimer: setTimeout(async () => {
@@ -714,5 +718,35 @@ export default class Player {
         break;
       }
     }
+    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
+  }
+
+  async webSync(type) {
+    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
+    const keys = Object.keys(this.embeds);
+    if (keys.length) {
+      logDebug('have embeds');
+      switch (type) {
+        case 'queue': {
+          const queueEmbed = await this.queueEmbed(undefined, undefined, false);
+          keys.map(async (id) => {
+            this.embeds[id]?.queue?.update(id, 'web sync', queueEmbed);
+          });
+          break;
+        }
+        case 'media': {
+          const mediaEmbed = await this.mediaEmbed(false);
+          const queueEmbed = await this.queueEmbed(undefined, undefined, false);
+          keys.map(async (id) => {
+            this.embeds[id]?.queue?.update(id, 'web sync', queueEmbed);
+            this.embeds[id]?.media?.update(id, 'web sync', mediaEmbed);
+          });
+          break;
+        }
+        default: {
+          logDebug(`web sync—bad case: ${type}`);
+        }
+      }
+    } else { logDebug('no embeds'); }
   }
 }

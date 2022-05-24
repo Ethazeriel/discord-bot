@@ -1,6 +1,7 @@
 import * as db from '../database.js';
 import helmet from 'helmet';
 import express from 'express';
+import cookie from 'cookie';
 import cookieParser from 'cookie-parser';
 import validator from 'validator';
 import { logDebug, logLine } from '../logger.js';
@@ -12,6 +13,7 @@ import fs from 'fs';
 const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
 import * as oauth2 from '../oauth2.js';
 import { fileURLToPath } from 'url';
+import { WebSocketServer } from 'ws';
 
 parentPort.on('message', async data => {
   if (data.action === 'exit') {
@@ -24,7 +26,15 @@ parentPort.on('message', async data => {
 const app = express();
 const port = 2468;
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      // eslint-disable-next-line quotes
+      'img-src': ["'self'", 'https://i.scdn.co', 'https://i.ytimg.com'],
+    },
+  },
+}));
 app.use(express.static('./react/build'));
 app.use(express.json());
 app.use(cookieParser(discord.secret));
@@ -163,6 +173,69 @@ app.post('/player', async (req, res) => {
   } else { res.status(400).json({ error: 'Probably your cookies are disabled.' }); }
 });
 
-app.listen(port, () => {
+
+// Websocket
+
+
+const httpServer = app.listen(port, () => {
   logLine('info', [`Web server active at http://localhost:${port}`]);
+});
+
+const wss = new WebSocketServer({ server: httpServer, clientTracking: true });
+app.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    logDebug('WebSocket upgrade event—have not tested if this works.');
+    wss.emit('connection', ws, request);
+  });
+});
+const wssInterval = setInterval(() => {
+  for (const client of wss.clients) {
+    if (client.isAlive === false) {
+      logDebug('wssInterval, terminating client');
+      client.terminate();
+      logDebug(`clients' size: ${wss.clients.size}`);
+    } else {
+      logDebug('wssInterval, pinging client');
+      client.isAlive = false;
+      client.ping();
+    }
+  }
+}, 15000);
+wss.on('connection', async (ws, req) => {
+  // let debug;
+  const cookies = cookie.parse(req.headers.cookie)?.['id'];
+  if (cookies) {
+    const webId = cookieParser.signedCookie(cookies, discord.secret);
+    if (webId && webIdRegex.test(webId)) {
+      const user = await db.getUserWeb(webId);
+      if (user) {
+        // debug = user;
+        logDebug(`${user.discord.username} connected—clients' size: ${wss.clients.size}`);
+      } else { ws.terminate(); }
+    } else { ws.terminate(); }
+  } else { ws.terminate(); }
+  // eslint-disable-next-line no-unused-vars
+  ws.on('message', (message) => {
+    // logDebug('WebSocketServer message from client—no handling in place');
+  });
+  ws.on('close', () => {
+    // logDebug(`WebSocket closed by ${(debug) ? debug.discord.username : 'non-auth client'}—clients' size: ${wss.clients.size}`);
+  });
+  ws.on('pong', function() {
+    this.isAlive = true;
+    // logDebug(`WebSocket Pong from ${(debug) ? debug.discord.username : 'non-auth client'}—isAlive: ${this.isAlive}`);
+  });
+});
+wss.on('close', () => {
+  logDebug('WebSocketServer closing');
+  clearInterval(wssInterval);
+});
+
+parentPort.on('message', async data => {
+  if (data.action === 'websync') {
+    const message = { type:'playerStatus', queue:data.queue };
+    for (const ws of wss.clients) {
+      ws.send(JSON.stringify(message));
+    }
+  }
 });

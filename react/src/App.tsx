@@ -1,13 +1,17 @@
 import './App.css';
 import * as React from 'react';
-import { TrackSmall } from './trackdisplay';
-import type { Track, PlayerClick, PlayerStatus, User } from './types';
+import { TrackSmall } from './TrackSmall';
+import type { PlayerClick, PlayerStatus, User } from './types';
 import { StatusBar } from './StatusBar';
+import styled from 'styled-components';
+import DisplaySelect from './DisplaySelect';
+
+
 type AppState = {
-  track?: Track,
   playerStatus?: PlayerStatus,
   user: User,
   error: null | string,
+  socket?: any,
 }
 
 type LoadResponse = {
@@ -16,15 +20,24 @@ type LoadResponse = {
   error: undefined | string,
 }
 
+const MainContent = styled.div`
+display: flex;
+& > div {
+  border-left: 2px solid #373839;
+  border-right: 2px solid #373839;
+  width: 100%;
+}
+`;
+
 export default class App extends React.Component<{}, AppState> {
 
   constructor(props:AppState) {
     super(props);
     this.state = {
-      track:undefined,
       playerStatus:undefined,
       error: null,
       user: { status: 'new' },
+      socket: undefined,
     };
     this.playerClick = this.playerClick.bind(this);
   }
@@ -58,6 +71,30 @@ export default class App extends React.Component<{}, AppState> {
         // could do a new user welcome message?
       } else { this.setState({ error:'unexpected loaduser response' }); }
       // console.log(json);
+    }).then(() => {
+      const socket = new WebSocket('ws://localhost:2468');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      socket.addEventListener('open', (event: any) => {
+        //
+      });
+      socket.addEventListener('message', (event: any) => {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'playerStatus': {
+            this.setState({ playerStatus: data.queue });
+            break;
+          }
+          case 'error': {
+            this.setState({ error: data.error });
+            break;
+          }
+          default: {
+            console.log(`WebSocket—bad type ${event.type}`);
+            break;
+          }
+        }
+      });
+      this.setState({ socket: socket });
     }).catch((error) => { console.error(error); });
   }
 
@@ -66,18 +103,18 @@ export default class App extends React.Component<{}, AppState> {
       <div className="App">
         <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
         <ErrorDisplay error={this.state.error} />
-        <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
+        <MainContent>
+          <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
+          <DisplaySelect />
+        </MainContent>
       </div>
     );
   }
-
+  // <MediaBar playerClick={this.playerClick} />
+  // <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
 }
 
-// function StatusBar(props) {
-
-// }
-
-class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
+class PlayerQueue extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
   constructor(props: {playerClick:(a: PlayerClick) => void, queue: PlayerStatus}) {
     super(props);
   }
@@ -90,7 +127,7 @@ class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, 
       }
     }
     return (
-      <div className="Queue">
+      <div>
         {queue}
       </div>
     );

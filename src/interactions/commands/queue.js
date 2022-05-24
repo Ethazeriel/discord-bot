@@ -68,7 +68,7 @@ export async function execute(interaction) {
       switch (interaction.options.getSubcommand()) {
         case 'show': {
           if (player.getQueue().length) {
-            const page = Math.abs(interaction.options.getInteger('page')) || 1;
+            const page = Math.abs(interaction.options.getInteger('page')) || undefined;
             const queueEmbed = await player.queueEmbed(undefined, page);
             interaction.message = await interaction.editReply(queueEmbed);
             player.register(interaction, 'queue', queueEmbed);

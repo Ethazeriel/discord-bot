@@ -14,6 +14,7 @@ overflow: visible;
 width: 100%;
 height: calc(6vh + 2px);
 min-height: 20px;
+max-height: 82px;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -37,13 +38,12 @@ const AuthLink = styled.a`
 text-decoration: none;
 color: #FFFFFF;
 text-align: center;
-font-size: 2vh;
 &:hover { color: #5865f2; }
 `;
 
 const ConAccount = styled.p`
-font-size: 2vh;
 margin: 0px;
+white-space: nowrap;
 `;
 
 const AlwaysVisible = styled.div`
@@ -54,6 +54,7 @@ padding-right:1em;
 z-index:3;
 height: 6vh;
 min-height: 20px;
+max-height: 80px;
 background-color: #242526;
 `;
 
@@ -103,8 +104,8 @@ export function StatusBar(props: { status: Status }) {
   } else {
     return (
       <Bar>
-        <div>text here about something</div>
-        <div>player controls?</div>
+        <div><Clock /></div>
+        <div>Current track: {props.status.player?.tracks[props.status.player?.playhead].spotify.name}</div>
         <div>
           <ConBlock />
           <AlwaysVisible>
@@ -139,25 +140,51 @@ function ConLogo(props:{ type:'spotify' | 'discord', active:boolean }) {
 
 function Account(props:{ type:'spotify' | 'discord', user:User}) {
   switch (props.type) {
-  case 'spotify': {
-    if (props.user?.spotify) {
-      return (
-        <ConAccount><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />{props.user?.spotify?.username}</ConAccount>
+    case 'spotify': {
+      if (props.user?.spotify) {
+        return (
+          <ConAccount><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />{props.user?.spotify?.username}</ConAccount>
 
-      );
-    } else {
+        );
+      } else {
+        return (
+          <div>
+            <AuthLink href='./oauth2?type=spotify'><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
+          </div>
+        );
+      }
+    }
+
+    case 'discord': { // don't need an if/else here as this should always be true
       return (
-        <div>
-          <AuthLink href='./oauth2?type=spotify'><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
-        </div>
+        <ConAccount><ConLogo type='discord' active={(props.user?.discord?.username ? true : false)} />{props.user?.discord?.username}#{props.user?.discord?.discriminator}</ConAccount>
       );
     }
   }
+}
 
-  case 'discord': { // don't need an if/else here as this should always be true
-    return (
-      <ConAccount><ConLogo type='discord' active={(props.user?.discord?.username ? true : false)} />{props.user?.discord?.username}#{props.user?.discord?.discriminator}</ConAccount>
-    );
-  }
-  }
+const Clockh2 = styled.h2`
+font-family: 'Courier New', Courier, monospace;
+margin:0px;
+text-align: left;
+align-items: center;
+`;
+function Clock() {
+  const [time, setTime] = React.useState(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+  const [tock, setTock] = React.useState(false);
+
+  const tick = () => {
+    if (tock) {
+      setTime(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+      setTock(false);
+    } else {
+      setTime(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(':', ' '));
+      setTock(true);
+    }
+  };
+  React.useEffect(() => {
+    const timer = setInterval(() => tick(), 1000);
+    return () => {clearInterval(timer);};
+  });
+  return (<Clockh2>{time}</Clockh2>);
 }
