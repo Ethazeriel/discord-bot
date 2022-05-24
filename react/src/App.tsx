@@ -99,16 +99,25 @@ export default class App extends React.Component<{}, AppState> {
   }
 
   render() {
-    return (
-      <div className="App">
-        <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
-        <ErrorDisplay error={this.state.error} />
-        <MainContent>
-          <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
-          <DisplaySelect />
-        </MainContent>
-      </div>
-    );
+    if (this.state.user.status === 'new') {
+      return (
+        <div className="App">
+          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
+          <ErrorDisplay error={this.state.error} />
+        </div>
+      );
+    } else {
+      return (
+        <div className="App">
+          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
+          <ErrorDisplay error={this.state.error} />
+          <MainContent>
+            <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
+            <DisplaySelect />
+          </MainContent>
+        </div>
+      );
+    }
   }
   // <MediaBar playerClick={this.playerClick} />
   // <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
