@@ -2,21 +2,13 @@ import * as React from 'react';
 import styled from 'styled-components';
 import playButton from './media/placeholder/dark_play.png';
 import removeButton from './media/placeholder/dark_remove.png';
+import { timeDisplay } from './utils';
 
 import './App.css';
 
 import type { Track, PlayerClick } from './types';
 type Action = 'jump' | 'remove';
 
-function timeDisplay(seconds:number) {
-  let time = new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
-  switch (time.length) {
-    case 0: time = `0${time}`;
-    case 1: time = `0${time}`;
-    case 2: time = `0:${time}`;
-    default: return time;
-  }
-}
 
 export class TrackSmall extends React.Component<{playerClick:(a: PlayerClick) => void, track: Track, id: number}, never> {
   constructor(props: {playerClick:(a: PlayerClick) => void, track: Track, id: number}) {
@@ -56,6 +48,7 @@ const TrackStyle = styled.div`
   background-color: #242627;
   &:nth-child(even) {background-color: #292b2c;}
   &:hover {background-color: #303233;}
+  width:100%;
 `;
 
 const Art = styled.img`
