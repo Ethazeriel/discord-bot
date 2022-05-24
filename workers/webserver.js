@@ -173,6 +173,10 @@ app.post('/player', async (req, res) => {
   } else { res.status(400).json({ error: 'Probably your cookies are disabled.' }); }
 });
 
+
+// Websocket
+
+
 const httpServer = app.listen(port, () => {
   logLine('info', [`Web server active at http://localhost:${port}`]);
 });
