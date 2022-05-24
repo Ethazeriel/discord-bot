@@ -42,7 +42,7 @@ app.use(cookieParser(discord.secret));
 app.get('/', (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/')}`]);
-  res.sendFile(fileURLToPath(new URL('../react/build/index.html', import.meta.url)));
+  res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url)));
 });
 
 app.get('/load', async (req, res) => {
@@ -88,7 +88,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(fileURLToPath(new URL('../react/build/index.html', import.meta.url))) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString())) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }
@@ -100,7 +100,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(fileURLToPath(new URL('../react/build/index.html', import.meta.url))) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString())) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }
