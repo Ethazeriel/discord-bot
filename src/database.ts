@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { Document, MongoClient } from 'mongodb';
 import { logLine } from './logger.js';
 import chalk from 'chalk';
-const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./config.json', import.meta.url).toString()), 'utf-8'));
+const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
 // Connection URL
