@@ -14,6 +14,7 @@ overflow: visible;
 width: 100%;
 height: calc(6vh + 2px);
 min-height: 20px;
+max-height: 82px;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -37,13 +38,12 @@ const AuthLink = styled.a`
 text-decoration: none;
 color: #FFFFFF;
 text-align: center;
-font-size: 2vh;
 &:hover { color: #5865f2; }
 `;
 
 const ConAccount = styled.p`
-font-size: 2vh;
 margin: 0px;
+white-space: nowrap;
 `;
 
 const AlwaysVisible = styled.div`
@@ -54,6 +54,7 @@ padding-right:1em;
 z-index:3;
 height: 6vh;
 min-height: 20px;
+max-height: 80px;
 background-color: #242526;
 `;
 
