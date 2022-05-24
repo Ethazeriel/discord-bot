@@ -4,7 +4,7 @@ import ytdl from 'ytdl-core';
 import crypto from 'crypto';
 import * as db from '../database.js';
 import { logLine, logSpace, logDebug } from '../logger.js';
-const { spotify, youtube } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const { spotify, youtube } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
 import { youtubePattern, spotifyPattern, sanitize } from '../regexes.js';
 
 import { parentPort } from 'worker_threads';

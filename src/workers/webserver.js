@@ -9,7 +9,7 @@ import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
 import * as oauth2 from '../oauth2.js';
 import { fileURLToPath } from 'url';
 

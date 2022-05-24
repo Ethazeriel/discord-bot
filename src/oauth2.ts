@@ -3,7 +3,7 @@ import axios, { AxiosResponse } from 'axios';
 import { logDebug, logLine } from './logger.js';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-const { discord, spotify, mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./config.json', import.meta.url).toString()), 'utf-8'));
+const { discord, spotify, mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const usercol = mongo.usercollection;
 import chalk from 'chalk';
 import { APIUser } from 'discord-api-types/v9';

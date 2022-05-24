@@ -2,7 +2,7 @@ import fs from 'fs';
 import { v2 } from '@google-cloud/translate';
 import { logDebug, logLine } from './logger.js';
 import * as utils from './utils.js';
-const { apiKey } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).translate;
+const { apiKey } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).translate;
 import validator from 'validator';
 
 export default class Translator {

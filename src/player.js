@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { MessageAttachment } from 'discord.js';
 import * as db from './database.js';
 import { logLine, logDebug } from './logger.js';
-const { useragent } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).youtube;
+const { useragent } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).youtube;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import { stream as seekable } from 'play-dl';

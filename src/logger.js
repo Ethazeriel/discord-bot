@@ -2,7 +2,7 @@
 import fs from 'fs';
 import chalk from 'chalk';
 import { sanitize } from './regexes.js';
-const debugMode = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).debug;
+const debugMode = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).debug;
 import { isMainThread } from 'worker_threads';
 
 if (!fs.existsSync('../logs')) {

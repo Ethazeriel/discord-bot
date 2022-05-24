@@ -6,7 +6,7 @@ import * as database from '../../database.js';
 import fetch from '../../acquire.js';
 import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
 const roles = discord.roles;
 
 
@@ -83,7 +83,7 @@ export async function execute(interaction) {
         }
 
         if (ephemeral === 'yes') {
-          console.log('ephemeral');
+          // console.log('ephemeral');
           for (const track of tracks) {
             track.ephemeral = true;
           }
