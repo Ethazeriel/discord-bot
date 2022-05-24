@@ -22,7 +22,8 @@ interface Track {
 		duration: number
 	},
 	youtube: youtubeObject,
-	alternates: youtubeObject[]
+	alternates: youtubeObject[],
+	ephemeral?: string
 }
 
 interface youtubeObject {
@@ -36,12 +37,7 @@ interface User {
 	discord: {
 		id: string,
 		locale: string,
-		nickname: {
-			guildid?: { // new object per guild where this user exists
-				current: string,
-				old?: string[]
-			}
-		}
+		nickname: Record<string, { current: string,	old?: string[] }>
 		username: {
 			current: string,
 			old?: string[]

@@ -87,9 +87,9 @@ export default class Workspace {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
       const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
-      let songName = dbtrack.spotify.name || dbtrack.youtube.name;
+      let songName = dbtrack?.spotify.name || dbtrack?.youtube.name || 'Unnamed Track';
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
-      const part = `**${((page - 1) * 10 + (i + 1))}. **${(dbtrack.artist.name || ' ')} - [${songName}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)} \n`;
+      const part = `**${((page - 1) * 10 + (i + 1))}. **${(dbtrack?.artist.name || ' ')} - [${songName}](https://youtube.com/watch?v=${dbtrack?.youtube.id}) - ${utils.timeDisplay(dbtrack?.youtube.duration || 0)} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;

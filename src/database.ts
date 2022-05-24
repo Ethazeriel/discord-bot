@@ -1,8 +1,9 @@
 import fs from 'fs';
-import { MongoClient } from 'mongodb';
+import { fileURLToPath } from 'url';
+import { Document, MongoClient } from 'mongodb';
 import { logLine } from './logger.js';
 import chalk from 'chalk';
-const { mongo } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
 // Connection URL
@@ -10,12 +11,12 @@ const url = mongo.url;
 const dbname = mongo.database;
 const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
-export let db;
-let con;
+export let db:any;
+let con:MongoClient | undefined;
 MongoClient.connect(url, function(err, client) {
   if (err) throw err;
   con = client;
-  db = client.db(dbname);
+  db = client?.db(dbname);
   if (isMainThread) {
     logLine('database', [`Main thread connected to db: ${dbname}`]);
   } else {
@@ -23,7 +24,7 @@ MongoClient.connect(url, function(err, client) {
   }
 });
 
-export async function connected() { // await this in your code to wait for the db to connect before doing things
+export async function connected():Promise<boolean> { // await this in your code to wait for the db to connect before doing things
   return new Promise((resolve) => {
     const wait = (() => {
       if (db) {
@@ -35,26 +36,26 @@ export async function connected() { // await this in your code to wait for the d
   });
 }
 
-export async function closeDB() {
+export async function closeDB():Promise<object | undefined> {
   // we should really only be doing this when the program exits
   try {
     db = null;
-    await con.close();
+    await con!.close();
     logLine('database', [`Closed connection: ${dbname}`]);
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.message]);
     return error;
   }
 }
 
-export async function getTrack(query) {
+export async function getTrack(query:object):Promise<Track | undefined> {
   // returns the first track object that matches the query
   await connected();
   try {
     const tracks = db.collection(trackcol);
     const track = await tracks.findOne(query, { projection: { _id: 0 } });
     return track;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
@@ -65,7 +66,7 @@ export async function getTrack(query) {
   key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
   */
 
-export async function insertTrack(track) {
+export async function insertTrack(track:Track & { ephemeral:string | undefined }):Promise<object | undefined> {
   // inserts a single track object into the database
   await connected();
   try {
@@ -79,12 +80,12 @@ export async function insertTrack(track) {
       logLine('database', [`Adding track ${chalk.green(track.spotify.name || track.youtube.name)} by ${chalk.green(track.artist.name)} to database`]);
       return result;
     } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.youtube.id})`);}
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.message]);
   }
 }
 
-export async function addKey(query, newkey) {
+export async function addKey(query:object, newkey:string) {
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
   await connected();
@@ -92,13 +93,13 @@ export async function addKey(query, newkey) {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { keys: newkey.toLowerCase() } });
     logLine('database', [`Adding key ${chalk.blue(newkey.toLowerCase())} to ${chalk.green(JSON.stringify(query))}`]);
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
-export async function addSpotifyId(query, newid) {
+export async function addSpotifyId(query:object, newid:string) {
   // adds a new spotify id to a track we already have
   // silently fails if we don't have the track in the DB already
   await connected();
@@ -106,17 +107,17 @@ export async function addSpotifyId(query, newid) {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, { $addToSet: { 'spotify.id': newid } });
     logLine('database', [`Adding spotify id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 // addSpotifyId({ 'youtube.id': 'WMZTxhEPRhA' }, '6i71OngJrJDr6hQIFmzYI0');
 
-export async function addPlaylist(trackarray, listname) {
+export async function addPlaylist(trackarray:Track[], listname:string) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
   const name = listname.replace(sanitizePlaylists, '');
-  const test = await this.getPlaylist(name);
+  const test = await getPlaylist(name);
   await connected();
   if (!test.length) {
     try {
@@ -127,7 +128,7 @@ export async function addPlaylist(trackarray, listname) {
         await tracks.updateOne(query, { $set: { [field]:index } });
         logLine('database', [`Adding playlist entry ${chalk.blue(name + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
       });
-    } catch (error) {
+    } catch (error:any) {
       logLine('error', ['database error:', error.stack]);
     }
   } else {
@@ -136,7 +137,7 @@ export async function addPlaylist(trackarray, listname) {
   }
 }
 
-export async function getPlaylist(listname) {
+export async function getPlaylist(listname:string) {
   // returns a playlist as an array of tracks, ready for use
   await connected();
   try {
@@ -148,12 +149,12 @@ export async function getPlaylist(listname) {
     const cursor = await tracks.find(query, options);
     const everything = await cursor.toArray();
     return everything;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function removePlaylist(listname) {
+export async function removePlaylist(listname:string) {
   await connected();
   try {
     const name = listname.replace(sanitizePlaylists, '');
@@ -164,24 +165,24 @@ export async function removePlaylist(listname) {
     const result = await tracks.updateMany(query, filt);
     logLine('database', [`Removed playlist ${chalk.blue(name)} from ${chalk.green(result.modifiedCount)} tracks.`]);
     return result.modifiedCount;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function updateTrack(query, update) {
+export async function updateTrack(query:object, update:object) {
   // generic update function; basically just a wrapper for updateOne
   await connected();
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne(query, update);
-    logLine('database', [`Updating track ${chalk.blue(JSON.stringify(query, '', 2))} with data ${chalk.green(JSON.stringify(update, '', 2))}`]);
-  } catch (error) {
+    logLine('database', [`Updating track ${chalk.blue(JSON.stringify(query, null, 2))} with data ${chalk.green(JSON.stringify(update, null, 2))}`]);
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function removeTrack(query) {
+export async function removeTrack(query:string) {
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
   await connected();
@@ -194,13 +195,13 @@ export async function removeTrack(query) {
       logLine('database', [`Removing track ${chalk.red(query)} failed - was not in the DB or something else went wrong`]);
     }
     return track.deletedCount;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 // usage: await db.removeTrack('DjaE3w8j6vY');
 
-export async function switchAlternate(query, alternate) {
+export async function switchAlternate(query:string, alternate:number) {
   // returns the first track object that matches the query
   await connected();
   try {
@@ -218,31 +219,32 @@ export async function switchAlternate(query, alternate) {
       } else {logLine('database', [`Failed to remap ${chalk.red(track.youtube.id)} - is this a valid ID?`]);}
       return result.modifiedCount;
     } else {return 0;}
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function getAlbum(request, type) {
-  // returns an album as an array of tracks, ready for use
-  // type can be id or name
-  await connected();
-  const pattern = /^(?:id|name){1}$/g;
-  if (!pattern.test(type)) {return null;}
-  try {
-    const tracks = db.collection(trackcol);
-    const qustr = `album.${type}`;
-    const query = { [qustr]: request };
-    const options = { sort: { 'album.trackNumber':1 }, projection: { _id: 0 } };
-    const cursor = await tracks.find(query, options);
-    const everything = await cursor.toArray();
-    return everything;
-  } catch (error) {
-    logLine('error', ['database error:', error.stack]);
-  }
-}
+// we don't use this anywhere so probably we should just get rid of it
+// export async function getAlbum(request, type) {
+//   // returns an album as an array of tracks, ready for use
+//   // type can be id or name
+//   await connected();
+//   const pattern = /^(?:id|name){1}$/g;
+//   if (!pattern.test(type)) {return null;}
+//   try {
+//     const tracks = db.collection(trackcol);
+//     const qustr = `album.${type}`;
+//     const query = { [qustr]: request };
+//     const options = { sort: { 'album.trackNumber':1 }, projection: { _id: 0 } };
+//     const cursor = await tracks.find(query, options);
+//     const everything = await cursor.toArray();
+//     return everything;
+//   } catch (error:any) {
+//     logLine('error', ['database error:', error.stack]);
+//   }
+// }
 
-export async function printCount() {
+export async function printCount():Promise<number | undefined> {
   // returns the number of tracks we have
   await connected();
   try {
@@ -250,49 +252,49 @@ export async function printCount() {
     const number = await tracks.count();
     logLine('database', [`We currently have ${chalk.green(number)} tracks in the ${dbname} database, collection ${trackcol}.`]);
     return number;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function listPlaylists() {
+export async function listPlaylists():Promise<Set<string> | undefined> {
   // returns all the playlists we have as a set
   // this may take a long time to return and a lot of cpu once we've got more than a few playlists; consider revising
   await connected();
   try {
     const tracks = db.collection(trackcol);
     const list = await tracks.distinct('playlists');
-    const result = new Set();
-    list.forEach((element) => {
+    const result = new Set<string>();
+    list.forEach((element:string) => {
       Object.keys(element).forEach((ohno) => {
         result.add(ohno);
       });
     });
     return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function logPlay(id, success = true) {
+export async function logPlay(id:string, success:boolean = true):Promise<void> {
   await connected();
   try {
     const tracks = db.collection(trackcol);
     const update = success ? { $inc: { 'goose.plays': 1 } } : { $inc: { 'goose.errors': 1, 'goose.plays': 1 } };
     await tracks.updateOne({ 'goose.id': id }, update);
     logLine('database', [`Logging ${success ? chalk.green('successful play') : chalk.red('play error')} for track ${chalk.blue(id)}`]);
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function updateOfficial(id, link) {
+export async function updateOfficial(id:string, link:string) {
   await connected();
   try {
     const tracks = db.collection(trackcol);
     await tracks.updateOne({ 'goose.id': id }, { $set: { 'artist.official': link } });
     logLine('database', [`Updated artist link to ${link} for track ${chalk.blue(id)}`]);
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
@@ -300,8 +302,15 @@ export async function updateOfficial(id, link) {
 // *****************
 // userdb functions
 // *****************
-
-export async function newUser(discord) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
+type DiscordUser = {
+  id:string,
+  username:string,
+  nickname:string,
+  discriminator:string,
+  guild:string,
+  locale:string
+}
+export async function newUser(discord:DiscordUser):Promise<object | undefined> { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
   // inserts a new user object into the database
   // returns null if unsuccessful
   await connected();
@@ -325,30 +334,30 @@ export async function newUser(discord) { // usage: await newUser({ id:'119678070
       logLine('database', [`Adding user ${chalk.green(`${discord.username}#${discord.discriminator}`)} to database`]);
       return result;
     } else { throw new Error(`User ${chalk.red(discord.username)} already exists!`);}
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.message]);
   }
 }
 
-export async function getUser(discordid) { // usage: const result = await getUser('119678070222225408');
+export async function getUser(discordid:string):Promise<User | undefined> { // usage: const result = await getUser('119678070222225408');
   // returns the user object with the matching id
   await connected();
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
     return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function updateUser(discordid, field, data, guild) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
+export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'locale', data:string, guild:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
   await connected();
   try {
     const userdb = db.collection(usercol);
-    const user = await this.getUser(discordid);
+    const user = await getUser(discordid);
     if (!user) {return;}
     const validfields = ['username', 'nickname', 'discriminator', 'locale'];
     if (!validfields.includes(field)) {
@@ -363,7 +372,7 @@ export async function updateUser(discordid, field, data, guild) { // usage: cons
     }
     let update;
     if (field === 'nickname') {
-      update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field][guild]?.current } };
+      update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord.nickname[guild]?.current } };
     } else if (field === 'locale') {
       update = { $set: { 'discord.locale':data } };
     } else {
@@ -373,29 +382,29 @@ export async function updateUser(discordid, field, data, guild) { // usage: cons
     const result = await userdb.updateOne({ 'discord.id': discordid }, update);
     logLine('database', [`Updating info for ${chalk.blue(discordid)}: ${chalk.green(field)} is now ${chalk.green(data)}`]);
     return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function saveStash(discordid, playhead, queue) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
+export async function saveStash(discordid:string, playhead:number, queue:Track[]) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
   await connected();
   const idarray = [];
-  for (const track of queue) { !track.ephemeral ? idarray.push(track.goose.id) : null; }
+  for (const track of queue) { !track?.ephemeral ? idarray.push(track.goose.id) : null; }
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
     logLine('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length - 1))} tracks`]);
     return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function getStash(discordid) { // usage: const result = await getStash('119678070222225408');
+export async function getStash(discordid:string) { // usage: const result = await getStash('119678070222225408');
   // returns the stash (playhead and full track objects) for the given id
   await connected();
   try {
@@ -403,16 +412,16 @@ export async function getStash(discordid) { // usage: const result = await getSt
     const user = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
     const queue = [];
     for (const id of user.stash.tracks) {
-      const track = await this.getTrack({ 'goose.id':id });
+      const track = await getTrack({ 'goose.id':id });
       queue.push(track);
     }
     return { playhead:user.stash.playhead, tracks:queue };
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function getUserWeb(webid) {
+export async function getUserWeb(webid:string) {
   // functions like getUser, but takes a web client ID and only returns basic user info - not everything we have
   await connected();
   try {
@@ -430,7 +439,7 @@ export async function getUserWeb(webid) {
       };
       return basicuser;
     } else { return null; }
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
@@ -439,26 +448,26 @@ export async function getUserWeb(webid) {
 // generic functions
 // *****************
 
-export async function genericUpdate(query, changes, collection) {
+export async function genericUpdate(query:object, changes:object, collection:string):Promise<void> {
   // generic update function; basically just a wrapper for updateOne
   await connected();
   try {
     const coll = db.collection(collection);
     await coll.updateOne(query, changes);
-    logLine('database', [`Updating ${collection}: ${chalk.blue(JSON.stringify(query, '', 2))} with data ${chalk.green(JSON.stringify(changes, '', 2))}`]);
-  } catch (error) {
+    logLine('database', [`Updating ${collection}: ${chalk.blue(JSON.stringify(query, null, 2))} with data ${chalk.green(JSON.stringify(changes, null, 2))}`]);
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-export async function genericGet(query, collection) { // arc v1
+export async function genericGet(query:object, collection:string):Promise<Document|undefined> { // arc v1
   // returns the first item that matches the query
   await connected();
   try {
     const coll = db.collection(collection);
     const result = await coll.findOne(query, { projection: { _id: 0 } });
     return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
