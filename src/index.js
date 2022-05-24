@@ -1,7 +1,8 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { Client, Collection, Intents } from 'discord.js';
-const { discord, internal, functions } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+const { discord, internal, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const token = discord.token;
 import { logLine, logCommand, logComponent, logDebug } from './logger.js';
 import * as database from './database.js';
@@ -51,9 +52,9 @@ client.once('ready', async () => {
   if (hashash !== internal?.deployedHash) {
     const deploy = await import('./deploy.js');
     await deploy.deploy();
-    const config = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+    const config = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
     config.internal ? config.internal.deployedHash = hashash : config.internal = { deployedHash: hashash };
-    fs.writeFileSync(new URL('./config.json', import.meta.url), JSON.stringify(config, '', 2));
+    fs.writeFileSync(new URL('../config.json', import.meta.url), JSON.stringify(config, '', 2));
   } else { logLine('info', [`Commands appear up to date; hash is ${hashash}`]); }
 
   logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));

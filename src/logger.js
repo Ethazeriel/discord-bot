@@ -2,8 +2,12 @@
 import fs from 'fs';
 import chalk from 'chalk';
 import { sanitize } from './regexes.js';
-const debugMode = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url))).debug;
+const debugMode = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).debug;
 import { isMainThread } from 'worker_threads';
+
+if (!fs.existsSync('../logs')) {
+  fs.mkdirSync('../logs');
+}
 
 
 function currentDT() {
@@ -30,7 +34,7 @@ export async function logLine(level, args) {
   switch (level) {
     case 'INFO':
       console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.blue(level)} - ${logStr}`);
-      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
@@ -40,7 +44,7 @@ export async function logLine(level, args) {
 
     case 'TRACK':
       console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.green(level)} - ${logStr}`);
-      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
@@ -50,7 +54,7 @@ export async function logLine(level, args) {
 
     case 'FETCH':
       console.log(`${chalk.yellow(currentDT())} - ${chalk.hex('#FF7F00').bold(level)} - ${logStr}`);
-      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
@@ -60,7 +64,7 @@ export async function logLine(level, args) {
 
     case 'DATABASE':
       console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.cyan(level)} - ${logStr}`);
-      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
@@ -70,13 +74,13 @@ export async function logLine(level, args) {
 
     case 'ERROR':
       console.error(`${chalk.yellow(currentDT())} - ${isMainThread ? chalk.blue('M') : chalk.green('W')} - ${chalk.bold.red(level)} - ${logStr}`);
-      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
         }
       });
-      fs.writeFile(new URL('./logs/error.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/error.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
@@ -86,7 +90,7 @@ export async function logLine(level, args) {
 
     default:
       console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta(level)} - ${logStr}`);
-      fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
+      fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${level} - ${logStr}\n`, { flag: 'a' }, err => {
         if (err) {
           console.error(err);
           return;
@@ -126,7 +130,7 @@ export async function logCommand(interaction) {
     }
   }
   console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta('COMMAND')} - ${conStr}`);
-  fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${'COMMAND'} - ${logStr}\n`, { flag: 'a' }, err => {
+  fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${'COMMAND'} - ${logStr}\n`, { flag: 'a' }, err => {
     if (err) {
       console.error(err);
       return;
@@ -149,7 +153,7 @@ export async function logComponent(interaction) {
     });
   }
   console.log(`${chalk.yellow(currentDT())} - ${chalk.bold.magenta('COMPONENT')} - ${conStr}`);
-  fs.writeFile(new URL('./logs/all.log', import.meta.url), `${currentDT()} - ${'COMPONENT'} - ${logStr}\n`, { flag: 'a' }, err => {
+  fs.writeFile(new URL('../logs/all.log', import.meta.url), `${currentDT()} - ${'COMPONENT'} - ${logStr}\n`, { flag: 'a' }, err => {
     if (err) {
       console.error(err);
       return;

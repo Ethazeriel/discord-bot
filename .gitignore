@@ -7,3 +7,4 @@ logs/*
 cookies.txt
 .vscode
 config/*
+build/*

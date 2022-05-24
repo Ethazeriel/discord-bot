@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import { logLine } from '../../logger.js';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()

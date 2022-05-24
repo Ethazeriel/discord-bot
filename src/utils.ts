@@ -1,12 +1,19 @@
 /* eslint-disable no-fallthrough */
-import { MessageAttachment } from 'discord.js';
+import { MessageAttachment, CommandInteraction } from 'discord.js';
 import { logLine } from './logger.js';
 import Canvas from 'canvas';
 import crypto from 'crypto';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import * as db from './database.js';
-
-export function progressBar(size, duration, playhead, { start, end, barbefore, barafter, head } = {}) {
+import type { ISearchResult, IArtist, IArtistMatch, IArtistList } from 'musicbrainz-api'
+type ProgressBarOptions = {
+  start?:string,
+  end?:string,
+  barbefore?:string,
+  barafter?:string,
+  head?:string
+}
+export function progressBar(size:number, duration:number, playhead:number, { start, end, barbefore, barafter, head }:ProgressBarOptions = {}):string {
   start ??= '[';
   end ??= ']';
   barbefore ??= '-';
@@ -14,8 +21,8 @@ export function progressBar(size, duration, playhead, { start, end, barbefore, b
   head ??= '#';
   let result = '';
   const playperc = (playhead / duration > 1) ? 1 : (playhead / duration);
-  let before = parseInt((size - 2) * playperc) || 0;
-  let after = parseInt((size - 2) * (1 - playperc)) || 0;
+  let before = Math.round((size - 2) * playperc) || 0;
+  let after = Math.round((size - 2) * (1 - playperc)) || 0;
   while ((before + after + 1) > (size - 2)) { (before < after) ? after-- : before--; }
   while ((before + after + 1) < (size - 2)) { (before < after) ? before++ : after++; }
   result = result.concat(start);
@@ -26,7 +33,8 @@ export function progressBar(size, duration, playhead, { start, end, barbefore, b
   return result;
 }
 
-export function pickPride(type, detail) {
+type PrideResponse< T extends boolean> = T extends true ? { url:string, name:string} : string;
+export function pickPride<T extends boolean>(type:'heart' | 'dab' | 'fish', detail?:T): PrideResponse<T> {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
   let ranpride = pridearray[Math.floor(Math.random() * pridearray.length)];
   if (ranpride == 'pride') {
@@ -38,12 +46,12 @@ export function pickPride(type, detail) {
     return {
       url:prideStr,
       name:ranpride,
-    };
+    } as any;
   }
-  return prideStr;
+  return prideStr as any;
 }
 
-export async function prideSticker(interaction, type) {
+export async function prideSticker(interaction:CommandInteraction, type:'heart' | 'dab' | 'fish') {
   const size = {
     heart:{ width:160, height:160 },
     dab:{ width:160, height:100 },
@@ -69,7 +77,7 @@ export async function prideSticker(interaction, type) {
 
 }
 
-export function timeDisplay(seconds) {
+export function timeDisplay(seconds:number) {
   let time = new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
   switch (time.length) {
     case 0: time = `0${time}`;
@@ -87,7 +95,7 @@ export function randomHexColor() {
 //               EMBEDS
 // =================================
 
-export async function generateTrackEmbed(track, messagetitle) {
+export async function generateTrackEmbed(track:Track, messagetitle:string) {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
   const npEmbed = {
     color: 0x580087,
@@ -104,46 +112,52 @@ export async function generateTrackEmbed(track, messagetitle) {
   };
   try {
     return { embeds: [npEmbed], files: [albumart] };
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', [error.stack]);
   }
 }
 
-export async function mbArtistLookup(artist) {
+export async function mbArtistLookup(artist:string) {
   // check for Artist.official in db before sending lookup
   const track = await db.getTrack({ $and:[{ 'artist.official':{ $type:'string' } }, { 'artist.name':artist }] });
   if (track) { return track.artist.official; } else {
-    const { data:firstdata } = await axios(`https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(artist)}&limit=1&offset=0&fmt=json`).catch(error => {
-      logLine('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response?.headers, '', 2)}`, error.stack]);
+    const axData1:null | AxiosResponse<IArtistList> = await axios(`https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(artist)}&limit=1&offset=0&fmt=json`).catch(error => {
+      logLine('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
       return (null);
     });
+    if (axData1) {
+      const firstdata = axData1.data;
     if (firstdata?.artists?.length) {
       const mbid = firstdata.artists[0].id;
-      const { data } = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
-        logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, '', 2)}`, error.stack]);
+      const axData2:null | AxiosResponse<IArtist> = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
+        logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
         return (null);
       });
+      if (axData2) {
+        const data = axData2.data;
       if (data?.relations?.length) {
         let result = null;
         for (const link of data.relations) { // return the official site first
           if (link.type === 'official homepage') {
-            result = link.url.resource;
+            result = link.url?.resource;
             return result;
           }
         }
         for (const link of data.relations) { // if no official site, return bandcamp
           if (link.type === 'bandcamp') {
-            result = link.url.resource;
+            result = link.url?.resource;
             return result;
           }
         }
         for (const link of data.relations) { // if no bandcamp, return last.fm and hope they have better links
           if (link.type === 'last.fm') {
-            result = link.url.resource;
+            result = link.url?.resource;
             return result;
           }
         }
       }
     }
+    }
+  }
   }
 }

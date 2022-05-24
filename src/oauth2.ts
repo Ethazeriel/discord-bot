@@ -1,12 +1,14 @@
 import * as db from './database.js';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { logDebug, logLine } from './logger.js';
 import fs from 'fs';
-const { discord, spotify, mongo } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+const { discord, spotify, mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const usercol = mongo.usercollection;
 import chalk from 'chalk';
+import { APIUser } from 'discord-api-types/v9';
 
-export async function flow(type, code, webClientId) {
+export async function flow(type:'discord' | 'spotify', code:string, webClientId:string):Promise<boolean>  {
 
   let tokenconfig;
   switch (type) {
@@ -29,10 +31,10 @@ export async function flow(type, code, webClientId) {
       };
       break;}
 
-    default:{ return null; }
+    default:{ return false; }
   }
 
-  let token = await axios({
+  let AxToken:void | AxiosResponse<AccessTokenResponse> = await axios({
     url: tokenconfig.url,
     method: 'post',
     headers: tokenconfig.headers,
@@ -43,8 +45,8 @@ export async function flow(type, code, webClientId) {
     return;
   });
 
-  if (token?.data) {
-    token = token.data;
+  if (AxToken?.data) {
+    const token = AxToken.data;
     logDebug('successful auth - getting user data');
 
     let userconfig;
@@ -61,10 +63,9 @@ export async function flow(type, code, webClientId) {
         };
         break;}
 
-      default:{ return null; }
+      default:{ return false; }
     }
-
-    let user = await axios({
+    let AxUser:void | AxiosResponse<any> = await axios({
       url: userconfig.url,
       method: 'get',
       headers: {
@@ -76,8 +77,8 @@ export async function flow(type, code, webClientId) {
       return;
     });
 
-    if (user?.data) {
-      user = user.data;
+    if (AxUser?.data) {
+      const user = AxUser.data;
       logDebug('got user data, saving to db');
 
       switch (type) {
@@ -90,15 +91,17 @@ export async function flow(type, code, webClientId) {
           await updateSpotifyUser({ webClientId: webClientId }, user);
           break;}
 
-        default:{ return null; }
+        default:{ return false; }
       }
       // if we haven't returned at this point everything should have worked
       return true;
     }
+    return false;
   }
+  return false;
 }
 
-export async function getToken(user, type) {
+export async function getToken(user:object, type:'discord' | 'spotify') {
   // takes a db query object, and refreshes/returns the relevant tokens, ready to use
   await db.connected();
   try {
@@ -109,25 +112,25 @@ export async function getToken(user, type) {
       const token = await updateToken(tokenuser, type);
       return token;
     }
-  } catch (error) { logLine('error', ['oauth error:', error.stack]); }
+  } catch (error:any) { logLine('error', ['oauth error:', error.stack]); }
 }
 
-async function updateToken(user, type) {
+async function updateToken(user:User, type:'discord' | 'spotify') {
   let timeout;
 
   switch (type) {
     case 'discord': { timeout = 86400000; break;} // token lasts one week, so use one day as timeout
     case 'spotify': { timeout = 1800000; break;} // token lasts one hour, so use half hour as timeout
   }
-
-  if ((user.tokens[type].expiry - Date.now()) < timeout) {
+  if (user.tokens && user.tokens[type]) {
+  if ((user.tokens[type]!.expiry - Date.now()) < timeout) {
 
     let tokenconfig;
     switch (type) {
       case 'discord': {
         tokenconfig = {
           url: 'https://discord.com/api/v9/oauth2/token',
-          data: `client_id=${discord.client_id}&client_secret=${discord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord.renew}`,
+          data: `client_id=${discord.client_id}&client_secret=${discord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord!.renew}`,
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         };
         break;}
@@ -135,7 +138,7 @@ async function updateToken(user, type) {
       case 'spotify': {
         tokenconfig = {
           url: 'https://accounts.spotify.com/api/token',
-          data:`grant_type=refresh_token&refresh_token=${user.tokens.spotify.renew}`,
+          data:`grant_type=refresh_token&refresh_token=${user.tokens.spotify!.renew}`,
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
@@ -144,7 +147,7 @@ async function updateToken(user, type) {
         break;}
     }
 
-    let newtoken = await axios({
+    let newtoken:void | AxiosResponse<AccessTokenResponse> = await axios({
       url: tokenconfig.url,
       method: 'post',
       headers: tokenconfig.headers,
@@ -155,12 +158,12 @@ async function updateToken(user, type) {
       return;
     });
     if (newtoken?.data) {
-      newtoken = newtoken.data;
+      const tokendata = newtoken.data;
       const token = {
-        access:newtoken.access_token,
-        renew:(type === 'spotify') ? user.tokens.spotify.renew : newtoken.refresh_token, // spotify doesn't give us new refresh tokens
-        expiry: ((Date.now() - 1000) + (newtoken.expires_in * 1000)),
-        scope:newtoken.scope,
+        access:tokendata.access_token,
+        renew:(type === 'spotify') ? user.tokens.spotify!.renew : tokendata.refresh_token, // spotify doesn't give us new refresh tokens
+        expiry: ((Date.now() - 1000) + (tokendata.expires_in * 1000)),
+        scope:tokendata.scope,
       };
       await db.connected();
       const userdb = db.db.collection(usercol);
@@ -171,12 +174,12 @@ async function updateToken(user, type) {
     }
   } else {
     logDebug('token still valid - skipping renewal');
-    return user.tokens[type].access;
+    return user.tokens[type]!.access;
   }
-
+  }
 }
 
-async function saveTokenDiscord(authtoken, userdata, webClientId) {
+async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expires:string, user:APIUser }, webClientId:string):Promise<void>  {
   // first pass - consider revising - I'm not thinking super clearly right now
   await db.connected();
   try {
@@ -189,13 +192,12 @@ async function saveTokenDiscord(authtoken, userdata, webClientId) {
     };
     const result = await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ 'tokens.discord':token }, $addToSet:{ webClientId:webClientId } });
     logLine('database', [`Saving Oauth2 token for ${chalk.blue(userdata.user.id)}: expires ${chalk.green(token.expiry)}`]);
-    return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-async function saveTokenSpotify(authtoken, webClientId) {
+async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:string):Promise<void>  {
   // intended to be called by the webserver oauth flow - arguments are the auth and data object returned by the discord api
   // first pass - consider revising - I'm not thinking super clearly right now
   await db.connected();
@@ -209,13 +211,12 @@ async function saveTokenSpotify(authtoken, webClientId) {
     };
     const result = await userdb.updateOne({ webClientId: webClientId }, { $set:{ 'tokens.spotify':token } });
     logLine('database', [`Saving spotify Oauth2 token: expires ${chalk.green(token.expiry)}`]);
-    return result;
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-async function updateSpotifyUser(target, spotifyInfo) { // usage: updateSpotifyUser({discord.id:''}, {...})
+async function updateSpotifyUser(target:object, spotifyInfo:SpotifyApi.CurrentUsersProfileResponse):Promise<void> { // usage: updateSpotifyUser({discord.id:''}, {...})
   // updates spotify user info from object formatted as per
   // https://api.spotify.com/v1/me
 
@@ -229,7 +230,7 @@ async function updateSpotifyUser(target, spotifyInfo) { // usage: updateSpotifyU
     const userdb = db.db.collection(usercol);
     await userdb.updateOne(target, { $set: { spotify:dbspotify } });
     logLine('database', [`Updating Spotify userdata for ${chalk.green(dbspotify.username)}`]);
-  } catch (error) {
+  } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }

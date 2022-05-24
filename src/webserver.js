@@ -4,10 +4,10 @@ import Player from './player.js';
 import { seekTime as seekRegex } from './regexes.js';
 import validator from 'validator';
 
-let worker = new Worker('./workers/webserver.js', { workerData:{ name:'WebServer' } });
+let worker = new Worker(new URL('./workers/webserver.js', import.meta.url), { workerData:{ name:'WebServer' } });
 worker.on('exit', code => {
   logDebug(`Worker exited with code ${code}.`);
-  worker = new Worker('./workers/webserver.js', { workerData:{ name:'WebServer' } });
+  worker = new Worker(new URL('./workers/webserver.js', import.meta.url), { workerData:{ name:'WebServer' } });
 }); // if it exits just spawn a new one because that's good error handling, yes
 
 worker.on('message', async (message) => {

@@ -2,7 +2,7 @@ import fs from 'fs';
 import { MongoClient } from 'mongodb';
 import { logLine } from './logger.js';
 import chalk from 'chalk';
-const { mongo } = JSON.parse(fs.readFileSync(new URL('./config.json', import.meta.url)));
+const { mongo } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
 // Connection URL
