@@ -3,7 +3,10 @@ import * as React from 'react';
 import { TrackSmall } from './TrackSmall';
 import type { PlayerClick, PlayerStatus, User } from './types';
 import { StatusBar } from './StatusBar';
-import { MediaBar } from './MediaBar';
+import styled from 'styled-components';
+import DisplaySelect from './DisplaySelect';
+
+
 type AppState = {
   playerStatus?: PlayerStatus,
   user: User,
@@ -16,6 +19,15 @@ type LoadResponse = {
   user: User,
   error: undefined | string,
 }
+
+const MainContent = styled.div`
+display: flex;
+& > div {
+  border-left: 2px solid #373839;
+  border-right: 2px solid #373839;
+  width: 100%;
+}
+`;
 
 export default class App extends React.Component<{}, AppState> {
 
@@ -91,6 +103,10 @@ export default class App extends React.Component<{}, AppState> {
       <div className="App">
         <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
         <ErrorDisplay error={this.state.error} />
+        <MainContent>
+          <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
+          <DisplaySelect />
+        </MainContent>
       </div>
     );
   }
@@ -98,7 +114,7 @@ export default class App extends React.Component<{}, AppState> {
   // <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
 }
 
-class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
+class PlayerQueue extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
   constructor(props: {playerClick:(a: PlayerClick) => void, queue: PlayerStatus}) {
     super(props);
   }
@@ -111,7 +127,7 @@ class QueueSmall extends React.Component<{playerClick:(a: PlayerClick) => void, 
       }
     }
     return (
-      <div className="Queue">
+      <div>
         {queue}
       </div>
     );
