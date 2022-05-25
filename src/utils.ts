@@ -51,7 +51,7 @@ export function pickPride<T extends boolean>(type:'heart' | 'dab' | 'fish', deta
   return prideStr as any;
 }
 
-export async function prideSticker(interaction:CommandInteraction, type:'heart' | 'dab' | 'fish') {
+export async function prideSticker(interaction:CommandInteraction, type:'heart' | 'dab' | 'fish'):Promise<void> {
   const size = {
     heart:{ width:160, height:160 },
     dab:{ width:160, height:100 },
@@ -77,7 +77,7 @@ export async function prideSticker(interaction:CommandInteraction, type:'heart' 
 
 }
 
-export function timeDisplay(seconds:number) {
+export function timeDisplay(seconds:number):string {
   let time = new Date(seconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '');
   switch (time.length) {
     case 0: time = `0${time}`;
@@ -87,7 +87,7 @@ export function timeDisplay(seconds:number) {
   }
 }
 
-export function randomHexColor() {
+export function randomHexColor():number {
   return Number(`0x${crypto.randomBytes(3).toString('hex')}`);
 }
 
