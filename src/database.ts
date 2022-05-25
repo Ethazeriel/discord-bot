@@ -351,7 +351,7 @@ export async function getUser(discordid:string):Promise<User | undefined> { // u
   }
 }
 
-export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'locale', data:string, guild:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
+export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'locale', data:string, guild?:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
   await connected();
@@ -372,7 +372,7 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
     }
     let update;
     if (field === 'nickname') {
-      update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord.nickname[guild]?.current } };
+      update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord.nickname[guild as string]?.current } };
     } else if (field === 'locale') {
       update = { $set: { 'discord.locale':data } };
     } else {

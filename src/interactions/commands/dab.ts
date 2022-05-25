@@ -1,12 +1,13 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
+import { CommandInteraction } from 'discord.js';
 import * as utils from '../../utils.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('fish')
-  .setDescription('Sends a fish')
+  .setName('dab')
+  .setDescription('Sends a dab')
   .addStringOption(option =>
     option.setName('type')
-      .setDescription('Fish type')
+      .setDescription('Dab type')
       .setRequired(true)
       .addChoice('Random', 'random')
       .addChoice('Pride', 'pride')
@@ -27,6 +28,6 @@ export const data = new SlashCommandBuilder()
       .addChoice('Pan', 'pan')
       .addChoice('Poly', 'poly'));
 
-export async function execute(interaction) {
-  utils.prideSticker(interaction, 'fish');
+export async function execute(interaction:CommandInteraction) {
+  utils.prideSticker(interaction, 'dab');
 }

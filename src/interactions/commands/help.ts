@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
+import type { CommandInteraction, WebhookEditMessageOptions } from 'discord.js';
 import * as utils from '../../utils.js';
 
 
@@ -18,14 +19,14 @@ export const data = new SlashCommandBuilder()
       .addChoice('Remap command', 'remap')
       .addChoice('Admin command', 'admin'));
 
-export async function execute(interaction) {
+export async function execute(interaction:CommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
   const which = interaction.options.getString('section') || 'index';
   const response = helpEmbed(which);
-  await interaction.editReply(response);
+  await interaction.editReply(response as WebhookEditMessageOptions);
 }
 
-export function helpEmbed(section) {
+export function helpEmbed(section:string) {
   let name = '\u200b';
   let fields = [];
   switch (section) {
@@ -140,59 +141,23 @@ export function helpEmbed(section) {
   }];
   const dropdown = [
     {
-      'type': 1,
-      'components': [
+      type: 1,
+      components: [
         {
-          'type': 3,
-          'custom_id': 'help',
-          'options':[
-            {
-              'label': 'General',
-              'value': 'index',
-              'description': 'Overall bot info',
-            },
-            {
-              'label': 'Stickers',
-              'value': 'stickers',
-              'description': 'Info about pride stickers',
-            },
-            {
-              'label': 'Locale command',
-              'value': 'locale',
-              'description': 'language functions',
-            },
-            {
-              'label': 'Play command',
-              'value': 'play',
-              'description': 'It plays music!',
-            },
-            {
-              'label': 'Playlist command',
-              'value': 'playlist',
-              'description': 'Info about the playlist editor',
-            },
-            {
-              'label': 'Queue command',
-              'value': 'queue',
-              'description': 'Info about queue functions',
-            },
-            {
-              'label': 'Voice command',
-              'value': 'voice',
-              'description': 'It\'s an odd command, we know',
-            },
-            {
-              'label': 'Remap command',
-              'value': 'remap',
-              'description': 'How to remap tracks in the database',
-            },
-            {
-              'label': 'Admin command',
-              'value': 'admin',
-              'description': 'administrative functions',
-            },
+          type: 3,
+          custom_id: 'help',
+          options:[
+            { label: 'General', value: 'index', description: 'Overall bot info' },
+            { label: 'Stickers', value: 'stickers', description: 'Info about pride stickers' },
+            { label: 'Locale command', value: 'locale', description: 'language functions' },
+            { label: 'Play command', value: 'play', description: 'It plays music!' },
+            { label: 'Playlist command', value: 'playlist', description: 'Info about the playlist editor' },
+            { label: 'Queue command', value: 'queue', description: 'Info about queue functions' },
+            { label: 'Voice command', value: 'voice', description: 'It\'s an odd command, we know' },
+            { label: 'Remap command', value: 'remap', description: 'How to remap tracks in the database' },
+            { label: 'Admin command', value: 'admin', description: 'administrative functions' },
           ],
-          'placeholder': 'Select section',
+          placeholder: 'Select section',
         },
       ],
     },

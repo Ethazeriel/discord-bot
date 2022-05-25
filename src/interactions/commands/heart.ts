@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import * as utils from '../../utils.js';
+import type { CommandInteraction } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('heart')
@@ -27,6 +28,6 @@ export const data = new SlashCommandBuilder()
       .addChoice('Pan', 'pan')
       .addChoice('Poly', 'poly'));
 
-export async function execute(interaction) {
+export async function execute(interaction:CommandInteraction) {
   utils.prideSticker(interaction, 'heart');
 }

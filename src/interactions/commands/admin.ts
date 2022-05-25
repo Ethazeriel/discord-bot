@@ -4,7 +4,9 @@ import { sanitize, youtubePattern, sanitizePlaylists } from '../../regexes.js';
 import * as database from '../../database.js';
 import validator from 'validator';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
+import type { CommandInteraction, GuildMemberRoleManager } from 'discord.js';
+import { fileURLToPath } from 'url';
+const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 
@@ -23,24 +25,24 @@ export const data = new SlashCommandBuilder()
       option.setName('track').setDescription('youtube url of the track to remove').setRequired(true)));
 
 
-export async function execute(interaction) {
+export async function execute(interaction:CommandInteraction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === roles.admin)) {
+  if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.admin)) {
     await interaction.deferReply({ ephemeral: true });
     switch (interaction.options.getSubcommand()) {
 
       case 'removeplaylist': {
-        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '')))?.trim();
+        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '') || ''))?.trim();
         const result = await database.removePlaylist(listname);
         interaction.followUp({ content:`Removed ${listname} from the database; ${result} tracks.`, ephemeral: true });
         break;
       }
 
       case 'removetrack': {
-        const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
+        const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim() || '';
         if (youtubePattern.test(track)) {
           const match = track.match(youtubePattern);
-          const result = await database.removeTrack(match[2]);
+          const result = await database.removeTrack(match![2]);
           interaction.followUp({ content:`Removed ${track} from the database; ${result} tracks.`, ephemeral: true });
         } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
         break;
