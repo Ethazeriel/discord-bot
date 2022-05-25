@@ -1,11 +1,12 @@
 import Translator from '../../translate.js';
 import * as db from '../../database.js';
+import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
 export const name = 'translate';
 
-export async function execute(interaction, which) {
-  await interaction.deferUpdate({ ephemeral: true });
+export async function execute(interaction:ButtonInteraction, which:string) {
+  await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
   let reply = 'uhoh';
-  const user = await db.getUser(interaction.user.id);
+  const user = await db.getUser(interaction.user.id) as User;
   switch (which) {
     case 'refresh': if (user.discord.locale) {
       Translator.subscribe(interaction.channelId, interaction.user.id, user.discord.locale, interaction);

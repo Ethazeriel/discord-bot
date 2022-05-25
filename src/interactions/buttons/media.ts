@@ -4,7 +4,7 @@ import { InteractionDeferUpdateOptions, ButtonInteraction } from 'discord.js';
 
 export const name = 'media';
 
-export async function execute(interaction:ButtonInteraction, which:string) {
+export async function execute(interaction:ButtonInteraction, which:string):Promise<void> {
   (which === 'showqueue') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
 
   const player = await Player.getPlayer(interaction);

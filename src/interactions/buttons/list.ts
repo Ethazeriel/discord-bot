@@ -5,7 +5,7 @@ import { ButtonInteraction, GuildMember, InteractionDeferUpdateOptions, WebhookE
 
 export const name = 'list';
 
-export async function execute(interaction:ButtonInteraction, which:string) {
+export async function execute(interaction:ButtonInteraction, which:string):Promise<void> {
   await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
   const workspace = Workspace.getWorkspace((interaction.member as GuildMember).user.id);
   let match = interaction.message.embeds[0].fields?.[0]?.value?.match(embedPage);
