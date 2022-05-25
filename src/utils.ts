@@ -117,7 +117,7 @@ export async function generateTrackEmbed(track:Track, messagetitle:string) {
   }
 }
 
-export async function mbArtistLookup(artist:string) {
+export async function mbArtistLookup(artist:string):Promise<string | undefined> {
   // check for Artist.official in db before sending lookup
   const track = await db.getTrack({ $and:[{ 'artist.official':{ $type:'string' } }, { 'artist.name':artist }] });
   if (track) { return track.artist.official; } else {

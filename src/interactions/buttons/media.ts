@@ -1,10 +1,11 @@
 import Player from '../../player.js';
 import { logDebug } from '../../logger.js';
+import { InteractionDeferUpdateOptions, ButtonInteraction } from 'discord.js';
 
 export const name = 'media';
 
-export async function execute(interaction, which) {
-  (which === 'showqueue') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true });
+export async function execute(interaction:ButtonInteraction, which:string) {
+  (which === 'showqueue') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
 
   const player = await Player.getPlayer(interaction);
   if (player) {

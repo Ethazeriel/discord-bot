@@ -1,11 +1,12 @@
 import { embedPage } from '../../regexes.js';
 import Player from '../../player.js';
 import { logDebug } from '../../logger.js';
+import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
 
 export const name = 'queue';
 
-export async function execute(interaction, which) {
-  (which === 'showmedia') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true });
+export async function execute(interaction:ButtonInteraction, which:string) {
+  (which === 'showmedia') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
   const player = await Player.getPlayer(interaction);
   if (player) {
     if (player.getQueue().length) {
@@ -20,7 +21,7 @@ export async function execute(interaction, which) {
         }
 
         case 'prev': {
-          const queueEmbed = await player.queueEmbed(undefined, --page, false);
+          const queueEmbed = await player.queueEmbed(undefined, --(page as number), false);
           interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
           break;
@@ -35,7 +36,7 @@ export async function execute(interaction, which) {
         }
 
         case 'next': {
-          const queueEmbed = await player.queueEmbed(undefined, ++page, false);
+          const queueEmbed = await player.queueEmbed(undefined, ++(page as number), false);
           interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
           break;
