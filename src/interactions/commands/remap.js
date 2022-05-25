@@ -60,38 +60,21 @@ export async function execute(interaction) {
             embeds: [
               {
                 color: 0xd64004,
-                author: {
-                  name: 'Remapped:',
-                  icon_url: utils.pickPride('fish'),
-                },
+                author: { name: 'Remapped:', icon_url: utils.pickPride('fish') },
                 fields: [
                   { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                   { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(newtrack.videoDetails.lengthSeconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 ],
-                image: {
-                  url: 'attachment://combined.png',
-                },
-                footer: {
-                  text: `${track.youtube.id}${newtrack.videoDetails.videoId}`,
-                },
+                image: { url: 'attachment://combined.png' },
+                footer: { text: `${track.youtube.id}${newtrack.videoDetails.videoId}` },
               },
             ],
             components: [
               {
                 'type': 1,
                 'components': [
-                  {
-                    'type': 2,
-                    'custom_id': 'remap-new',
-                    'style':3,
-                    'label':'Confirm',
-                  },
-                  {
-                    'type': 2,
-                    'custom_id': 'remap-no',
-                    'style':4,
-                    'label':'Cancel',
-                  },
+                  { type: 2, custom_id:'remap-new', style:3, label:'Confirm' },
+                  { type: 2, custom_id:'remap-no', style:4, label:'Cancel' },
                 ],
               },
             ],
@@ -143,10 +126,7 @@ export async function execute(interaction) {
           embeds: [
             {
               color: 0xd64004,
-              author: {
-                name: 'Remap:',
-                icon_url: utils.pickPride('fish'),
-              },
+              author: { name: 'Remap:', icon_url: utils.pickPride('fish') },
               fields: [
                 { name: 'Spotify:', value: `${track.artist.name || 'no artist'} - ${track.spotify.name || 'no track name'} - ${new Date(track.spotify.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 { name: 'Current Youtube:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
@@ -156,12 +136,8 @@ export async function execute(interaction) {
                 { name: 'Alternate 3:', value: `[${track.alternates[2].name}](https://youtube.com/watch?v=${track.alternates[2].id}) - ${new Date(track.alternates[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 { name: 'Alternate 4:', value: `[${track.alternates[3].name}](https://youtube.com/watch?v=${track.alternates[3].id}) - ${new Date(track.alternates[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
               ],
-              image: {
-                url: 'attachment://combined.png',
-              },
-              footer: {
-                text: track.youtube.id,
-              },
+              image: { url: 'attachment://combined.png' },
+              footer: { text: track.youtube.id },
             },
           ],
           components: [
@@ -172,31 +148,11 @@ export async function execute(interaction) {
                   'type': 3,
                   'custom_id': 'remap',
                   'options':[
-                    {
-                      'label': 'Alternative 1',
-                      'value': '0',
-                      'description': track.alternates[0].name,
-                    },
-                    {
-                      'label': 'Alternative 2',
-                      'value': '1',
-                      'description': track.alternates[1].name,
-                    },
-                    {
-                      'label': 'Alternative 3',
-                      'value': '2',
-                      'description': track.alternates[2].name,
-                    },
-                    {
-                      'label': 'Alternative 4',
-                      'value': '3',
-                      'description': track.alternates[3].name,
-                    },
-                    {
-                      'label': 'Something else',
-                      'value': '4',
-                      'description': 'none of these are correct',
-                    },
+                    { label: 'Alternative 1', value: '0', description: track.alternates[0].name },
+                    { label: 'Alternative 2', value: '1', description: track.alternates[1].name },
+                    { label: 'Alternative 3', value: '2', description: track.alternates[2].name },
+                    { label: 'Alternative 4', value: '3', description: track.alternates[3].name },
+                    { label: 'Something else', value: '4', description: 'none of these are correct' },
                   ],
                   'placeholder': 'Select track...',
                 },

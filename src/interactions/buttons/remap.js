@@ -15,18 +15,9 @@ export async function execute(interaction, which) { // button selection function
           embeds: [
             {
               color: 0xd64004,
-              author: {
-                name: 'Confirmed:',
-                icon_url: utils.pickPride('fish'),
-              },
-              fields: [
-                { name: 'Track Remapped.', value: '** **' },
-              ],
-              image: {
-                url: 'attachment://combined.png',
-                height: 0,
-                width: 0,
-              },
+              author: { name: 'Confirmed:', icon_url: utils.pickPride('fish') },
+              fields: [{ name: 'Track Remapped.', value: '** **' }],
+              image: { url: 'attachment://combined.png', height: 0, width: 0 },
             },
           ],
           components:[],
@@ -37,18 +28,9 @@ export async function execute(interaction, which) { // button selection function
           embeds: [
             {
               color: 0xd64004,
-              author: {
-                name: 'Failure:',
-                icon_url: utils.pickPride('fish'),
-              },
-              fields: [
-                { name: 'Something went wrong;', value: 'please try again.' },
-              ],
-              image: {
-                url: 'attachment://combined.png',
-                height: 0,
-                width: 0,
-              },
+              author: { name: 'Failure:', icon_url: utils.pickPride('fish') },
+              fields: [{ name: 'Something went wrong;', value: 'please try again.' }],
+              image: { url: 'attachment://combined.png', height: 0, width: 0 },
             },
           ],
           components:[],
@@ -92,19 +74,12 @@ export async function execute(interaction, which) { // button selection function
         embeds: [
           {
             color: 0xd64004,
-            author: {
-              name: 'Remapped:',
-              icon_url: utils.pickPride('fish'),
-            },
+            author: { name: 'Remapped:', icon_url: utils.pickPride('fish') },
             fields: [
               { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
               { name: 'To:', value: `[${newtube.name}](https://youtube.com/watch?v=${newtube.id}) - ${new Date(newtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
             ],
-            image: {
-              url: 'attachment://combined.png',
-              height: 0,
-              width: 0,
-            },
+            image: { url: 'attachment://combined.png', height: 0, width: 0 },
           },
         ],
         components:[],
@@ -119,15 +94,8 @@ export async function execute(interaction, which) { // button selection function
         embeds: [
           {
             color: 0xd64004,
-            author: {
-              name: 'Cancelled remap.',
-              icon_url: utils.pickPride('fish'),
-            },
-            image: {
-              url: 'attachment://combined.png',
-              height: 0,
-              width: 0,
-            },
+            author: { name: 'Cancelled remap.', icon_url: utils.pickPride('fish') },
+            image: { url: 'attachment://combined.png', height: 0, width: 0 },
           },
         ],
         components:[],
