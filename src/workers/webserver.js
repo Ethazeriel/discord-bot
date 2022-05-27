@@ -45,6 +45,19 @@ app.get('/', (req, res) => {
   res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url)));
 });
 
+// minimum requirements for endpoints
+app.get('/example-endpoint', async (req, res) => {
+  logLine(req.method, [req.originalUrl]);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) { res.status(401).send('User not authenticated'); } else {
+      // now we know the user has authed, we can do things
+      res.json({ error:'This endpoint does nothing!' });
+    }
+  }
+});
+
 app.get('/load', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
@@ -114,9 +127,15 @@ app.get('/oauth2', async (req, res) => {
 app.get('/tracks/:type(youtube|goose|spotify)-:id([\\w-]{11}|[a-zA-Z0-9]{22}|[0-9a-f]{10})', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/tracks')}, type ${chalk.green(req.params.type)}, id ${chalk.green(req.params.id)}`]);
-  const search = `${req.params.type}.id`;
-  const track = await db.getTrack({ [search]:req.params.id });
-  res.json(track);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) { res.status(401).send('User not authenticated'); } else {
+      const search = `${req.params.type}.id`;
+      const track = await db.getTrack({ [search]:req.params.id });
+      res.json(track);
+    }
+  }
 });
 
 // returns a playlist
@@ -124,29 +143,47 @@ app.get('/tracks/:type(youtube|goose|spotify)-:id([\\w-]{11}|[a-zA-Z0-9]{22}|[0-
 app.get('/playlist/:name([\\w :/?=&-]+)', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/playlist')}, name ${chalk.green(req.params.name)}`]);
-  const result = await db.getPlaylist(req.params.name);
-  res.json(result);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) { res.status(401).send('User not authenticated'); } else {
+      const result = await db.getPlaylist(req.params.name);
+      res.json(result);
+    }
+  }
 });
 
 // returns the list of playlists
 app.get('/playlists', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/playlists')}`]);
-  res.json(Array.from(await db.listPlaylists()));
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) { res.status(401).send('User not authenticated'); } else {
+      res.json(Array.from(await db.listPlaylists()));
+    }
+  }
 });
 
 // returns the queue for the player with the given id
 app.get('/player-:playerId([0-9]{18})', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
-  const id = crypto.randomBytes(5).toString('hex');
-  parentPort.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
-  const messageAction = (result) => {
-    if (result?.id === id) {
-      res.json(result);
-      parentPort.removeListener('message', messageAction);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) { res.status(401).send('User not authenticated'); } else {
+      const id = crypto.randomBytes(5).toString('hex');
+      parentPort.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
+      const messageAction = (result) => {
+        if (result?.id === id) {
+          res.json(result);
+          parentPort.removeListener('message', messageAction);
+        }
+      };
+      parentPort.on('message', messageAction);
     }
-  };
-  parentPort.on('message', messageAction);
+  }
 });
 
 // take actions on the player with the given id
@@ -169,8 +206,8 @@ app.post('/player', async (req, res) => {
         }
       };
       parentPort.on('message', messageAction);
-    } else { res.status(400).json({ error: 'You need to authenticate with Discord; click in the top-right.' }); }
-  } else { res.status(400).json({ error: 'Probably your cookies are disabled.' }); }
+    } else { res.status(401).json({ error: 'You need to authenticate with Discord.' }); }
+  } else { res.status(400).json({ error: 'ID Cookie not set or invalid.' }); }
 });
 
 
