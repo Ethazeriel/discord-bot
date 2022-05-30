@@ -521,7 +521,7 @@ export default class Player {
     return fresh ? { embeds: [embed], components: buttons, files: [thumb] } as InteractionReplyOptions : { embeds: [embed as MessageEmbedOptions], components: buttons };
   }
 
-  async queueEmbed(messagetitle = 'Current Queue:', page:number | undefined, fresh = true):Promise<InteractionReplyOptions> {
+  async queueEmbed(messagetitle = 'Current Queue:', page?:number | undefined, fresh = true):Promise<InteractionReplyOptions> {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page!) || Math.ceil((this.getPlayhead() + 1) / 10);

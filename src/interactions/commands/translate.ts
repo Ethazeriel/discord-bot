@@ -4,7 +4,9 @@ import Translator from '../../translate.js';
 import * as db from '../../database.js';
 import validator from 'validator';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+import { CommandInteraction, GuildMember, GuildMemberRoleManager } from 'discord.js';
+const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
@@ -19,8 +21,8 @@ export const data = new SlashCommandBuilder()
     .setName('subscribe')
     .setDescription('Subscribes you to translations for this channel'));
 
-export async function execute(interaction) {
-  if (interaction.member?.roles?.cache?.some(role => role.name === roles.translate)) {
+export async function execute(interaction:CommandInteraction) {
+  if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.translate)) {
     const action = interaction.options.getSubcommand();
     await interaction.deferReply({ ephemeral: (action === 'to_english') ? false : true });
     switch (action) {
@@ -29,14 +31,14 @@ export async function execute(interaction) {
         const response = await Translator.toEnglish(text);
         const language = await Translator.getLang(text);
 
-        response ? await interaction.followUp({ embeds:[Translator.langEmbed(validator.unescape(text), language.code, interaction.member.displayName, validator.unescape(response), 'en')] }) : await interaction.followUp('it didn\'t work');
+        response ? await interaction.followUp({ embeds:[Translator.langEmbed(validator.unescape(text), language.code, (interaction.member as GuildMember).displayName, validator.unescape(response), 'en')] }) : await interaction.followUp('it didn\'t work');
         break;
 
       case 'subscribe':
         const user = await db.getUser(interaction.user.id);
-        if (user.discord?.locale) {
-          Translator.subscribe(interaction.channelId, interaction.user.id, user.discord.locale, interaction);
-          await interaction.followUp(`Messages in this channel will now be translated to your locale: ${user.discord.locale}`);
+        if (user!.discord?.locale) {
+          Translator.subscribe(interaction.channelId, interaction.user.id, user!.discord.locale, interaction);
+          await interaction.followUp(`Messages in this channel will now be translated to your locale: ${user!.discord.locale}`);
         } else {await interaction.followUp('You need to set your locale using "/locale" first');}
         break;
 

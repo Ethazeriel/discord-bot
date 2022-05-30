@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import type { CommandInteraction, WebhookEditMessageOptions } from 'discord.js';
+import type { CommandInteraction, InteractionUpdateOptions, WebhookEditMessageOptions } from 'discord.js';
 import * as utils from '../../utils.js';
 
 
@@ -26,7 +26,7 @@ export async function execute(interaction:CommandInteraction) {
   await interaction.editReply(response as WebhookEditMessageOptions);
 }
 
-export function helpEmbed(section:string) {
+export function helpEmbed(section:string):InteractionUpdateOptions {
   let name = '\u200b';
   let fields = [];
   switch (section) {
@@ -162,5 +162,5 @@ export function helpEmbed(section:string) {
       ],
     },
   ];
-  return { components:dropdown, embeds:embed };
+  return { components:dropdown, embeds:embed } as InteractionUpdateOptions;
 }

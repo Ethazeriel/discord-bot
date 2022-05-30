@@ -6,7 +6,9 @@ import * as database from '../../database.js';
 import fetch from '../../acquire.js';
 import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+import { CommandInteraction, GuildMemberRoleManager } from 'discord.js';
+const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 
@@ -36,7 +38,7 @@ export const data = new SlashCommandBuilder()
       .addChoice('No', 'no')
       .addChoice('Yes', 'yes'));
 
-export async function execute(interaction) {
+export async function execute(interaction:CommandInteraction) {
   const search = interaction.options.getString('search')?.replace(sanitize, '')?.trim();
   const when = interaction.options.getString('when') || 'last';
   const what = interaction.options.getString('what') || 'search';
@@ -44,7 +46,7 @@ export async function execute(interaction) {
   const ephemeral = interaction.options.getString('ephemeral') || 'no';
 
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
+  if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
 
     if (!search) {
@@ -72,7 +74,7 @@ export async function execute(interaction) {
           if (!tracks || tracks.length == 0) {
             await interaction.followUp({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.` });
           }
-        } catch (error) {
+        } catch (error:any) {
           await interaction.followUp({ content: `OH NO SOMETHING'S FUCKED. Error: ${error.message}` });
         }
       }

@@ -2,36 +2,49 @@ import fs from 'fs';
 import { v2 } from '@google-cloud/translate';
 import { logDebug, logLine } from './logger.js';
 import * as utils from './utils.js';
-const { apiKey } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).translate;
+import { fileURLToPath } from 'url';
+const { apiKey } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8')).translate;
 import validator from 'validator';
+import { ButtonInteraction, CommandInteraction, InteractionReplyOptions, Message, MessageEmbedOptions } from 'discord.js';
+import { DetectResult } from '@google-cloud/translate/build/src/v2';
 
 export default class Translator {
-  static #organizers = {};
+  //types
+  id:string
+  subscribers:Record<string, {
+    locale:string
+    id:string
+    interaction:CommandInteraction | ButtonInteraction
+    expiry:NodeJS.Timeout
+  }>
+  targets:Set<string>
+  //class
+  static #organizers:Record<string, Translator> = {};
   static #GTranslate = new v2.Translate({ key:apiKey });
-  static locales = [];
+  static locales:{code:string, name:string}[] = [];
   static #localetimestamp = 0;
-  constructor(channel) {
+  constructor(channel:string) {
     this.id = channel;
     this.subscribers = {};
     this.targets = new Set();
     Translator.#refreshLocales();
   }
 
-  static subscribe(channel, user, locale, interaction) {
+  static subscribe(channel:string, user:string, locale:string, interaction:CommandInteraction | ButtonInteraction) {
     const listener = Translator.#organizers[channel] || (Translator.#organizers[channel] = new Translator(channel));
     listener.getSubscriber(user) ? listener.changeLocale(user, locale) : listener.addSubscriber(user, locale, interaction);
     return listener;
   }
 
-  static getOrganizer(channel) {
+  static getOrganizer(channel:string) {
     return Translator.#organizers[channel] ? Translator.#organizers[channel] : null;
   }
 
   static async #refreshLocales() { // updates our locale list if >24hrs old
     const now = Date.now();
     if ((now - Translator.#localetimestamp) > 86400000) {
-      let locales = '';
-      try { [locales] = await Translator.#GTranslate.getLanguages(); } catch (error) {
+      let locales:{code:string, name:string}[] = [];
+      try { [locales] = await Translator.#GTranslate.getLanguages(); } catch (error:any) {
         logLine('error', [`Translate error: ${error.message}`]);
       }
       Translator.locales = locales;
@@ -44,36 +57,36 @@ export default class Translator {
     return Translator.locales;
   }
 
-  static async getLang(text) { // takes string, returns object { code:'en', name:'English' }
-    let detected = '';
-    try { [detected] = await Translator.#GTranslate.detect(text); } catch (error) {
+  static async getLang(text:string) { // takes string, returns object { code:'en', name:'English' }
+    let detected:DetectResult;
+    try { [detected] = await Translator.#GTranslate.detect(text); } catch (error:any) {
       logLine('error', [`Translate error: ${error.message}`]);
     }
     const [language] = Translator.locales.filter(element => element.code === detected.language);
     return language;
   }
 
-  static async toEnglish(text) {
+  static async toEnglish(text:string) {
     await Translator.#refreshLocales();
     let translation = '';
-    try { [translation] = await Translator.#GTranslate.translate(text, 'en'); } catch (error) {
+    try { [translation] = await Translator.#GTranslate.translate(text, 'en'); } catch (error:any) {
       logLine('error', [`Translate error: ${error.message}`]);
     }
     // console.log(text, translation);
     return translation;
   }
 
-  static async translate(text, target) {
+  static async translate(text:string, target:string) {
     await Translator.#refreshLocales();
     let translation = '';
-    try { [translation] = await Translator.#GTranslate.translate(text, target); } catch (error) {
+    try { [translation] = await Translator.#GTranslate.translate(text, target); } catch (error:any) {
       logLine('error', [`Translate error: ${error.message}`]);
     }
     // console.log(text, translation);
     return translation;
   }
 
-  static langEmbed(src, srcloc, srcusr, dest, destloc) {
+  static langEmbed(src:string, srcloc:string, srcusr:string, dest:string, destloc:string):MessageEmbedOptions {
     srcloc = Translator.locales.filter(element => element.code === srcloc)[0].name;
     destloc = Translator.locales.filter(element => element.code === destloc)[0].name;
     const embed = {
@@ -87,22 +100,22 @@ export default class Translator {
         { name: `To ${destloc}`, value: dest },
       ],
     };
-    return embed;
+    return embed as MessageEmbedOptions;
   }
 
-  static messageEventDispatch(message) {
+  static messageEventDispatch(message:Message) {
     if (Translator.#organizers[message.channelId]) { Translator.#organizers[message.channelId].messageEvent(message); }
   }
 
-  async messageEvent(message) {
+  async messageEvent(message:Message) {
     await Translator.#refreshLocales();
     const messageContent = validator.escape(validator.stripLow(message.content || '')).trim();
-    const translations = {};
+    const translations:Record<string, string> = {};
     for (const locale of this.targets) {
       try {
         const [result] = await Translator.#GTranslate.translate(messageContent, locale);
         translations[locale] = result || 'translate failed';
-      } catch (error) {
+      } catch (error:any) {
         logLine('error', [`Translate error: ${error.message}`]);
       }
     }
@@ -114,17 +127,17 @@ export default class Translator {
     }
   }
 
-  getSubscriber(user) {
+  getSubscriber(user:string) {
     return this.subscribers[user];
   }
 
-  changeLocale(user, locale) {
+  changeLocale(user:string, locale:string) {
     logDebug(`Updating locale for ${user} to ${locale}`);
     this.subscribers[user].locale = locale;
     this.updateTargets();
   }
 
-  addSubscriber(user, locale, interaction) {
+  addSubscriber(user:string, locale:string, interaction:CommandInteraction | ButtonInteraction) {
     logDebug(`adding sub ${user} with ${locale}`);
     this.subscribers[user] = {
       locale: locale,
@@ -132,14 +145,15 @@ export default class Translator {
       interaction:interaction,
       expiry: setTimeout(() => {
         clearTimeout(this.subscribers[user].expiry);
-        interaction.followUp({ content:'Discord imposes a 15-minute timeout on interactions - if you want to keep receiving translations, please hit this refresh button.', components:[{ type: 1, components:[{ type: 2, custom_id: 'translate-refresh', style: 3, label: 'Refresh', disabled: false }] }], ephemeral:true });
+        const button = { type: 2, custom_id: 'translate-refresh', style: 3, label: 'Refresh', disabled: false };
+        interaction.followUp({ content:'Discord imposes a 15-minute timeout on interactions - if you want to keep receiving translations, please hit this refresh button.', components:[{ type: 1, components:[button] }], ephemeral:true } as InteractionReplyOptions);
         this.removeSubscriber(user);
       }, 885000).unref(),
     };
     this.updateTargets();
   }
 
-  removeSubscriber(user) {
+  removeSubscriber(user:string) {
     delete this.subscribers[user];
     if (Object.keys(this.subscribers).length) {
       this.updateTargets();

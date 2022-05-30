@@ -5,7 +5,10 @@ import * as db from '../../database.js';
 import { seekTime as seekRegex } from '../../regexes.js';
 import validator from 'validator';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+import { CommandInteraction, GuildMemberRoleManager, Message } from 'discord.js';
+import type { APIMessage } from 'discord-api-types';
+const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
@@ -58,9 +61,9 @@ export const data = new SlashCommandBuilder()
     .setDescription('Reloads the previous session'));
 
 
-export async function execute(interaction) {
+export async function execute(interaction:CommandInteraction & { message?: APIMessage | Message<boolean> }) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
+  if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
 
     const player = await Player.getPlayer(interaction);
@@ -68,9 +71,9 @@ export async function execute(interaction) {
       switch (interaction.options.getSubcommand()) {
         case 'show': {
           if (player.getQueue().length) {
-            const page = Math.abs(interaction.options.getInteger('page')) || undefined;
+            const page = Math.abs(Number(interaction.options.getInteger('page'))) || undefined;
             const queueEmbed = await player.queueEmbed(undefined, page);
-            interaction.message = await interaction.editReply(queueEmbed);
+            interaction.message = await interaction.editReply(queueEmbed) as Message;
             player.register(interaction, 'queue', queueEmbed);
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
@@ -111,13 +114,13 @@ export async function execute(interaction) {
         case 'seek': {
           if (player.getQueue().length) {
             const track = player.getCurrent();
-            const usrtime = validator.escape(validator.stripLow(interaction.options.getString('time'))).trim();
+            const usrtime = validator.escape(validator.stripLow(interaction.options.getString('time') || '')).trim();
             if (!seekRegex.test(usrtime)) { await interaction.editReply({ content: 'That doesn\'t look like a valid timestamp.' }); } else {
               const match = usrtime.match(seekRegex);
-              let time = Number(match[3]);
-              if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
-              if (match[2]) {time = (Number(match[2]) * 60) + time;}
-              if (match[1]) {time = (Number(match[1]) * 3600) + time;}
+              let time = Number(match![3]);
+              if (match![1] && !match![2]) { match![2] = match![1], match![1] = '0'; }
+              if (match![2]) {time = (Number(match![2]) * 60) + time;}
+              if (match![1]) {time = (Number(match![1]) * 3600) + time;}
 
               if (time > track.youtube.duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
                 await player.seek(time);
@@ -205,8 +208,8 @@ export async function execute(interaction) {
         case 'recall': {
           if (!player.getQueue().length) {
             const result = await db.getStash(interaction.user.id);
-            if (result.tracks.length) {
-              player.queue.tracks = result.tracks;
+            if (result?.tracks.length) {
+              player.queue.tracks = result.tracks as Track[];
               await player.jump(result.playhead);
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
