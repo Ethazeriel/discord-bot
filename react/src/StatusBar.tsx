@@ -87,6 +87,7 @@ ${AlwaysVisible}:hover + & {
 const ConBlock = styled.div`
 background-color: #242526;
 height:6vh;
+max-height: 80px;
 width:33vw;
 z-index:2;
 position: absolute;
