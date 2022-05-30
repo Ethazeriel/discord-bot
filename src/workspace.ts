@@ -1,5 +1,5 @@
 import Player from './player.js';
-import { CommandInteraction, MessageAttachment } from 'discord.js';
+import { CommandInteraction, MessageAttachment, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
 import * as utils from './utils.js';
 import * as db from './database.js';
 import { logDebug } from './logger.js';
@@ -66,7 +66,7 @@ export default class Workspace {
     return track;
   }
 
-  async makeEmbed(messagetitle:string, page:number, fresh = true) {
+  async makeEmbed(messagetitle:string, page:number, fresh = true):Promise<InteractionReplyOptions> {
     this.expiry.refresh();
     page = Math.abs(page) || 1;
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab')as any, 'thumb.jpg')) : null;
@@ -80,7 +80,7 @@ export default class Workspace {
       ],
     }];
     if (pages === 0) {
-      return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], components: buttonEmbed, files: [thumb], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], components: buttonEmbed, ephemeral: true };
+      return fresh ? { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], components: buttonEmbed, files: [thumb!], ephemeral: true } : { embeds: [{ color: 0xfc1303, title: 'Nothing to show!', thumbnail: { url: 'attachment://thumb.jpg' } }], components: buttonEmbed, ephemeral: true };
     }
     if (page > pages) { page = pages; }
     const queuePart = this.list.slice((page - 1) * 10, page * 10);
@@ -110,7 +110,7 @@ export default class Workspace {
         { name: '\u200b', value: `Duration: ${utils.timeDisplay(queueTime)}`, inline: true },
       ],
     };
-    return fresh ? { embeds: [embed], components: buttonEmbed, files: [thumb] } : { embeds: [embed], components: buttonEmbed };
+    return fresh ? { embeds: [embed as MessageEmbedOptions], components: buttonEmbed, files: [thumb!] } : { embeds: [embed as MessageEmbedOptions], components: buttonEmbed };
   }
 
 }

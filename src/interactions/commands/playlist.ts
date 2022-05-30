@@ -8,7 +8,9 @@ import fetch from '../../acquire.js';
 import Workspace from '../../workspace.js';
 import validator from 'validator';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
+import type { CommandInteraction, GuildMemberRoleManager, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
+import { fileURLToPath } from 'url';
+const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
@@ -62,29 +64,29 @@ export const data = new SlashCommandBuilder()
     .setDescription('lists all internal playlists'));
 
 
-export async function execute(interaction) {
+export async function execute(interaction: CommandInteraction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
+  if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
-    const workspace = Workspace.getWorkspace(interaction.member.user.id);
+    const workspace = Workspace.getWorkspace(interaction.member!.user.id);
     switch (interaction.options.getSubcommand()) {
 
       case 'show': {
-        const page = Math.abs(interaction.options.getInteger('page')) || 1;
+        const page = Math.abs(interaction.options.getInteger('page')!) || 1;
         const message = await workspace.makeEmbed('Current Playlist:', page);
-        await interaction.followUp(message);
+        await interaction.followUp(message as InteractionReplyOptions);
         break;
       }
 
       case 'remove': {
-        workspace.removeTrack(Math.abs(interaction.options.getInteger('index') - 1));
-        await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('index'))} from the playlist.`);
+        workspace.removeTrack(Math.abs(interaction.options.getInteger('index')! - 1));
+        await interaction.followUp(`Removed item ${Math.abs(interaction.options.getInteger('index')!)} from the playlist.`);
         break;
       }
 
       case 'add': {
         let tracks = null;
-        const search = interaction.options.getString('track')?.replace(sanitize, '').trim();
+        const search = interaction.options.getString('track')?.replace(sanitize, '').trim() || '';
         const input = Math.abs(interaction.options.getInteger('index') ?? workspace.list.length);
         let index;
         if (input > workspace.list.length) {index = workspace.list.length;} else {
@@ -111,7 +113,7 @@ export async function execute(interaction) {
       }
 
       case 'save': {
-        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, ''))).trim();
+        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '') || '')).trim();
         const result = await database.addPlaylist(workspace.list, listname);
         if (result) {
           interaction.followUp({ content:result, ephemeral: true });
@@ -127,7 +129,7 @@ export async function execute(interaction) {
       }
 
       case 'load': {
-        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, ''))).trim();
+        const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '') || '')).trim();
         const result = await database.getPlaylist(listname);
         workspace.addTracks(result, (workspace.list.length));
         interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
@@ -135,8 +137,8 @@ export async function execute(interaction) {
       }
 
       case 'move': {
-        const fromindex = Math.abs(interaction.options.getInteger('from-index') - 1);
-        const toindex = Math.abs(interaction.options.getInteger('to-index') - 1);
+        const fromindex = Math.abs(interaction.options.getInteger('from-index')! - 1);
+        const toindex = Math.abs(interaction.options.getInteger('to-index')! - 1);
         const result = workspace.moveTrack(fromindex, toindex);
         interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
         break;
@@ -157,7 +159,7 @@ export async function execute(interaction) {
       case 'list': {
         const lists = await database.listPlaylists();
         let listStr = '```';
-        for (const list of lists) {
+        for (const list of lists!) {
           const part = '\n' + list;
           listStr = listStr.concat(part);
         }
@@ -169,8 +171,8 @@ export async function execute(interaction) {
           fields: [{ name: 'Playlists:', value: listStr }],
         };
         try {
-          await interaction.followUp({ embeds: [listEmbed] });
-        } catch (error) {
+          await interaction.followUp({ embeds: [listEmbed as MessageEmbedOptions] });
+        } catch (error:any) {
           logLine('error', [error.stack]);
         }
         break;

@@ -13,9 +13,9 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
   const currentPage = Number(match[1]);
   let reply:string | WebhookEditMessageOptions = 'uhoh';
   switch (which) {
-    case 'prev': reply = await workspace.makeEmbed('Current Playlist:', (currentPage - 1), false) as WebhookEditMessageOptions; break;
-    case 'refresh': reply = await workspace.makeEmbed('Current Playlist:', currentPage, false) as WebhookEditMessageOptions; break;
-    case 'next': reply = await workspace.makeEmbed('Current Playlist:', (currentPage + 1), false) as WebhookEditMessageOptions; break;
+    case 'prev': reply = await workspace.makeEmbed('Current Playlist:', (currentPage - 1), false); break;
+    case 'refresh': reply = await workspace.makeEmbed('Current Playlist:', currentPage, false); break;
+    case 'next': reply = await workspace.makeEmbed('Current Playlist:', (currentPage + 1), false); break;
     default: reply = 'everything is fucked'; break;
   }
   await interaction.editReply(reply);

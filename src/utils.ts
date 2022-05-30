@@ -1,18 +1,12 @@
 /* eslint-disable no-fallthrough */
-import { MessageAttachment, CommandInteraction } from 'discord.js';
+import { MessageAttachment, CommandInteraction, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
 import { logLine } from './logger.js';
 import Canvas from 'canvas';
 import crypto from 'crypto';
 import axios, { AxiosResponse } from 'axios';
 import * as db from './database.js';
 import type { ISearchResult, IArtist, IArtistMatch, IArtistList } from 'musicbrainz-api'
-type ProgressBarOptions = {
-  start?:string,
-  end?:string,
-  barbefore?:string,
-  barafter?:string,
-  head?:string
-}
+
 export function progressBar(size:number, duration:number, playhead:number, { start, end, barbefore, barafter, head }:ProgressBarOptions = {}):string {
   start ??= '[';
   end ??= ']';
@@ -95,7 +89,7 @@ export function randomHexColor():number {
 //               EMBEDS
 // =================================
 
-export async function generateTrackEmbed(track:Track, messagetitle:string) {
+export async function generateTrackEmbed(track:Track, messagetitle:string):Promise<InteractionReplyOptions> {
   const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
   const npEmbed = {
     color: 0x580087,
@@ -110,11 +104,7 @@ export async function generateTrackEmbed(track:Track, messagetitle:string) {
       url: 'attachment://art.jpg',
     },
   };
-  try {
-    return { embeds: [npEmbed], files: [albumart] };
-  } catch (error:any) {
-    logLine('error', [error.stack]);
-  }
+    return { embeds: [npEmbed as MessageEmbedOptions], files: [albumart] };
 }
 
 export async function mbArtistLookup(artist:string):Promise<string | undefined> {
@@ -127,37 +117,37 @@ export async function mbArtistLookup(artist:string):Promise<string | undefined> 
     });
     if (axData1) {
       const firstdata = axData1.data;
-    if (firstdata?.artists?.length) {
-      const mbid = firstdata.artists[0].id;
-      const axData2:null | AxiosResponse<IArtist> = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
-        logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
-        return (null);
-      });
-      if (axData2) {
-        const data = axData2.data;
-      if (data?.relations?.length) {
-        let result = null;
-        for (const link of data.relations) { // return the official site first
-          if (link.type === 'official homepage') {
-            result = link.url?.resource;
-            return result;
+      if (firstdata?.artists?.length) {
+        const mbid = firstdata.artists[0].id;
+        const axData2:null | AxiosResponse<IArtist> = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
+          logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
+          return (null);
+        });
+        if (axData2) {
+          const data = axData2.data;
+        if (data?.relations?.length) {
+          let result = null;
+          for (const link of data.relations) { // return the official site first
+            if (link.type === 'official homepage') {
+              result = link.url?.resource;
+              return result;
+            }
           }
-        }
-        for (const link of data.relations) { // if no official site, return bandcamp
-          if (link.type === 'bandcamp') {
-            result = link.url?.resource;
-            return result;
+          for (const link of data.relations) { // if no official site, return bandcamp
+            if (link.type === 'bandcamp') {
+              result = link.url?.resource;
+              return result;
+            }
           }
-        }
-        for (const link of data.relations) { // if no bandcamp, return last.fm and hope they have better links
-          if (link.type === 'last.fm') {
-            result = link.url?.resource;
-            return result;
+          for (const link of data.relations) { // if no bandcamp, return last.fm and hope they have better links
+            if (link.type === 'last.fm') {
+              result = link.url?.resource;
+              return result;
+            }
           }
         }
       }
-    }
-    }
+      }
   }
   }
 }

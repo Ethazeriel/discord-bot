@@ -1,6 +1,6 @@
 /* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { MessageAttachment } from 'discord.js';
+import { CommandInteraction, MessageAttachment, GuildMemberRoleManager, InteractionReplyOptions } from 'discord.js';
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
@@ -8,7 +8,8 @@ import Canvas from 'canvas';
 import Player from '../../player.js';
 import ytdl from 'ytdl-core';
 import fs from 'fs';
-const { discord } = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
@@ -18,30 +19,30 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option => option.setName('newtrack').setDescription('optional remap target'));
 
 
-export async function execute(interaction) {
+export async function execute(interaction:CommandInteraction) {
 
-  if (interaction.member?.roles?.cache?.some(role => role.name === roles.dj)) {
+  if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
-    const search = interaction.options.getString('track')?.replace(sanitize, '')?.trim();
+    const search = interaction.options.getString('track')?.replace(sanitize, '')?.trim() || '';
     const replace = interaction.options.getString('newtrack')?.replace(sanitize, '')?.trim();
     if (youtubePattern.test(search) || search === 'current') {
       if (replace) {
         if (youtubePattern.test(replace)) {
           const match = search.match(youtubePattern);
-          const track = await db.getTrack({ 'youtube.id': match[2] });
+          const track = await db.getTrack({ 'youtube.id': match![2] }) as Track;
           if (!Object.keys(track).length) {
             await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
             return;
           }
           const match2 = replace.match(youtubePattern);
-          const newtrack = await ytdl.getBasicInfo(match2[2]);
+          const newtrack = await ytdl.getBasicInfo(match2![2]);
           if (!Object.keys(newtrack).length) {
             await interaction.followUp({ content:'That new track doesn\'t appear to be valid', ephemeral: true });
             return;
           }
           const canvas = Canvas.createCanvas(960, 360);
           const context = canvas.getContext('2d');
-          function drawtext(text, x, y) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
+          function drawtext(text:string, x:number, y:number) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
             context.font = '80px Sans-serif';
             context.strokeStyle = 'black';
             context.lineWidth = 8;
@@ -60,10 +61,10 @@ export async function execute(interaction) {
             embeds: [
               {
                 color: 0xd64004,
-                author: { name: 'Remapped:', icon_url: utils.pickPride('fish') },
+                author: { name: 'Remapped:', icon_url: utils.pickPride('fish') as string },
                 fields: [
                   { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                  { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(newtrack.videoDetails.lengthSeconds * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(Number(newtrack.videoDetails.lengthSeconds) * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 ],
                 image: { url: 'attachment://combined.png' },
                 footer: { text: `${track.youtube.id}${newtrack.videoDetails.videoId}` },
@@ -86,14 +87,20 @@ export async function execute(interaction) {
       } else {
         let track;
         if (search === 'current') {
-          track = await Player.getPlayer(interaction)?.getCurrent();
+          const player = await Player.getPlayer(interaction);
+          if (player) {
+          track = player.getCurrent();
           if (!Object.keys(track).length) {
             await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
             return;
           }
         } else {
+          await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true })
+          return;
+          }
+        } else {
           const match = search.match(youtubePattern);
-          track = await db.getTrack({ 'youtube.id': match[2] });
+          track = await db.getTrack({ 'youtube.id': match![2] }) as Track;
           if (!Object.keys(track).length) {
             await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
             return;
@@ -101,7 +108,7 @@ export async function execute(interaction) {
         }
         const canvas = Canvas.createCanvas(960, 720);
         const context = canvas.getContext('2d');
-        function drawtext(text, x, y) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
+        function drawtext(text:string, x:number, y:number) {// this is ugly and terrible and stolen, but I don't caaaaaaaaare
           context.font = '80px Sans-serif';
           context.strokeStyle = 'black';
           context.lineWidth = 8;
@@ -126,7 +133,7 @@ export async function execute(interaction) {
           embeds: [
             {
               color: 0xd64004,
-              author: { name: 'Remap:', icon_url: utils.pickPride('fish') },
+              author: { name: 'Remap:', icon_url: utils.pickPride('fish') as string },
               fields: [
                 { name: 'Spotify:', value: `${track.artist.name || 'no artist'} - ${track.spotify.name || 'no track name'} - ${new Date(track.spotify.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 { name: 'Current Youtube:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },

@@ -1,43 +1,69 @@
 import fs from 'fs';
 import youtubedl from 'youtube-dl-exec';
-import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource } from '@discordjs/voice';
+import type { YtFlags } from 'youtube-dl-exec';
+import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayer, DiscordGatewayAdapterCreator } from '@discordjs/voice';
 import crypto from 'crypto';
-import { MessageAttachment } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, GuildMember, MessageAttachment, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, MessageEmbedOptions, Message, MessageEmbed } from 'discord.js';
 import * as db from './database.js';
 import { logLine, logDebug } from './logger.js';
-const { youtube, functions } = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import { stream as seekable } from 'play-dl';
-
+import type { APIMessage } from 'discord-api-types';
 
 export default class Player {
+
+  //type definitions
+  queue:PlayerStatus
+  guildID:string
+  embeds:Record<string, {
+    queue?: {
+      userPage:number
+      followPlayhead:boolean
+      refreshCount:number
+      interaction?:CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction
+      idleTimer:NodeJS.Timeout
+      refreshTimer:NodeJS.Timeout
+      getPage:() => number
+      update:(userId:string, description:string, content?:InteractionUpdateOptions) => void
+    }
+    media?: {
+      interaction?:CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction
+      idleTimer:NodeJS.Timeout
+      refreshTimer:NodeJS.Timeout
+      update:(userId:string, description:string, content?:InteractionUpdateOptions) => void
+    }
+  }>
+  listeners:Set<string>
+  player:AudioPlayer
   // acquisition
-  static #players = {};
-  constructor(interaction) {
+  static #players:Record<string, Player> = {};
+  constructor(interaction:CommandInteraction | ButtonInteraction) {
     this.queue = {
       tracks: [],
       playhead: 0,
       loop: false,
       paused: false,
     };
-    this.guildID = interaction.guild.id;
+    this.guildID = interaction.guild!.id;
     this.embeds = {};
     this.listeners = new Set();
 
     this.player = createAudioPlayer();
     this.player.on('error', error => { logLine('error', [error.stack ]); });
-    this.player.on('stateChange', (oldState, newState) => {
+    this.player.on<'stateChange'>('stateChange', (oldState, newState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'playing') {
-        const diff = (this.queue.tracks[this.queue.playhead].pause) ? (this.queue.tracks[this.queue.playhead].pause - this.queue.tracks[this.queue.playhead].start) : 0;
+        const diff = (this.queue.tracks[this.queue.playhead].pause) ? (this.queue.tracks[this.queue.playhead].pause! - this.queue.tracks[this.queue.playhead].start!) : 0;
         this.queue.tracks[this.queue.playhead].start = ((Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].goose.seek || 0)) - diff;
       } else if (newState.status == 'idle') {
         const track = this.queue.tracks[this.queue.playhead];
         if (track) {
-          const elapsed = (Date.now() / 1000) - track.start;
+          const elapsed = (Date.now() / 1000) - track.start!;
           const duration = track.youtube.duration;
           const difference = Math.abs(duration - elapsed);
           const percentage = (100 * ((elapsed < duration) ? (elapsed / duration) : (duration / elapsed)));
@@ -54,11 +80,11 @@ export default class Player {
     });
 
     const connection = joinVoiceChannel({
-      channelId: interaction.member.voice.channel.id,
-      guildId: interaction.member.voice.channel.guild.id,
-      adapterCreator: interaction.member.voice.channel.guild.voiceAdapterCreator,
+      channelId: (interaction.member as GuildMember).voice.channel!.id,
+      guildId: (interaction.member as GuildMember).voice.channel!.guild.id,
+      adapterCreator: (interaction.member as GuildMember).voice.channel!.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
-    connection.on('stateChange', async (oldState, newState) => {
+    connection.on<'stateChange'>('stateChange', async (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
         if (Object.keys(this.embeds).length) {
@@ -67,14 +93,14 @@ export default class Player {
           Object.keys(this.embeds).map(async (id) => {
             const { media, queue } = this.embeds[id];
             if (media) {
-              clearTimeout(this.embeds[id].media.idleTimer);
-              clearInterval(this.embeds[id].media.refreshTimer);
-              await this.decommission(this.embeds[id].media.interaction, 'media', mediaEmbed, 'Bot left');
+              clearTimeout(this.embeds[id].media!.idleTimer);
+              clearInterval(this.embeds[id].media!.refreshTimer);
+              await this.decommission(this.embeds[id].media!.interaction!, 'media', mediaEmbed, 'Bot left');
             }
             if (queue) {
-              clearTimeout(this.embeds[id].queue.idleTimer);
-              clearInterval(this.embeds[id].queue.refreshTimer);
-              await this.decommission(this.embeds[id].queue.interaction, 'queue', queueEmbed, 'Bot left');
+              clearTimeout(this.embeds[id].queue!.idleTimer);
+              clearInterval(this.embeds[id].queue!.refreshTimer);
+              await this.decommission(this.embeds[id].queue!.interaction!, 'queue', queueEmbed, 'Bot left');
             }
             if (this.embeds[id]) {delete this.embeds[id];}
           });
@@ -86,17 +112,17 @@ export default class Player {
     connection.subscribe(this.player);
   }
 
-  static async getPlayer(interaction, { explicitJoin = false } = {}) {
-    const followUp = (message) => ((interaction.isCommand()) ? interaction.editReply({ content: message }) : interaction.editReply({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }));
-    const userChannel = interaction.member.voice.channelId;
+  static async getPlayer(interaction:CommandInteraction | ButtonInteraction, { explicitJoin = false } = {}) {
+    const followUp = (message:string) => ((interaction.isCommand()) ? interaction.editReply({ content: message }) : interaction.editReply({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }));
+    const userChannel = (interaction.member as GuildMember).voice.channelId;
 
     if (!userChannel) {
       await followUp('You must join a voice channel first.');
       return (null);
     }
-    const guild = interaction.guild.id;
+    const guild = interaction.guild!.id;
     const connection = getVoiceConnection(guild);
-    const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId) : null;
+    const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel : null;
     const isAlone = !botChannel || botChannel.members.size == 1; // was just member check, but since connection seems unreliable, think this is necessary
 
     if (userChannel == botChannel?.id) {
@@ -112,7 +138,7 @@ export default class Player {
     }
   }
 
-  static retrievePlayer(id, type) {
+  static retrievePlayer(id:string, type:'guild' | 'user') {
     if (type === 'guild') {
       return Player.#players[id];
     } else if (type === 'user') {
@@ -128,8 +154,8 @@ export default class Player {
     } else { logLine('error', [`invalid retrievePlayer type: ${type}`]); }
   }
 
-  static async voiceEventDispatch(oldState, newState, client) {
-    logDebug(`Voice state update for server ${oldState.guild.id}, user ${oldState.member.displayName}`);
+  static async voiceEventDispatch(oldState:VoiceState, newState:VoiceState, client:Client) {
+    logDebug(`Voice state update for server ${oldState.guild.id}, user ${oldState.member!.displayName}`);
     const player = Player.#players[oldState.guild.id] || (Player.#players[newState.guild.id]);
     if (player) {
       player.voiceEvent(oldState, newState, client);
@@ -139,33 +165,33 @@ export default class Player {
   }
 
   // events
-  async voiceEvent(oldState, newState, client) {
+  async voiceEvent(oldState:VoiceState, newState:VoiceState, client:Client) {
     const connection = getVoiceConnection(newState.guild.id);
     if (connection && (connection.joinConfig.channelId === oldState.channelId) && (newState.channelId != connection.joinConfig.channelId)) {
-      if (!newState.member.user.bot) {
-        const id = newState.member.id;
+      if (!(newState.member as GuildMember).user.bot) {
+        const id = (newState.member as GuildMember).id;
         this.listeners.delete(id);
         await db.saveStash(id, this.queue.playhead, this.queue.tracks);
         if (this.embeds[id]?.queue) {
-          clearTimeout(this.embeds[id].queue.idleTimer);
-          clearInterval(this.embeds[id].queue.refreshTimer);
-          await this.decommission(this.embeds[id].queue.interaction, 'queue', await this.queueEmbed('Current Queue:', this.embeds[id].queue.getPage(), false), 'You left the channel');
+          clearTimeout(this.embeds[id].queue!.idleTimer);
+          clearInterval(this.embeds[id].queue!.refreshTimer);
+          await this.decommission(this.embeds[id].queue!.interaction!, 'queue', await this.queueEmbed('Current Queue:', this.embeds[id].queue!.getPage(), false), 'You left the channel');
         }
         if (this.embeds[id]?.media) {
-          clearTimeout(this.embeds[id].media.idleTimer);
-          clearInterval(this.embeds[id].media.refreshTimer);
-          await this.decommission(this.embeds[id].media.interaction, 'media', await this.mediaEmbed(false), 'You left the channel');
+          clearTimeout(this.embeds[id].media!.idleTimer);
+          clearInterval(this.embeds[id].media!.refreshTimer);
+          await this.decommission(this.embeds[id].media!.interaction!, 'media', await this.mediaEmbed(false), 'You left the channel');
         }
         if (this.embeds[id]) {delete this.embeds[id];}
       }
       if (!this.listeners.size) { logDebug('Alone in channel; leaving voice'), connection.destroy(); }
     } else if (connection && (connection.joinConfig.channelId === newState.channelId) && (oldState.channelId != connection.joinConfig.channelId)) {
-      const id = newState.member.id;
-      if (!newState.member.user.bot) {
+      const id = (newState.member as GuildMember).id;
+      if (!(newState.member as GuildMember).user.bot) {
         this.listeners.add(id);
-      } else if (client.user.id == id) {
+      } else if ((client.user as ClientUser).id == id) {
         this.listeners.clear();
-        const botChannel = client.channels.cache.get(connection.joinConfig.channelId);
+        const botChannel = client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel;
         for (const [, member] of botChannel.members) {
           if (!member.user.bot) { this.listeners.add(member.user.id); }
         }
@@ -175,27 +201,27 @@ export default class Player {
   }
 
   // presence
-  join(interaction) {
+  join(interaction:CommandInteraction | ButtonInteraction) {
     joinVoiceChannel({
-      channelId: interaction.member.voice.channelId,
-      guildId: interaction.guild.id,
-      adapterCreator: interaction.member.voice.channel.guild.voiceAdapterCreator,
+      channelId: (interaction.member as GuildMember).voice.channel!.id,
+      guildId: (interaction.member as GuildMember).voice.channel!.guild.id,
+      adapterCreator: (interaction.member as GuildMember).voice.channel!.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
 
     return (this); // lazy code condensing
   }
 
-  static leave(interaction) {
-    const connection = getVoiceConnection(interaction.guild.id);
+  static leave(interaction:CommandInteraction | ButtonInteraction) {
+    const connection = getVoiceConnection(interaction.guild!.id);
     if (connection) {
-      const userChannel = interaction.member.voice.channelId;
-      const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId) : null;
-      const isAlone = botChannel.members?.size == 1;
+      const userChannel = (interaction.member as GuildMember).voice.channelId;
+      const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel: null;
+      const isAlone = botChannel?.members?.size == 1;
 
       if (userChannel == botChannel || isAlone) {
-        for (const [, member] of botChannel.members) {
+        for (const [, member] of botChannel!.members) {
           // console.log(member.id);
-          if (!member.user.bot) { db.saveStash(member.id, Player.#players[interaction.guild.id].queue.playhead, Player.#players[interaction.guild.id].queue.tracks); }
+          if (!member.user.bot) { db.saveStash(member.id, Player.#players[interaction.guild!.id].queue.playhead, Player.#players[interaction.guild!.id].queue.tracks); }
         }
         const success = connection.disconnect();
         // eslint-disable-next-line no-console
@@ -212,24 +238,24 @@ export default class Player {
     let ephemeral;
     let track = this.queue.tracks[this.queue.playhead];
     if (track) { ephemeral = track.ephemeral; }
-    track &&= await db.getTrack({ 'goose.id': track.goose.id });
+    track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
     if (track) { track.ephemeral = ephemeral; }
     this.queue.tracks[this.queue.playhead] &&= track;
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube.id}`, {
-          o: '-',
-          q: '',
+        const resource = createAudioResource((youtubedl as any).exec(`https://www.youtube.com/watch?v=${track.youtube.id}`, {
+          o: '-', // I know the any in the above line is bad, but TS doesn't properly recognise the named exports after the default export
+          q: '', // I think this is because youtube-dl-exec does things poorly, but this is better than having to patch their package
           'force-ipv4': '',
           f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
           r: '100K',
           cookies: 'cookies.txt',
           'user-agent': useragent,
-        }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout);
+        } as YtFlags, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
         this.player.play(resource);
         logLine('track', ['Playing track:', (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
-      } catch (error) {
+      } catch (error:any) {
         logLine('error', [error.stack]);
       }
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
@@ -249,18 +275,18 @@ export default class Player {
     if (this.queue.tracks[priorPlayhead]?.ephemeral) { this.remove(priorPlayhead); }
   }
 
-  async jump(position) {
+  async jump(position:number) {
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
     await this.play();
     if (this.queue.tracks[priorPlayhead]?.ephemeral) { this.remove(priorPlayhead); }
   }
 
-  async seek(time) {
+  async seek(time:number) {
     let ephemeral;
     let track = this.queue.tracks[this.queue.playhead];
     if (track) { ephemeral = track.ephemeral; }
-    track &&= await db.getTrack({ 'goose.id': track.goose.id });
+    track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
     if (track) { track.ephemeral = ephemeral; }
     this.queue.tracks[this.queue.playhead] &&= track;
     if (this.getPause()) { this.togglePause({ force: false }); }
@@ -270,7 +296,7 @@ export default class Player {
         const resource = createAudioResource(source.stream, { inputType: source.type });
         this.player.play(resource);
         logLine('track', [`Seeking to time ${time} in `, (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
-      } catch (error) {
+      } catch (error:any) {
         logLine('error', [error.stack]);
       }
       track.goose.seek = time;
@@ -278,7 +304,7 @@ export default class Player {
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
   }
 
-  togglePause({ force } = {}) {
+  togglePause({ force }:{ force?:boolean } = {}) {
     force = (typeof force == 'boolean') ? force : undefined;
     const condition = (force == undefined) ? this.queue.paused : !force;
     const result = (condition) ? !this.player.unpause() : this.player.pause();
@@ -286,7 +312,7 @@ export default class Player {
     return ((condition != result) ? ({ content: (result) ? 'Paused.' : 'Unpaused.' }) : ({ content:'OH NO SOMETHING\'S FUCKED' }));
   }
 
-  async toggleLoop({ force } = {}) {
+  async toggleLoop({ force }:{ force?:boolean } = {}) {
     force = (typeof force == 'boolean') ? force : undefined;
     this.queue.loop = (force == undefined) ? !this.queue.loop : force;
     if (this.queue.loop && this.queue.tracks.length && (this.queue.tracks.length == this.queue.playhead)) { await this.next(); }
@@ -294,19 +320,19 @@ export default class Player {
   }
 
   // modification
-  async queueNow(tracks) {
+  async queueNow(tracks:Track[]) {
     // not constrained to length because splice does that automatically
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
     (this.player.state.status == 'idle') ? await this.play() : await this.next();
   }
 
-  async queueNext(tracks) {
+  async queueNext(tracks:Track[]) {
     // not constrained to length because splice does that automatically
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
-  async queueLast(tracks) {
+  async queueLast(tracks:Track[]) {
     this.queue.tracks.push(...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
     return (this.queue.tracks.length);
@@ -329,25 +355,25 @@ export default class Player {
     this.player.stop();
   }
 
-  #randomizer(length) {
-    const random = [];
-    for (let i = 0; i < length; i++) { random[i] = [i]; }
+  #randomizer(length:number) {
+    const random:number[] = [];
+    for (let i = 0; i < length; i++) { random[i] = i; }
     for (let i = 0; i < (length - 2); i++) {
-      const j = crypto.randomInt(i, length);
-      const temp = random[j];
+      const j:number = crypto.randomInt(i, length);
+      const temp:number = random[j];
       random[j] = random[i];
       random[i] = temp;
     }
     return (random);
   }
 
-  shuffle({ albumAware = false } = {}, alternate = undefined) { // if alternate, we shuffle and return that instead of shuffling the queue itself
+  shuffle({ albumAware = false } = {}, alternate:Track[] | undefined = undefined) { // if alternate, we shuffle and return that instead of shuffling the queue itself
     const loop = this.getLoop() || !this.getNext(); // we're treating shuffling a queue that's over as a 1-action request to restart it, shuffled
     const queue = (alternate) ? null : this.getQueue();
     const current = (alternate) ? null : this.getCurrent();
     const playhead = (alternate) ? null : (loop) ? 0 : this.getPlayhead(); // shuffle everything or just the remaining, presumably unheard queue
-    const tracks = alternate || queue.slice(playhead);
-    if (!alternate) { queue.length = playhead, this.queue.playhead = playhead; }
+    const tracks = alternate || queue!.slice(playhead!);
+    if (!alternate) { queue!.length = playhead as number, this.queue.playhead = playhead as number; }
     // logDebug(`current: ${(current) ? current.spotify.name || current.youtube.name : 'none'} \n`);
 
     if (albumAware) {
@@ -358,7 +384,7 @@ export default class Player {
     tracks.sort((a, b) => (a.artist.name === b.artist.name) ? 0 : (a.artist.name < b.artist.name) ? -1 : 1);
     const groupBy = (albumAware) ? 'album' : 'artist';
 
-    const groups = [];
+    const groups:Track[][] = [];
     for (let grouping = 0, index = 0; index < tracks.length; index++) {
       if (groups[grouping] && groups[grouping][0][groupBy].name !== tracks[index][groupBy].name) { grouping++; }
       if (!groups[grouping]) { (groups[grouping] = []); }
@@ -409,7 +435,7 @@ export default class Player {
         rearranged.push(...result.slice(0, start));
         result = rearranged;
       }
-      queue.push(...result);
+      queue!.push(...result);
     }
 
     // // visual testing code from elsewhere, included here so as to not need to recreate it should it be needed in future
@@ -419,43 +445,43 @@ export default class Player {
   }
 
   // information
-  getPrev() { // prior, loop around or current
+  getPrev():Track { // prior, loop around or current
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
     return (this.queue.tracks[position]);
   }
 
-  getCurrent() {
+  getCurrent():Track {
     return (this.queue.tracks[this.queue.playhead]);
   }
 
-  getNext() { // next, loop around or end
+  getNext():Track { // next, loop around or end
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
     return (this.queue.tracks[position]);
   }
 
-  getQueue() {
+  getQueue():Track[] {
     return (this.queue.tracks);
   }
 
-  getPause() {
+  getPause():boolean {
     return (this.queue.paused);
   }
 
-  getLoop() {
+  getLoop():boolean {
     return (this.queue.loop);
   }
 
-  getPlayhead() {
+  getPlayhead():number {
     return (this.queue.playhead);
   }
 
-  getStatus() {
+  getStatus():PlayerStatus {
     return this.queue;
   }
 
   // embeds
-  async mediaEmbed(fresh = true, messageTitle = 'Current Track:') {
-    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab'), 'art.jpg')) : null;
+  async mediaEmbed(fresh = true, messageTitle = 'Current Track:'):Promise<InteractionReplyOptions> {
+    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg')) : null;
     const track = this.getCurrent();
     const bar = {
       start: track?.goose?.bar?.start,
@@ -464,7 +490,7 @@ export default class Player {
       barafter: track?.goose?.bar?.barafter,
       head: track?.goose?.bar?.head,
     };
-    const elapsedTime = (this.getPause() ? (track?.pause - track?.start) : ((Date.now() / 1000) - track?.start)) || 0;
+    const elapsedTime = (this.getPause() ? (track?.pause! - track?.start!) : ((Date.now() / 1000) - track?.start!)) || 0;
     if (track?.artist?.name && !track?.artist?.official) {
       const result = await utils.mbArtistLookup(track.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
@@ -492,14 +518,14 @@ export default class Player {
         ],
       },
     ];
-    return fresh ? { embeds: [embed], components: buttons, files: [thumb] } : { embeds: [embed], components: buttons };
+    return fresh ? { embeds: [embed], components: buttons, files: [thumb] } as InteractionReplyOptions : { embeds: [embed as MessageEmbedOptions], components: buttons };
   }
 
-  async queueEmbed(messagetitle = 'Current Queue:', page, fresh = true) {
+  async queueEmbed(messagetitle = 'Current Queue:', page:number | undefined, fresh = true):Promise<InteractionReplyOptions> {
     const track = this.getCurrent();
     const queue = this.getQueue();
-    page = Math.abs(page) || Math.ceil((this.getPlayhead() + 1) / 10);
-    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab'), 'art.jpg'));
+    page = Math.abs(page!) || Math.ceil((this.getPlayhead() + 1) / 10);
+    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg'));
     const pages = Math.ceil(queue.length / 10);
     const buttonEmbed = [
       {
@@ -526,7 +552,7 @@ export default class Player {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
-      const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
+      const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
       let songName = dbtrack.spotify.name || dbtrack.youtube.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
       const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.artist.name || ' ')} - [${songName}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
@@ -534,7 +560,7 @@ export default class Player {
     }
     let queueTime = 0;
     for (const item of queue) { queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration); }
-    let elapsedTime = (this.getPause() ? (track?.pause - track?.start) : ((Date.now() / 1000) - track?.start)) || 0;
+    let elapsedTime = (this.getPause() ? (track?.pause! - track?.start!) : ((Date.now() / 1000) - track?.start!)) || 0;
     for (const [i, item] of queue.entries()) {
       if (i < this.getPlayhead()) {
         elapsedTime = elapsedTime + Number(item.youtube.duration || item.spotify.duration);
@@ -564,10 +590,10 @@ export default class Player {
         { name: `\` ${utils.progressBar(45, queueTime, elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(queueTime)}` },
       ],
     };
-    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } : { embeds: [embed], components: buttonEmbed };
+    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } as InteractionReplyOptions : { embeds: [embed as MessageEmbedOptions], components: buttonEmbed };
   }
 
-  async decommission(interaction, type, embed, message = '\u27F3 expired') {
+  async decommission(interaction:CommandInteraction | ButtonInteraction, type: 'queue' | 'media', embed:InteractionReplyOptions, message = '\u27F3 expired') {
     const { embeds, components } = JSON.parse(JSON.stringify(embed));
     switch (type) {
       case 'queue': {
@@ -596,61 +622,61 @@ export default class Player {
     }
   }
 
-  async register(interaction, type, embed) {
-    const id = interaction.member.user.id;
+  async register(interaction: CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction, type: 'queue'|'media', embed:InteractionReplyOptions) {
+    const id = interaction.member!.user.id;
     if (!this.embeds[id]) { this.embeds[id] = {}; }
 
-    const name = interaction.member.user.username;
+    const name = interaction.member!.user.username;
 
     switch (type) {
       case 'queue': {
-        const match = embed.embeds[0].fields[1]?.value.match(embedPage);
+        const match = embed.embeds![0].fields![1]?.value.match(embedPage);
         if (this.embeds[id].queue) {
-          this.embeds[id].queue.idleTimer.refresh();
-          this.embeds[id].queue.refreshTimer.refresh();
-          this.embeds[id].queue.refreshCount = 0;
-          this.embeds[id].queue.userPage = Number(match[1]);
-          this.embeds[id].queue.followPlayhead = (Number(match[1]) == Math.ceil((this.getPlayhead() + 1) / 10));
-          if (this.embeds[id].queue.interaction.message.id != interaction.message?.id) {
-            const temp = this.embeds[id].queue.interaction;
-            this.embeds[id].queue.interaction = undefined;
+          this.embeds[id].queue!.idleTimer.refresh();
+          this.embeds[id].queue!.refreshTimer.refresh();
+          this.embeds[id].queue!.refreshCount = 0;
+          this.embeds[id].queue!.userPage = Number(match![1]);
+          this.embeds[id].queue!.followPlayhead = (Number(match![1]) == Math.ceil((this.getPlayhead() + 1) / 10));
+          if (this.embeds[id].queue!.interaction!.message!.id != interaction.message?.id) {
+            const temp = this.embeds[id].queue!.interaction!;
+            this.embeds[id].queue!.interaction = undefined;
             (async () => this.decommission(temp, type, embed))();
           }
-          this.embeds[id].queue.interaction = interaction;
+          this.embeds[id].queue!.interaction = interaction;
         } else {
           this.embeds[id].queue = {
-            userPage : Number(match[1]),
-            followPlayhead : (Number(match[1]) == Math.ceil((this.getPlayhead() + 1) / 10)),
+            userPage : Number(match![1]),
+            followPlayhead : (Number(match![1]) == Math.ceil((this.getPlayhead() + 1) / 10)),
             refreshCount: 0,
             interaction: interaction,
             idleTimer: setTimeout(async () => {
-              clearInterval(this.embeds[id].queue.refreshTimer);
-              await this.decommission(this.embeds[id].queue.interaction, 'queue', await this.queueEmbed(undefined, undefined, false));
+              clearInterval(this.embeds[id].queue!.refreshTimer);
+              await this.decommission(this.embeds[id].queue!.interaction!, 'queue', await this.queueEmbed(undefined, undefined, false));
               delete this.embeds[id].queue;
               if (!Object.keys(this.embeds[id]).length) { delete this.embeds[id]; }
             }, 870000).unref(),
             refreshTimer: setInterval(async () => {
-              this.embeds[id].queue.refreshCount++;
-              this.embeds[id].queue.update(id, 'interval');
+              this.embeds[id].queue!.refreshCount++;
+              this.embeds[id].queue!.update(id, 'interval');
             }, 15000).unref(),
-            getPage: function() {
-              if (this.embeds[id].queue.followPlayhead || this.embeds[id].queue.refreshCount > 2) {
-                this.embeds[id].queue.userPage = Math.ceil((this.getPlayhead() + 1) / 10);
-                this.embeds[id].queue.refreshCount = 0;
-                this.embeds[id].queue.followPlayhead = true;
+            getPage: () => {
+              if (this.embeds[id].queue!.followPlayhead || this.embeds[id].queue!.refreshCount > 2) {
+                this.embeds[id].queue!.userPage = Math.ceil((this.getPlayhead() + 1) / 10);
+                this.embeds[id].queue!.refreshCount = 0;
+                this.embeds[id].queue!.followPlayhead = true;
               }
-              return (this.embeds[id].queue.userPage);
-            }.bind(this),
-            update: async function(userId, description, content) {
+              return (this.embeds[id].queue!.userPage);
+            },
+            update: async (userId:string, description:string, content?:InteractionUpdateOptions) => {
               logDebug(`${name} queue: ${description}`);
-              const contentPage = (content) ? content.embeds[0]?.fields?.[1]?.value?.match(embedPage) : null;
-              const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.embeds[id].queue.getPage()) : null;
-              if (!content || differentPage) { content = await this.queueEmbed('Current Queue:', this.embeds[id].queue.getPage(), false); }
-              const { embeds, components, files } = content;
-              if (!this.embeds[userId].queue.interaction.replied && files) {
-                this.embeds[userId].queue.interaction.message = await this.embeds[userId].queue.interaction.editReply({ embeds: embeds, components: components, files: files });
-              } else { this.embeds[userId].queue.interaction.message = await this.embeds[userId].queue.interaction.editReply({ embeds: embeds, components: components }); }
-            }.bind(this),
+              const contentPage = (content) ? content.embeds![0]?.fields?.[1]?.value?.match(embedPage) : null;
+              const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.embeds[id].queue!.getPage()) : null;
+              if (!content || differentPage) { content = await this.queueEmbed('Current Queue:', this.embeds[id].queue!.getPage(), false); }
+              const { embeds, components, files } = content!;
+              if (!this.embeds[userId].queue!.interaction!.replied && files) {
+                this.embeds[userId].queue!.interaction!.message = await this.embeds[userId].queue!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components, files: files });
+              } else { this.embeds[userId].queue!.interaction!.message = await this.embeds[userId].queue!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components }); }
+            },
           };
         }
         break;
@@ -658,34 +684,34 @@ export default class Player {
 
       case 'media': {
         if (this.embeds[id].media) {
-          this.embeds[id].media.idleTimer.refresh();
-          this.embeds[id].media.refreshTimer.refresh();
-          if (this.embeds[id].media.interaction.message.id != interaction.message?.id) {
-            const temp = this.embeds[id].media.interaction;
-            this.embeds[id].media.interaction = undefined;
+          this.embeds[id].media!.idleTimer.refresh();
+          this.embeds[id].media!.refreshTimer.refresh();
+          if (this.embeds[id].media!.interaction!.message!.id != interaction.message?.id) {
+            const temp = this.embeds[id].media!.interaction!;
+            this.embeds[id].media!.interaction = undefined;
             (async () => this.decommission(temp, type, embed))();
           }
-          this.embeds[id].media.interaction = interaction;
+          this.embeds[id].media!.interaction = interaction;
         } else {
           this.embeds[id].media = {
             interaction: interaction,
             idleTimer: setTimeout(async () => {
-              clearInterval(this.embeds[id].media.refreshTimer);
-              await this.decommission(this.embeds[id].media.interaction, 'media', await this.mediaEmbed(false));
+              clearInterval(this.embeds[id].media!.refreshTimer);
+              await this.decommission(this.embeds[id].media!.interaction!, 'media', await this.mediaEmbed(false));
               delete this.embeds[id].media;
               if (!Object.keys(this.embeds[id]).length) { delete this.embeds[id]; }
             }, 870000).unref(),
             refreshTimer: setInterval(() => {
-              this.embeds[id].media.update(id, 'interval');
+              this.embeds[id].media!.update(id, 'interval');
             }, 15000).unref(),
-            update: async function(userId, description, content) {
+            update: async (userId:string, description:string, content?:InteractionUpdateOptions) => {
               content ||= await this.mediaEmbed(false);
               logDebug(`${name} media: ${description}`);
               const { embeds, components, files } = content;
-              if (!this.embeds[userId].media.interaction.replied && files) {
-                this.embeds[userId].media.interaction.message = await this.embeds[userId].media.interaction.editReply({ embeds: embeds, components: components, files: files });
-              } else { this.embeds[userId].media.interaction.message = await this.embeds[userId].media.interaction.editReply({ embeds: embeds, components: components }); }
-            }.bind(this),
+              if (!this.embeds[userId].media!.interaction!.replied && files) {
+                this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components, files: files });
+              } else { this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components }); }
+            },
           };
         }
         break;
@@ -698,7 +724,7 @@ export default class Player {
     }
   }
 
-  async sync(interaction, type, queueEmbed, mediaEmbed) {
+  async sync(interaction:CommandInteraction | ButtonInteraction, type: 'queue'|'media', queueEmbed:InteractionReplyOptions, mediaEmbed?:InteractionReplyOptions) {
     switch (type) {
       case 'queue': { // strip non-false parameter thing
         Object.keys(this.embeds).map(async (id) => {
@@ -721,7 +747,7 @@ export default class Player {
     if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
   }
 
-  async webSync(type) {
+  async webSync(type: 'queue'|'media') {
     if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
     const keys = Object.keys(this.embeds);
     if (keys.length) {

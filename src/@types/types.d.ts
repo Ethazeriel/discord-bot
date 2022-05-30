@@ -1,13 +1,15 @@
 // I have some vague idea that this might help our IDE with autofill, and if not should help for the eventual typescript migration
 interface Track {
 	goose: {
-		id:string
+		id:string,
+		seek:number,
+		bar:ProgressBarOptions
 	},
   keys: string[],
 	playlists: Record<string, number>,
 	album: {
 		id: string,
-		name:string,
+		name:string | number, // this needs to be able to be a number for shuffle
 		trackNumber:number
 	},
 	artist: {
@@ -24,6 +26,8 @@ interface Track {
 	youtube: youtubeObject,
 	alternates: youtubeObject[],
 	ephemeral?: string
+	pause?: number
+	start?: number
 }
 
 interface youtubeObject {
@@ -71,4 +75,19 @@ interface User {
 		username:string,
 		locale:string
 	}
+}
+
+type ProgressBarOptions = {
+  start?:string,
+  end?:string,
+  barbefore?:string,
+  barafter?:string,
+  head?:string
+}
+
+type PlayerStatus = {
+  tracks: Track[];
+  playhead: number,
+  loop: boolean,
+  paused: boolean,
 }
