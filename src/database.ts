@@ -305,10 +305,10 @@ export async function updateOfficial(id:string, link:string) {
 type DiscordUser = {
   id:string,
   username:string,
-  nickname:string,
+  nickname?:string,
   discriminator:string,
-  guild:string,
-  locale:string
+  guild?:string,
+  locale?:string
 }
 export async function newUser(discord:DiscordUser):Promise<object | undefined> { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
   // inserts a new user object into the database
@@ -351,7 +351,7 @@ export async function getUser(discordid:string):Promise<User | undefined> { // u
   }
 }
 
-export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'locale', data:string, guild?:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
+export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'username', data:string, guild?:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
   await connected();
