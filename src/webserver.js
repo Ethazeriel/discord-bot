@@ -23,59 +23,82 @@ worker.on('message', async (message) => {
             break;
           }
 
-          case 'previous': {
-            await player.prev();
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status });
+          case 'prev': {
+            if (player.getQueue().length) {
+              await player.prev();
+              player.webSync('media');
+              const status = player.getStatus();
+              worker.postMessage({ id:message.id, status:status });
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
           case 'next': {
-            await player.next();
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status });
+            if (player.getQueue().length) {
+              if (player.getNext()) {
+                await player.next();
+                player.webSync('media');
+                const status = player.getStatus();
+                worker.postMessage({ id:message.id, status:status });
+              } else { worker.postMessage({ id:message.id, error:'Queue is over, and not set to loop.' }); } // rework; next on ended queue should restart
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
           case 'jump': {
-            const position = Math.abs(Number(message.parameter));
-            await player.jump(position);
-            player.webSync('media');
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status });
+            if (player.getQueue().length) {
+              const position = Math.abs(Number(message.parameter));
+              await player.jump(position);
+              player.webSync('media');
+              const status = player.getStatus();
+              worker.postMessage({ id:message.id, status:status });
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
           case 'seek': { // copied wholesale from interaction/queue/seek
-            const track = player.getCurrent();
-            const usrtime = validator.escape(validator.stripLow(message.parameter + '')).trim();
-            if (!seekRegex.test(usrtime)) { worker.postMessage({ id:message.id, error:'Invalid timestamp' }); } else {
-              const match = usrtime.match(seekRegex);
-              let time = Number(match[3]);
-              if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
-              if (match[2]) {time = (Number(match[2]) * 60) + time;}
-              if (match[1]) {time = (Number(match[1]) * 3600) + time;}
+            if (player.getQueue().length) {
+              const track = player.getCurrent();
+              if (track) {
+                const usrtime = validator.escape(validator.stripLow(message.parameter + '')).trim();
+                if (!seekRegex.test(usrtime)) { worker.postMessage({ id:message.id, error:'Invalid timestamp' }); } else {
+                  const match = usrtime.match(seekRegex);
+                  let time = Number(match[3]);
+                  if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
+                  if (match[2]) {time = (Number(match[2]) * 60) + time;}
+                  if (match[1]) {time = (Number(match[1]) * 3600) + time;}
 
-              if (time > track.youtube.duration) { worker.postMessage({ id:message.id, error:'Can\'t seek beyond end of track' });} else {
-                await player.seek(time);
-                const status = player.getStatus();
-                worker.postMessage({ id:message.id, status:status });
-              }
-            }
+                  if (time > track.youtube.duration) { worker.postMessage({ id:message.id, error:'Can\'t seek beyond end of track' });} else {
+                    await player.seek(time);
+                    const status = player.getStatus();
+                    worker.postMessage({ id:message.id, status:status });
+                  }
+                }
+              } else { worker.postMessage({ id:message.id, error:'Nothing is playing' }); }
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
           case 'togglePause': {
-            await player.togglePause();
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status });
+            if (player.getQueue().length) {
+              if (player.getCurrent()) {
+                await player.togglePause();
+                player.webSync('media');
+                const status = player.getStatus();
+                worker.postMessage({ id:message.id, status:status });
+              } else { worker.postMessage({ id:message.id, error:'Queue is over, and not set to loop.' }); } // rework; play-pause on ended queue should restart
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
           case 'toggleLoop': {
-            await player.toggleLoop();
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status });
+            if (player.getQueue().length) {
+              const current = player.getCurrent();
+              await player.toggleLoop();
+              player.webSync((current) ? 'queue' : 'media');
+              const status = player.getStatus();
+              worker.postMessage({ id:message.id, status:status });
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
@@ -105,9 +128,13 @@ worker.on('message', async (message) => {
           }
 
           case 'shuffle': {
-            await player.shuffle({ albumAware: (message.parameter == 1) });
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status });
+            if (player.getQueue().length) {
+              const current = player.getCurrent();
+              await player.shuffle({ albumAware: (message.parameter == 1) });
+              player.webSync((current) ? 'queue' : 'media');
+              const status = player.getStatus();
+              worker.postMessage({ id:message.id, status:status });
+            } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
 
