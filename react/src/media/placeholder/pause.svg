@@ -1,0 +1,22 @@
+<svg
+   viewBox="0 0 128 128"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+  <circle
+       style="fill:#ffffff;fill-opacity:1"
+       cx="64"
+       cy="64"
+       r="64" />
+    <rect
+       style="display:inline;fill:currentColor;fill-opacity:1"
+       width="15.874998"
+       height="56.885414"
+       x="36.218735"
+       y="35.557293" />
+    <rect
+       style="display:inline;fill:currentColor;fill-opacity:1"
+       width="15.874998"
+       height="56.885414"
+       x="75.906265"
+       y="35.557293" />
+</svg>
