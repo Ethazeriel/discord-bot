@@ -3,6 +3,7 @@ import * as React from 'react';
 import { TrackSmall } from './TrackSmall';
 import type { PlayerClick, PlayerStatus, User } from './types';
 import { StatusBar } from './StatusBar';
+import { MediaBar } from './MediaBar';
 import styled from 'styled-components';
 import DisplaySelect from './DisplaySelect';
 
@@ -110,9 +111,9 @@ export default class App extends React.Component<{}, AppState> {
       return (
         <div className="App">
           <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
+          <MediaBar playerClick={this.playerClick} />
           <ErrorDisplay error={this.state.error} />
           <MainContent>
-            <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
             <DisplaySelect />
           </MainContent>
         </div>
@@ -120,7 +121,7 @@ export default class App extends React.Component<{}, AppState> {
     }
   }
   // <MediaBar playerClick={this.playerClick} />
-  // <QueueSmall playerClick={this.playerClick} queue={this.state.playerStatus} />
+  // <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
 }
 
 class PlayerQueue extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
