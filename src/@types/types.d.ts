@@ -1,7 +1,8 @@
-// I have some vague idea that this might help our IDE with autofill, and if not should help for the eventual typescript migration
 interface Track {
 	goose: {
 		id:string,
+		plays?:number
+		errors?:number
 		seek:number,
 		bar:ProgressBarOptions
 	},

@@ -1,16 +1,16 @@
 export interface Track {
 	goose: {
-		id:string
+		id:string,
 		plays?:number
 		errors?:number
+		seek:number,
+		bar:ProgressBarOptions
 	},
   keys: string[],
-	playlists: {
-		name:number // "name" : "position"
-	},
+	playlists: Record<string, number>,
 	album: {
 		id: string,
-		name:string,
+		name:string | number, // this needs to be able to be a number for shuffle
 		trackNumber:number
 	},
 	artist: {
@@ -25,7 +25,18 @@ export interface Track {
 		duration: number
 	},
 	youtube: youtubeObject,
-	alternates: youtubeObject[]
+	alternates: youtubeObject[],
+	ephemeral?: string
+	pause?: number
+	start?: number
+}
+
+type ProgressBarOptions = {
+  start?:string,
+  end?:string,
+  barbefore?:string,
+  barafter?:string,
+  head?:string
 }
 
 interface youtubeObject {
