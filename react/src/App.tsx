@@ -111,7 +111,7 @@ export default class App extends React.Component<{}, AppState> {
       return (
         <div className="App">
           <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
-          <MediaBar playerClick={this.playerClick} />
+          <MediaBar playerClick={this.playerClick} status={this.state.playerStatus}/>
           <ErrorDisplay error={this.state.error} />
           <MainContent>
             <DisplaySelect />

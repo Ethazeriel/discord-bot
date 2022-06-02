@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 // import type * as CSS from 'csstype';
 import styled from 'styled-components';
-// import { timeDisplay } from './utils';
+import { timeDisplay } from './utils';
 
-import { ReactComponent as Play } from './media/placeholder/play.svg';
-// import { ReactComponent as Pause } from './media/placeholder/pause.svg';
-import { ReactComponent as Prev } from './media/placeholder/prev.svg';
-import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Shuffle } from './media/placeholder/shuffle.svg';
+import { ReactComponent as Prev } from './media/placeholder/prev.svg';
+import { ReactComponent as Play } from './media/placeholder/play.svg';
+import { ReactComponent as Pause } from './media/placeholder/pause.svg';
+import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { Track, PlayerClick } from './types';
+import type { Track, PlayerStatus, PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek';
 
 // declare module 'csstype' {
@@ -22,8 +22,8 @@ type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek
 
 // import './Test.css';
 
-export class MediaBar extends React.Component<{playerClick:(a: PlayerClick) => void}, { value: number }> {
-  constructor(props: {playerClick:(a: PlayerClick) => void}) { // , track: Track;
+export class MediaBar extends React.Component<{playerClick:(action:PlayerClick) => void, status?:PlayerStatus}, { value: number }> {
+  constructor(props: {playerClick:(action:PlayerClick) => void, status?:PlayerStatus}) {
     super(props);
     this.state = {
       value: 52.5,
@@ -31,6 +31,10 @@ export class MediaBar extends React.Component<{playerClick:(a: PlayerClick) => v
     this.mediaClick = this.mediaClick.bind(this);
     this.sliderClick = this.sliderClick.bind(this);
   }
+
+  // shouldComponentUpdate() {
+  //   return (true);
+  // }
 
   mediaClick(action: Action) {
     this.props.playerClick({ action: action });
@@ -42,22 +46,25 @@ export class MediaBar extends React.Component<{playerClick:(a: PlayerClick) => v
 
   render() {
     return (
-      <Bar>
-        <Controls>
+      <MediaContainer>
+        <ButtonRow>
           <Button onClick={() => this.mediaClick('shuffle')}><Shuffle /></Button>
           <Button onClick={() => this.mediaClick('prev')}><Prev /></Button>
           <Button onClick={() => this.mediaClick('togglePause')}><Play /></Button>
           <Button onClick={() => this.mediaClick('next')}><Next /></Button>
           <Button onClick={() => this.mediaClick('toggleLoop')}><Loop /></Button>
-        </Controls>
-        <div><Slider type="range" min="0" max="100" step="0.5" value={this.state.value} onChange={(event) => this.sliderClick(event)} /></div>
-      </Bar>
+        </ButtonRow>
+        <SliderRow>
+          <TimeElapsed status={this.props.status!}/>
+          <Slider type="range" min="0" max="100" step="0.5" value={this.state.value} onChange={(event) => this.sliderClick(event)} />
+        </SliderRow>
+      </MediaContainer>
     );
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const Bar = styled.div`
+const MediaContainer = styled.div`
   position: relative;
   width: 100%;
   height: calc(10vh + 2px);
@@ -70,7 +77,7 @@ const Bar = styled.div`
   overflow: visible;
 `;
 
-const Controls = styled.div`
+const ButtonRow = styled.div`
   height: 54px;
   margin: 4px 0 0 0;
   padding-top: 2px;
@@ -86,10 +93,7 @@ const Controls = styled.div`
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const Button = styled.svg.attrs({
-  version: '1.1',
-  xmlns: 'http://www.w3.org/2000/svg',
-})`
+const Button = styled.svg`
   width: 48px;
   height: 48px;
   margin: 0 2px 0 2px;
@@ -99,6 +103,9 @@ const Button = styled.svg.attrs({
   }
 `;
 
+const SliderRow = styled.div`
+`;
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const Slider = styled.input`
   height: 100%;
@@ -106,10 +113,48 @@ const Slider = styled.input`
   margin: 0;
   padding: 0;
   object-fit: contain;
-  display: block;
+  display: inline;
 
   accent-color: #e736e7;
   &:hover {
     accent-color: #e736c1;
   }
 `;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const TimeStyle = styled.span`
+  
+`;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function TimeElapsed(props:{ status:PlayerStatus }) {
+  console.log('function main');
+  let timer: ReturnType<typeof setInterval>; // oh no
+  const [time, setTime] = React.useState(((Date.now() / 1000) - (props.status?.tracks?.[props.status?.playhead]?.start!)) || 0);
+  const tick = () => {
+    if (props.status && time < props.status.tracks![props.status.playhead]!.youtube.duration) {
+      console.log('tick time');
+      setTime(time + 1);
+    } else {
+      console.log('tick clear');
+      clearInterval(timer);
+    }
+  };
+  useEffect(() => {
+    if (props.status?.paused) {
+      console.log('paused. clearing timer');
+      clearInterval(timer);
+    } else {
+      console.log('unpaused. refreshing timer');
+      timer = setInterval(() => tick(), 1000);
+    }
+    return (() => {
+      console.log('cleanup');
+      clearInterval(timer);
+    });
+  }, [props.status?.paused]);
+  if (!props.status) {
+    return (<TimeStyle>{timeDisplay(0)}</TimeStyle>);
+  } else {
+    return (<TimeStyle>{timeDisplay(time)}</TimeStyle>);
+  }
+}

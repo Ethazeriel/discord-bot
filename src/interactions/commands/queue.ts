@@ -96,7 +96,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed();
               await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
-            } else { await interaction.editReply({ content: 'Queue is over, and not set to loop.' }); } // rework; next on ended queue should restart
+            } else { await interaction.editReply({ content: 'Queue is over, and not set to loop.' }); } // TODO: next on ended queue should restart
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
@@ -140,7 +140,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed();
               await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
-            } else { await interaction.editReply({ content: 'Queue is over.' }); } // rework; play-pause on ended queue should restart
+            } else { await interaction.editReply({ content: 'Queue is over.' }); } // TODO: play-pause on ended queue should restart
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
@@ -178,9 +178,9 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
         }
 
         case 'remove': {
-          if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
+          if (player.getQueue().length) { // TODO: don\'t correct for input of 0, give error instead. also allow for removing range
             const position = Math.abs((interaction.options.getInteger('position') || 1) - 1);
-            const removed = await player.remove(position); // we'll be refactoring remove later
+            const removed = await player.remove(position);
             await interaction.editReply({ content: (removed.length) ? `Removed: ${(removed[0].spotify.name || removed[0].youtube.name)}` : 'Remove failed. Most likely your input is too high.' });
 
             if (position == player.getPlayhead()) {

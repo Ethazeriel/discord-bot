@@ -3,7 +3,7 @@ export interface Track {
 		id:string,
 		plays?:number
 		errors?:number
-		seek:number,
+		seek?:number,
 		bar:ProgressBarOptions
 	},
   keys: string[],
