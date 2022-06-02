@@ -58,9 +58,9 @@ function PlaylistDisplay() {
     });
   };
 
-  const listoptions = [<option value='' disabled >Pick a playlist...</option>];
+  const listoptions = [<option value='' disabled key='' >Pick a playlist...</option>];
   for (const listname of playlists) {
-    listoptions.push(<option value={listname}>{listname}</option>);
+    listoptions.push(<option value={listname} key={listname}>{listname}</option>);
   }
   return (
     <>

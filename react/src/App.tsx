@@ -114,6 +114,7 @@ export default class App extends React.Component<{}, AppState> {
           <MediaBar playerClick={this.playerClick} status={this.state.playerStatus}/>
           <ErrorDisplay error={this.state.error} />
           <MainContent>
+            <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
             <DisplaySelect />
           </MainContent>
         </div>
