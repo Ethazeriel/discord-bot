@@ -66,7 +66,7 @@ export async function getTrack(query:object):Promise<Track | undefined> {
   key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
   */
 
-export async function insertTrack(track:Track & { ephemeral:string | undefined }):Promise<object | undefined> {
+export async function insertTrack(track:Track & { ephemeral?:string }):Promise<object | undefined> {
   // inserts a single track object into the database
   await connected();
   try {

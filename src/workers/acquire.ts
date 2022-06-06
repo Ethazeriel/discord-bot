@@ -1,18 +1,19 @@
 import fs from 'fs';
-import axios from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import ytdl from 'ytdl-core';
 import crypto from 'crypto';
 import * as db from '../database.js';
 import { logLine, logSpace, logDebug } from '../logger.js';
-const { spotify, youtube } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+import { fileURLToPath } from 'url';
+const { spotify, youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { youtubePattern, spotifyPattern, sanitize } from '../regexes.js';
 
 import { parentPort } from 'worker_threads';
 
-parentPort.on('message', async data => {
+parentPort!.on('message', async data => {
   if (data.action === 'search') {
     const tracks = await fetch(data.search);
-    parentPort.postMessage({ tracks:tracks, id:data.id });
+    parentPort!.postMessage({ tracks:tracks, id:data.id });
   } else if (data.action === 'exit') {
     logLine('info', ['Worker exiting']);
     await db.closeDB();
@@ -33,7 +34,7 @@ spotify.auth = {
   timeout: 10000,
 };
 
-async function fetch(search) {
+async function fetch(search:string) {
   logDebug('In worker!');
   search = search.replace(sanitize, ''); // destructive removal of invalid symbols
   search = search.trim(); // remove leading and trailing spaces
@@ -46,18 +47,18 @@ async function fetch(search) {
 }
 
 // search will be sanitized
-async function fromSpotify(search, partial = false) {
+async function fromSpotify(search:string, partial = false) {
   logLine('info', [`fromSpotify search= '${search}'`]);
 
-  const is = {
+  const is:{playlist:undefined | true, album:undefined | true, track:undefined | true} = {
     playlist : undefined,
     album : undefined,
     track : undefined,
   };
-  let match;
+  let match:RegExpMatchArray | null = null;
   if (spotifyPattern.test(search)) {
     match = search.match(spotifyPattern);
-    is[match[1]] = true;
+    is[match![1] as 'playlist' | 'album' | 'track'] = true;
   }
 
   {
@@ -75,10 +76,11 @@ async function fromSpotify(search, partial = false) {
     }
   }
 
-  const { data : spotifyCredentials } = await axios(spotify.auth).catch(error => {
+  const spotifyCredentialsAxios:null | AxiosResponse<any> = await axios(spotify.auth).catch(error => {
     logLine('error', ['spotifyAuth: ', `headers: ${error.response.headers}`, error.stack]);
     return (null);
   });
+  const spotifyCredentials = spotifyCredentialsAxios!.data
 
   const fields = {
     playlist : '?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,duration_ms))',
@@ -88,7 +90,7 @@ async function fromSpotify(search, partial = false) {
   };
 
   const spotifyQuery = {
-    url: `${(match) ? `https://api.spotify.com/v1/${match[1]}s/${match[2]}${fields[match[1]]}` : `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`}`,
+    url: `${(match) ? `https://api.spotify.com/v1/${match[1]}s/${match[2]}${fields[match![1] as 'playlist']}` : `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`}`,
     method: 'get',
     headers: {
       'Accept': 'application/json',
@@ -98,18 +100,25 @@ async function fromSpotify(search, partial = false) {
     timeout: 10000,
   };
 
-  const { data : spotifyResult } = await axios(spotifyQuery).catch(error => {
+  const spotifyResultAxios = await axios(spotifyQuery as AxiosRequestConfig).catch(error => {
     logLine('error', ['spotifyQuery: ', error.stack]);
     return (null);
   });
+  const spotifyResult = spotifyResultAxios!.data
 
   logSpace();
 
   let i = 0;
   let promises = [];
-  const tracksInfo = [];
+  type TrackInfo = {
+    id:string
+    title: string | null
+    artist: string | null
+    query?:string
+  }
+  const tracksInfo:TrackInfo[] = [];
   do {//                               playlist                                 || album, text                       || track
-    const id = (is.track) ? match[2] : spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
+    const id = (is.track) ? match![2] : spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
     tracksInfo[i] = {
       id: id,
       title: (id) ? spotifyResult.tracks?.items?.[i]?.track?.name || spotifyResult.tracks?.items?.[i]?.name || spotifyResult.name : null,
@@ -120,8 +129,8 @@ async function fromSpotify(search, partial = false) {
   } while (i < spotifyResult?.tracks?.items?.length);
 
   i = 0;
-  const tracks = [];
-  await Promise.allSettled(promises).then(values => {
+  const tracks:any[] = [];
+  await Promise.allSettled(promises).then((values:any) => {
     do {
       if (values[i]?.status == 'rejected') {
         logLine('error', ['db.getTrack by spotify info promise rejected,', `search: ${search}`, `for [${i}]= ${tracksInfo[i].title}`]);
@@ -167,7 +176,7 @@ async function fromSpotify(search, partial = false) {
         timeout: 10000,
       };
 
-      promises[i] = axios(youtubeQuery).catch(error => {
+      promises[i] = axios(youtubeQuery as AxiosRequestConfig).catch(error => {
         logLine('error', [`[${i}] youtube query: ${query}`, error.stack]);
       });
     }
@@ -176,8 +185,8 @@ async function fromSpotify(search, partial = false) {
 
   logSpace();
 
-  const youtubeResults = [];
-  await Promise.allSettled(promises).then(values => {
+  const youtubeResults:any[] = [];
+  await Promise.allSettled(promises).then((values:any) => {
     for (i = 0; i < values.length; i++) {
       if (values[i].value) {
         if (values[i].status == 'fulfilled') {
@@ -199,7 +208,7 @@ async function fromSpotify(search, partial = false) {
     }
   }
 
-  await Promise.allSettled(promises).then(values => {
+  await Promise.allSettled(promises).then((values:any) => {
     for (i = 0; i < values.length; i++) {
       if (values[i]) {
         if (values[i].status == 'fulfilled') {
@@ -209,7 +218,7 @@ async function fromSpotify(search, partial = false) {
             tracks[i] = values[i].value;
           }
         } else {
-          logLine('error', ['db.getTrack by youtube.id promise rejected,', `***\nyoutubeResult: ${JSON.stringify(youtubeResults[i], '', 2)}`, `spotifyResult: ${JSON.stringify(spotifyResult.tracks.items[i], '', 2)}\n***`]);
+          logLine('error', ['db.getTrack by youtube.id promise rejected,', `***\nyoutubeResult: ${JSON.stringify(youtubeResults[i], null, 2)}`, `spotifyResult: ${JSON.stringify(spotifyResult.tracks.items[i], null, 2)}\n***`]);
         }
       }
     }
@@ -219,7 +228,7 @@ async function fromSpotify(search, partial = false) {
   promises = [];
   do {
     if (!tracks[i]) {
-      const track = {
+      const track:any = {
         'keys' : (match || partial) ? [] : [search],
         'playlists': {},
         'album' : {
@@ -286,7 +295,7 @@ async function fromSpotify(search, partial = false) {
           await db.insertTrack(track);
         })());
       } catch (error) {
-        logLine('error', ['ytdl, likely track not inserted', `***\n[${i}] ${tracksInfo[i].title}:\n${JSON.stringify(youtubeResults, '', 2)}\n***`]);
+        logLine('error', ['ytdl, likely track not inserted', `***\n[${i}] ${tracksInfo[i].title}:\n${JSON.stringify(youtubeResults, null, 2)}\n***`]);
       }
     }
     i++;
@@ -298,17 +307,17 @@ async function fromSpotify(search, partial = false) {
 }
 
 // search will be sanitized, and have passed youtubePattern.test();
-async function fromYoutube(search) {
+async function fromYoutube(search:string) {
   logLine('info', [`fromYoutube search= '${search}'`]);
 
   const match = search.match(youtubePattern);
-  let track = await db.getTrack({ 'youtube.id': match[2] });
+  let track = await db.getTrack({ 'youtube.id': match![2] });
 
   if (track) {
     logLine('fetch', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
     return (Array(track));
   } else {
-    const ytdlResult = await ytdl.getBasicInfo(match[2], { requestOptions: { family:4 } }).catch(err => {
+    const ytdlResult = await ytdl.getBasicInfo(match![2], { requestOptions: { family:4 } }).catch(err => {
       // const error = new Error('message to user', { cause: err });
       logLine('error', ['fromYoutube, ytdl', err.stack]);
       throw err;
@@ -319,14 +328,14 @@ async function fromYoutube(search) {
 
     [track] = await fromSpotify(query, true);
 
-    if (track.youtube.id) {
+    if (track!.youtube.id) {
       // complete track, different id. null keys, playlists and spotify album, artist and track ids
 
-      track.keys.length = 0;
-      track.playlists = {};
-      track.album.id = null;
-      track.artist.id = null;
-      track.spotify.id.length = 0;
+      track!.keys.length = 0;
+      track!.playlists = {};
+      track!.album.id = null;
+      track!.artist.id = null;
+      track!.spotify.id.length = 0;
     }
 
     let id = crypto.randomBytes(5).toString('hex');
@@ -334,18 +343,18 @@ async function fromYoutube(search) {
       id = crypto.randomBytes(5).toString('hex');
     }
 
-    track.goose = {
+    track!.goose = {
       id: id,
     };
     logDebug(`[0] assigned id: ${id}`);
 
-    track.youtube = {
-      id: match[2],
+    track!.youtube = {
+      id: match![2],
       name: ytdlResult.videoDetails.title,
       art: ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url,
       duration: Number(ytdlResult.videoDetails.lengthSeconds),
     };
-
+    if (!track) {return;} // satisfies typescript; we know we should have a track at this point
     await db.insertTrack(track);
 
     return (Array(track));

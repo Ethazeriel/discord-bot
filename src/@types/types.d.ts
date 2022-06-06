@@ -3,18 +3,18 @@ interface Track {
 		id:string,
 		plays?:number
 		errors?:number
-		seek:number,
-		bar:ProgressBarOptions
+		seek?:number,
+		bar?:ProgressBarOptions
 	},
   keys: string[],
 	playlists: Record<string, number>,
 	album: {
-		id: string,
+		id: string | null,
 		name:string | number, // this needs to be able to be a number for shuffle
 		trackNumber:number
 	},
 	artist: {
-		id: string,
+		id: string | null,
 		name: string,
 		official: string // url link to official site, if !official then bandcamp, etc
 	},
