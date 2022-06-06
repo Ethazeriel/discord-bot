@@ -3,14 +3,15 @@ import { logDebug } from './logger.js';
 import Player from './player.js';
 import { seekTime as seekRegex } from './regexes.js';
 import validator from 'validator';
+import { fileURLToPath } from 'url';
 
-let worker = new Worker(new URL('./workers/webserver.js', import.meta.url), { workerData:{ name:'WebServer' } });
+let worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 worker.on('exit', code => {
   logDebug(`Worker exited with code ${code}.`);
-  worker = new Worker(new URL('./workers/webserver.js', import.meta.url), { workerData:{ name:'WebServer' } });
+  worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 }); // if it exits just spawn a new one because that's good error handling, yes
 
-worker.on('message', async (message) => {
+worker.on('message', async (message:WebWorkerMessage) => {
 
   switch (message.type) {
     case 'player': {
@@ -63,10 +64,10 @@ worker.on('message', async (message) => {
                 const usrtime = validator.escape(validator.stripLow(message.parameter + '')).trim();
                 if (!seekRegex.test(usrtime)) { worker.postMessage({ id:message.id, error:'Invalid timestamp' }); } else {
                   const match = usrtime.match(seekRegex);
-                  let time = Number(match[3]);
-                  if (match[1] && !match[2]) { match[2] = match[1], match[1] = null; }
-                  if (match[2]) {time = (Number(match[2]) * 60) + time;}
-                  if (match[1]) {time = (Number(match[1]) * 3600) + time;}
+                  let time = Number(match![3]);
+                  if (match![1] && !match![2]) { match![2] = match![1], match![1] = '0'; }
+                  if (match![2]) {time = (Number(match![2]) * 60) + time;}
+                  if (match![1]) {time = (Number(match![1]) * 3600) + time;}
 
                   if (time > track.youtube.duration) { worker.postMessage({ id:message.id, error:'Can\'t seek beyond end of track' });} else {
                     await player.seek(time);
@@ -139,7 +140,7 @@ worker.on('message', async (message) => {
           }
 
           default:
-            logDebug('Hit webserver player message default case,', JSON.stringify(message, '', 2));
+            logDebug('Hit webserver player message default case,', JSON.stringify(message, null, 2));
             worker.postMessage({ id:message.id, error:'Invalid player action' });
             break;
         }
@@ -148,13 +149,13 @@ worker.on('message', async (message) => {
     }
 
     default:
-      logDebug('Hit webserver worker default case,', JSON.stringify(message, '', 2));
+      logDebug('Hit webserver worker default case,', JSON.stringify(message, null, 2));
       worker.postMessage({ id:message.id, error:'Invalid server action' });
       break;
   }
 });
 
-export async function sendWebUpdate(type, data) {
+export async function sendWebUpdate(type:'player', data:PlayerStatus) {
   if (type === 'player') {
     worker.postMessage({ action: 'websync', queue:data });
   }

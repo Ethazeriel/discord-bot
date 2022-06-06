@@ -10,12 +10,14 @@ import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord, spotify } = JSON.parse(fs.readFileSync(new URL('../../config.json', import.meta.url)));
+const { discord, spotify } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import * as oauth2 from '../oauth2.js';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
+import type { WebSocket } from 'ws';
 
-parentPort.on('message', async data => {
+
+parentPort!.on('message', async data => {
   if (data.action === 'exit') {
     logLine('info', ['Worker exiting']);
     await db.closeDB();
@@ -42,7 +44,7 @@ app.use(cookieParser(discord.secret));
 app.get('/', (req, res) => {
   logLine(req.method, [req.originalUrl]);
   // logLine('get', [`Endpoint ${chalk.blue('/')}`]);
-  res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url)));
+  res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString()));
 });
 
 // minimum requirements for endpoints
@@ -63,18 +65,18 @@ app.get('/load', async (req, res) => {
   const webId = req.signedCookies.id;
   logDebug(`Client load event with id ${webId}`);
   if (webId && webIdRegex.test(webId)) {
-    const user = await db.getUserWeb(webId);
+    const user:WebUser & {player?:PlayerStatus} | undefined = await db.getUserWeb(webId);
     if (user) {
       const id = crypto.randomBytes(5).toString('hex');
-      parentPort.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id });
-      const messageAction = (result) => {
+      parentPort!.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id });
+      const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
           if (!result.error) { user.player = result.status; }
           res.json({ user: user, player:result.status });
-          parentPort.removeListener('message', messageAction);
+          parentPort!.removeListener('message', messageAction);
         }
       };
-      parentPort.on('message', messageAction);
+      parentPort!.on('message', messageAction);
     } else { res.json({ user: { status: 'new' } }); }
   } else {
     // this user doesn't have a cookie or their cookie isn't valid
@@ -89,10 +91,10 @@ app.get('/oauth2', async (req, res) => {
   logLine(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('This function requires a client ID cookie'); } else {
-    const type = validator.escape(validator.stripLow((req.query?.type?.replace(sanitize, '') || ''))).trim(); // should always have this
+    const type = validator.escape(validator.stripLow(((req.query?.type as string)?.replace(sanitize, '') || ''))).trim(); // should always have this
     const idHash = crypto.createHash('sha256').update(webId).digest('hex'); // hash of the client's id to use for the oauth CSRF check
-    const code = validator.escape(validator.stripLow(req.query?.code?.replace(sanitize, '') || '')).trim(); // only exists after the client approves, so use this to know what stage we're at
-    const state = validator.escape(validator.stripLow(req.query?.state?.replace(sanitize, '') || '')).trim(); // only exists after client approval, use this to check for CSRF
+    const code = validator.escape(validator.stripLow((req.query?.code as string)?.replace(sanitize, '') || '')).trim(); // only exists after the client approves, so use this to know what stage we're at
+    const state = validator.escape(validator.stripLow((req.query?.state as string)?.replace(sanitize, '') || '')).trim(); // only exists after client approval, use this to check for CSRF
     switch (type) {
       case 'discord': {
         if (!code) {
@@ -161,7 +163,7 @@ app.get('/playlists', async (req, res) => {
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
     if (!user) { res.status(401).send('User not authenticated'); } else {
-      res.json(Array.from(await db.listPlaylists()));
+      res.json(Array.from((await db.listPlaylists())!.values()));
     }
   }
 });
@@ -174,14 +176,14 @@ app.get('/player-:playerId([0-9]{18})', async (req, res) => {
     const user = await db.getUserWeb(webId);
     if (!user) { res.status(401).send('User not authenticated'); } else {
       const id = crypto.randomBytes(5).toString('hex');
-      parentPort.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
-      const messageAction = (result) => {
+      parentPort!.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
+      const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
           res.json(result);
-          parentPort.removeListener('message', messageAction);
+          parentPort!.removeListener('message', messageAction);
         }
       };
-      parentPort.on('message', messageAction);
+      parentPort!.on('message', messageAction);
     }
   }
 });
@@ -198,14 +200,14 @@ app.post('/player', async (req, res) => {
       logLine(req.method, [req.originalUrl, chalk.green(action)]);
       // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
       const id = crypto.randomBytes(5).toString('hex');
-      parentPort.postMessage({ type:'player', action:action, parameter:parameter, id:id, userId: user.discord.id });
-      const messageAction = (result) => {
+      parentPort!.postMessage({ type:'player', action:action, parameter:parameter, id:id, userId: user.discord.id });
+      const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
           res.json(result);
-          parentPort.removeListener('message', messageAction);
+          parentPort!.removeListener('message', messageAction);
         }
       };
-      parentPort.on('message', messageAction);
+      parentPort!.on('message', messageAction);
     } else { res.status(401).json({ error: 'You need to authenticate with Discord.' }); }
   } else { res.status(400).json({ error: 'ID Cookie not set or invalid.' }); }
 });
@@ -218,8 +220,8 @@ const httpServer = app.listen(port, () => {
   logLine('info', [`Web server active at http://localhost:${port}`]);
 });
 
-const wss = new WebSocketServer({ server: httpServer, clientTracking: true });
-app.on('upgrade', (request, socket, head) => {
+const wss = new WebSocketServer<WebSocket & {isAlive:boolean}>({ server: httpServer, clientTracking: true });
+httpServer.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     logDebug('WebSocket upgrade event—have not tested if this works.');
     wss.emit('connection', ws, request);
@@ -240,7 +242,7 @@ const wssInterval = setInterval(() => {
 }, 15000);
 wss.on('connection', async (ws, req) => {
   // let debug;
-  const cookies = cookie.parse(req.headers.cookie)?.['id'];
+  const cookies = cookie.parse(req.headers.cookie!)?.['id'];
   if (cookies) {
     const webId = cookieParser.signedCookie(cookies, discord.secret);
     if (webId && webIdRegex.test(webId)) {
@@ -258,7 +260,7 @@ wss.on('connection', async (ws, req) => {
   ws.on('close', () => {
     // logDebug(`WebSocket closed by ${(debug) ? debug.discord.username : 'non-auth client'}—clients' size: ${wss.clients.size}`);
   });
-  ws.on('pong', function() {
+  ws.on('pong', function(this:WebSocket & {isAlive?:boolean}) {
     this.isAlive = true;
     // logDebug(`WebSocket Pong from ${(debug) ? debug.discord.username : 'non-auth client'}—isAlive: ${this.isAlive}`);
   });
@@ -268,7 +270,7 @@ wss.on('close', () => {
   clearInterval(wssInterval);
 });
 
-parentPort.on('message', async data => {
+parentPort!.on('message', async data => {
   if (data.action === 'websync') {
     const message = { type:'playerStatus', queue:data.queue };
     for (const ws of wss.clients) {

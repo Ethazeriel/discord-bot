@@ -421,14 +421,14 @@ export async function getStash(discordid:string) { // usage: const result = awai
   }
 }
 
-export async function getUserWeb(webid:string) {
+export async function getUserWeb(webid:string):Promise<WebUser | undefined> {
   // functions like getUser, but takes a web client ID and only returns basic user info - not everything we have
   await connected();
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.findOne({ webClientId: webid }, { projection: { _id: 0 } });
     if (result && Object.keys(result).length) {
-      const basicuser = {
+      const basicuser:WebUser = {
         discord: {
           id: result.discord.id,
           username: result.discord.username.current,
@@ -438,7 +438,7 @@ export async function getUserWeb(webid:string) {
         status: 'known',
       };
       return basicuser;
-    } else { return null; }
+    } else { return undefined; }
   } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
