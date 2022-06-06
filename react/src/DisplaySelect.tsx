@@ -1,6 +1,7 @@
 import * as React from 'react';
 import type { Track } from './types';
 import BasicTrack from './BasicTrack';
+import TrackEditor from './TrackEditor';
 
 export default function DisplaySelect() {
   const [selValue, setSelValue] = React.useState('playlist');
@@ -19,6 +20,7 @@ export default function DisplaySelect() {
       <select name="whichcontent" value={selValue} onChange={onChange}>
         <option value="playlist">Bot Playlist</option>
         <option value="spotify">Spotify Content</option>
+        <option value="track">Track Editor</option>
       </select>
       <ContentContainer content={selValue} />
     </div>
@@ -28,8 +30,10 @@ export default function DisplaySelect() {
 function ContentContainer(props: {content:string}) { // naming things is hard ok
   if (props.content === 'playlist') {
     return <PlaylistDisplay />;
-  } else {
+  } else if (props.content === 'spotify') {
     return <SpotifyDisplay />;
+  } else {
+    return <TrackEditor />;
   }
 }
 
