@@ -92,3 +92,62 @@ type PlayerStatus = {
   loop: boolean,
   paused: boolean,
 }
+
+interface Track2 {
+	goose: {
+		id: string
+		plays?: number
+		errors?: number
+		album: {
+			name: string
+			trackNumber: number
+		}
+		artist: {
+			name: string
+			official: string
+		}
+		track: {
+			name: string
+			duration: number
+			art: string
+		}
+	}
+	youtube: Array<Track2YoutubeSource>
+	keys: Array<string>
+	playlists: Record<string, number>
+	bar?: ProgressBarOptions
+	spotify?: Track2Source
+	amazon?: Track2Source
+	itunes?: Track2Source
+	status: {
+		seek?: number
+		ephemeral?: string
+		pause?: number
+		start?: number
+	}
+}
+
+interface Track2Source {
+	id: Array<string>
+	name: string
+	art: string
+	duration: number
+	url: string
+	album: {
+		id: string
+		name: string
+		trackNumber: number
+	}
+	artist: {
+		id: string
+		name: string
+	}
+}
+
+interface Track2YoutubeSource {
+  id: string
+  name: string
+  art: string
+  duration: number
+	url: string
+}
