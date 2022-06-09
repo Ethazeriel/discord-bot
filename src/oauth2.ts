@@ -8,7 +8,7 @@ const usercol = mongo.usercollection;
 import chalk from 'chalk';
 import { APIUser } from 'discord-api-types/v9';
 
-export async function flow(type:'discord' | 'spotify', code:string, webClientId:string):Promise<boolean>  {
+export async function flow(type:'discord' | 'spotify', code:string, webClientId:string):Promise<boolean> {
 
   let tokenconfig;
   switch (type) {
@@ -34,7 +34,7 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
     default:{ return false; }
   }
 
-  let AxToken:void | AxiosResponse<AccessTokenResponse> = await axios({
+  const AxToken:void | AxiosResponse<AccessTokenResponse> = await axios({
     url: tokenconfig.url,
     method: 'post',
     headers: tokenconfig.headers,
@@ -65,7 +65,7 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
 
       default:{ return false; }
     }
-    let AxUser:void | AxiosResponse<any> = await axios({
+    const AxUser:void | AxiosResponse<any> = await axios({
       url: userconfig.url,
       method: 'get',
       headers: {
@@ -123,63 +123,63 @@ async function updateToken(user:User, type:'discord' | 'spotify') {
     case 'spotify': { timeout = 1800000; break;} // token lasts one hour, so use half hour as timeout
   }
   if (user.tokens && user.tokens[type]) {
-  if ((user.tokens[type]!.expiry - Date.now()) < timeout) {
+    if ((user.tokens[type]!.expiry - Date.now()) < timeout) {
 
-    let tokenconfig;
-    switch (type) {
-      case 'discord': {
-        tokenconfig = {
-          url: 'https://discord.com/api/v9/oauth2/token',
-          data: `client_id=${discord.client_id}&client_secret=${discord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord!.renew}`,
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      let tokenconfig;
+      switch (type) {
+        case 'discord': {
+          tokenconfig = {
+            url: 'https://discord.com/api/v9/oauth2/token',
+            data: `client_id=${discord.client_id}&client_secret=${discord.secret}&grant_type=refresh_token&refresh_token=${user.tokens.discord!.renew}`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          };
+          break;}
+
+        case 'spotify': {
+          tokenconfig = {
+            url: 'https://accounts.spotify.com/api/token',
+            data:`grant_type=refresh_token&refresh_token=${user.tokens.spotify!.renew}`,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
+            },
+          };
+          break;}
+      }
+
+      const newtoken:void | AxiosResponse<AccessTokenResponse> = await axios({
+        url: tokenconfig.url,
+        method: 'post',
+        headers: tokenconfig.headers,
+        data: tokenconfig.data,
+        timeout: 10000,
+      }).catch(error => {
+        logLine('error', ['Oauth2: ', error.stack, error?.data]);
+        return;
+      });
+      if (newtoken?.data) {
+        const tokendata = newtoken.data;
+        const token = {
+          access:tokendata.access_token,
+          renew:(type === 'spotify') ? user.tokens.spotify!.renew : tokendata.refresh_token, // spotify doesn't give us new refresh tokens
+          expiry: ((Date.now() - 1000) + (tokendata.expires_in * 1000)),
+          scope:tokendata.scope,
         };
-        break;}
-
-      case 'spotify': {
-        tokenconfig = {
-          url: 'https://accounts.spotify.com/api/token',
-          data:`grant_type=refresh_token&refresh_token=${user.tokens.spotify!.renew}`,
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
-          },
-        };
-        break;}
+        await db.connected();
+        const userdb = db.db.collection(usercol);
+        const target = `tokens.${type}`;
+        await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ [target]:token } });
+        logLine('database', [`Renewed Oauth2 token type ${type} for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
+        return token.access;
+      }
+    } else {
+      logDebug('token still valid - skipping renewal');
+      return user.tokens[type]!.access;
     }
-
-    let newtoken:void | AxiosResponse<AccessTokenResponse> = await axios({
-      url: tokenconfig.url,
-      method: 'post',
-      headers: tokenconfig.headers,
-      data: tokenconfig.data,
-      timeout: 10000,
-    }).catch(error => {
-      logLine('error', ['Oauth2: ', error.stack, error?.data]);
-      return;
-    });
-    if (newtoken?.data) {
-      const tokendata = newtoken.data;
-      const token = {
-        access:tokendata.access_token,
-        renew:(type === 'spotify') ? user.tokens.spotify!.renew : tokendata.refresh_token, // spotify doesn't give us new refresh tokens
-        expiry: ((Date.now() - 1000) + (tokendata.expires_in * 1000)),
-        scope:tokendata.scope,
-      };
-      await db.connected();
-      const userdb = db.db.collection(usercol);
-      const target = `tokens.${type}`;
-      await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ [target]:token } });
-      logLine('database', [`Renewed Oauth2 token type ${type} for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
-      return token.access;
-    }
-  } else {
-    logDebug('token still valid - skipping renewal');
-    return user.tokens[type]!.access;
-  }
   }
 }
 
-async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expires:string, user:APIUser }, webClientId:string):Promise<void>  {
+async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expires:string, user:APIUser }, webClientId:string):Promise<void> {
   // first pass - consider revising - I'm not thinking super clearly right now
   await db.connected();
   try {
@@ -190,14 +190,14 @@ async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expire
       expiry:Date.parse(userdata.expires),
       scope:authtoken.scope,
     };
-    const result = await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ 'tokens.discord':token }, $addToSet:{ webClientId:webClientId } });
+    await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ 'tokens.discord':token }, $addToSet:{ webClientId:webClientId } });
     logLine('database', [`Saving Oauth2 token for ${chalk.blue(userdata.user.id)}: expires ${chalk.green(token.expiry)}`]);
   } catch (error:any) {
     logLine('error', ['database error:', error.stack]);
   }
 }
 
-async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:string):Promise<void>  {
+async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:string):Promise<void> {
   // intended to be called by the webserver oauth flow - arguments are the auth and data object returned by the discord api
   // first pass - consider revising - I'm not thinking super clearly right now
   await db.connected();
@@ -209,7 +209,7 @@ async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:strin
       expiry:((Date.now() - 10000) + (authtoken.expires_in * 1000)), // I'm not sure this logic makes a ton of sense
       scope:authtoken.scope,
     };
-    const result = await userdb.updateOne({ webClientId: webClientId }, { $set:{ 'tokens.spotify':token } });
+    await userdb.updateOne({ webClientId: webClientId }, { $set:{ 'tokens.spotify':token } });
     logLine('database', [`Saving spotify Oauth2 token: expires ${chalk.green(token.expiry)}`]);
   } catch (error:any) {
     logLine('error', ['database error:', error.stack]);

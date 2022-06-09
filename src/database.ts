@@ -276,7 +276,7 @@ export async function listPlaylists():Promise<Set<string> | undefined> {
   }
 }
 
-export async function logPlay(id:string, success:boolean = true):Promise<void> {
+export async function logPlay(id:string, success = true):Promise<void> {
   await connected();
   try {
     const tracks = db.collection(trackcol);

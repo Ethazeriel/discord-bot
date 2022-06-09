@@ -1,4 +1,3 @@
-import { APIMessage } from 'discord-api-types';
 import { embedPage } from '../../regexes.js';
 import Workspace from '../../workspace.js';
 import { ButtonInteraction, GuildMember, InteractionDeferUpdateOptions, WebhookEditMessageOptions } from 'discord.js';

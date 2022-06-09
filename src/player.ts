@@ -16,9 +16,9 @@ import type { APIMessage } from 'discord-api-types';
 
 export default class Player {
 
-  //type definitions
-  queue:PlayerStatus
-  guildID:string
+  // type definitions
+  queue:PlayerStatus;
+  guildID:string;
   embeds:Record<string, {
     queue?: {
       userPage:number
@@ -36,9 +36,9 @@ export default class Player {
       refreshTimer:NodeJS.Timeout
       update:(userId:string, description:string, content?:InteractionUpdateOptions) => void
     }
-  }>
-  listeners:Set<string>
-  player:AudioPlayer
+  }>;
+  listeners:Set<string>;
+  player:AudioPlayer;
   // acquisition
   static #players:Record<string, Player> = {};
   constructor(interaction:CommandInteraction | ButtonInteraction) {
@@ -215,7 +215,7 @@ export default class Player {
     const connection = getVoiceConnection(interaction.guild!.id);
     if (connection) {
       const userChannel = (interaction.member as GuildMember).voice.channelId;
-      const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel: null;
+      const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel : null;
       const isAlone = botChannel?.members?.size == 1;
 
       if (userChannel == botChannel || isAlone) {

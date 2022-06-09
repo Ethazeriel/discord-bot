@@ -80,7 +80,7 @@ async function fromSpotify(search:string, partial = false) {
     logLine('error', ['spotifyAuth: ', `headers: ${error.response.headers}`, error.stack]);
     return (null);
   });
-  const spotifyCredentials = spotifyCredentialsAxios!.data
+  const spotifyCredentials = spotifyCredentialsAxios!.data;
 
   const fields = {
     playlist : '?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,duration_ms))',
@@ -104,7 +104,7 @@ async function fromSpotify(search:string, partial = false) {
     logLine('error', ['spotifyQuery: ', error.stack]);
     return (null);
   });
-  const spotifyResult = spotifyResultAxios!.data
+  const spotifyResult = spotifyResultAxios!.data;
 
   logSpace();
 

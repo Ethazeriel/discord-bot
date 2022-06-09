@@ -5,7 +5,7 @@ import Canvas from 'canvas';
 import crypto from 'crypto';
 import axios, { AxiosResponse } from 'axios';
 import * as db from './database.js';
-import type { ISearchResult, IArtist, IArtistMatch, IArtistList } from 'musicbrainz-api'
+import type { IArtist, IArtistList } from 'musicbrainz-api';
 
 export function progressBar(size:number, duration:number, playhead:number, { start, end, barbefore, barafter, head }:ProgressBarOptions = {}):string {
   start ??= '[';
@@ -37,12 +37,12 @@ export function pickPride<T extends boolean>(type:'heart' | 'dab' | 'fish', deta
   }
   const prideStr = 'https://ethazeriel.net/pride/sprites/' + type + '_' + ranpride + '.png';
   if (detail === true) {
-    return {
+    return <PrideResponse<T>>{
       url:prideStr,
       name:ranpride,
-    } as PrideResponse<T>;
+    };
   }
-  return prideStr as PrideResponse<T>;
+  return <PrideResponse<T>>prideStr;
 }
 
 export async function prideSticker(interaction:CommandInteraction, type:'heart' | 'dab' | 'fish'):Promise<void> {
@@ -104,7 +104,7 @@ export async function generateTrackEmbed(track:Track, messagetitle:string):Promi
       url: 'attachment://art.jpg',
     },
   };
-    return { embeds: [npEmbed as MessageEmbedOptions], files: [albumart] };
+  return { embeds: [npEmbed as MessageEmbedOptions], files: [albumart] };
 }
 
 export async function mbArtistLookup(artist:string):Promise<string | undefined> {
@@ -125,29 +125,29 @@ export async function mbArtistLookup(artist:string):Promise<string | undefined> 
         });
         if (axData2) {
           const data = axData2.data;
-        if (data?.relations?.length) {
-          let result = null;
-          for (const link of data.relations) { // return the official site first
-            if (link.type === 'official homepage') {
-              result = link.url?.resource;
-              return result;
+          if (data?.relations?.length) {
+            let result = null;
+            for (const link of data.relations) { // return the official site first
+              if (link.type === 'official homepage') {
+                result = link.url?.resource;
+                return result;
+              }
             }
-          }
-          for (const link of data.relations) { // if no official site, return bandcamp
-            if (link.type === 'bandcamp') {
-              result = link.url?.resource;
-              return result;
+            for (const link of data.relations) { // if no official site, return bandcamp
+              if (link.type === 'bandcamp') {
+                result = link.url?.resource;
+                return result;
+              }
             }
-          }
-          for (const link of data.relations) { // if no bandcamp, return last.fm and hope they have better links
-            if (link.type === 'last.fm') {
-              result = link.url?.resource;
-              return result;
+            for (const link of data.relations) { // if no bandcamp, return last.fm and hope they have better links
+              if (link.type === 'last.fm') {
+                result = link.url?.resource;
+                return result;
+              }
             }
           }
         }
       }
-      }
-  }
+    }
   }
 }

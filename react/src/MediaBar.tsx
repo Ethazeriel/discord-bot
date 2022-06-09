@@ -6,7 +6,7 @@ import { timeDisplay } from './utils';
 import { ReactComponent as Shuffle } from './media/placeholder/shuffle.svg';
 import { ReactComponent as Prev } from './media/placeholder/prev.svg';
 import { ReactComponent as Play } from './media/placeholder/play.svg';
-import { ReactComponent as Pause } from './media/placeholder/pause.svg';
+// import { ReactComponent as Pause } from './media/placeholder/pause.svg';
 import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
 

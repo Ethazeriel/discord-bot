@@ -9,16 +9,16 @@ import { ButtonInteraction, CommandInteraction, InteractionReplyOptions, Message
 import { DetectResult } from '@google-cloud/translate/build/src/v2';
 
 export default class Translator {
-  //types
-  id:string
+  // types
+  id:string;
   subscribers:Record<string, {
     locale:string
     id:string
     interaction:CommandInteraction | ButtonInteraction
     expiry:NodeJS.Timeout
-  }>
-  targets:Set<string>
-  //class
+  }>;
+  targets:Set<string>;
+  // class
   static #organizers:Record<string, Translator> = {};
   static #GTranslate = new v2.Translate({ key:apiKey });
   static locales:{code:string, name:string}[] = [];

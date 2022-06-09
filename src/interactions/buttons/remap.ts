@@ -3,7 +3,7 @@ import * as utils from '../../utils.js';
 import ytdl from 'ytdl-core';
 import { ButtonInteraction, InteractionUpdateOptions } from 'discord.js';
 
-export const name:string = 'remap';
+export const name = 'remap';
 
 export async function execute(interaction:ButtonInteraction, which:string): Promise<void> { // button selection function
   switch (which) {

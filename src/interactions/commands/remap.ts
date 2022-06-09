@@ -1,6 +1,6 @@
 /* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { CommandInteraction, MessageAttachment, GuildMemberRoleManager, InteractionReplyOptions } from 'discord.js';
+import { CommandInteraction, MessageAttachment, GuildMemberRoleManager } from 'discord.js';
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
@@ -89,14 +89,14 @@ export async function execute(interaction:CommandInteraction) {
         if (search === 'current') {
           const player = await Player.getPlayer(interaction);
           if (player) {
-          track = player.getCurrent();
-          if (!Object.keys(track).length) {
+            track = player.getCurrent();
+            if (!Object.keys(track).length) {
+              await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
+              return;
+            }
+          } else {
             await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
             return;
-          }
-        } else {
-          await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true })
-          return;
           }
         } else {
           const match = search.match(youtubePattern);

@@ -1,6 +1,6 @@
 import Player from '../../player.js';
 import { logDebug } from '../../logger.js';
-import { InteractionDeferUpdateOptions, ButtonInteraction, MessagePayload } from 'discord.js';
+import { InteractionDeferUpdateOptions, ButtonInteraction } from 'discord.js';
 
 export const name = 'media';
 

@@ -5,10 +5,10 @@ import * as db from './database.js';
 import { logDebug } from './logger.js';
 
 export default class Workspace {
-  
-  list:Track[]
-  id:string
-  expiry:NodeJS.Timeout
+
+  list:Track[];
+  id:string;
+  expiry:NodeJS.Timeout;
 
   static #workspaces: Record<string, Workspace> = {};
   constructor(userid:string) {

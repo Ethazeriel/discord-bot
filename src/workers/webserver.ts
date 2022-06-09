@@ -254,7 +254,7 @@ wss.on('connection', async (ws, req) => {
     } else { ws.terminate(); }
   } else { ws.terminate(); }
   // eslint-disable-next-line no-unused-vars
-  ws.on('message', (message) => {
+  ws.on('message', () => {
     // logDebug('WebSocketServer message from client—no handling in place');
   });
   ws.on('close', () => {

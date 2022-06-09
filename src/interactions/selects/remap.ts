@@ -1,4 +1,4 @@
-import { InteractionUpdateOptions, SelectMenuInteraction } from 'discord.js';
+import { SelectMenuInteraction } from 'discord.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
 
