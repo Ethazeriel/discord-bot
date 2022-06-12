@@ -4,7 +4,7 @@ import { Client, Collection, Intents } from 'discord.js';
 import { fileURLToPath } from 'url';
 const { discord, internal, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const token = discord.token;
-import { logLine, logCommand, logComponent, logDebug } from './logger.js';
+import { log, logCommand, logComponent, logDebug } from './logger.js';
 import * as database from './database.js';
 import chalk from 'chalk';
 import Player from './player.js';
@@ -57,10 +57,10 @@ client.once('ready', async () => {
     const config = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
     config.internal ? config.internal.deployedHash = hashash : config.internal = { deployedHash: hashash };
     fs.writeFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), JSON.stringify(config, null, 2));
-  } else { logLine('info', [`Commands appear up to date; hash is ${hashash}`]); }
+  } else { log('info', [`Commands appear up to date; hash is ${hashash}`]); }
 
   logDebug(chalk.red.bold('DEBUG MODE ACTIVE'));
-  logLine('info', ['Ready!', `Node version: ${process.version}`]);
+  log('info', ['Ready!', `Node version: ${process.version}`]);
   database.printCount();
 
   if (functions.web) { // this is bad code because it doesn't let things load asynchronously; consider revising
@@ -97,7 +97,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
       logCommand(interaction);
       await command.execute(interaction);
     } catch (error:any) {
-      logLine('error', [error.stack]);
+      log('error', [error.stack]);
       await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
       return;
     }
@@ -108,7 +108,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
     try {
       await selectMenu.execute(interaction);
     } catch (error:any) {
-      logLine('error', [error.stack]);
+      log('error', [error.stack]);
       await interaction.editReply({ content: 'There was an error while processing this select menu!', components: [], ephemeral: true } as InteractionReplyOptions);
       return;
     }
@@ -120,7 +120,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
     try {
       await buttonPress.execute(interaction, match![2]);
     } catch (error:any) {
-      logLine('error', [error.stack]);
+      log('error', [error.stack]);
       await interaction.editReply({ content: 'There was an error while processing this button press!', components: [], ephemeral: true } as InteractionReplyOptions);
       return;
     }
@@ -131,7 +131,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
       logCommand(interaction);
       await context.execute(interaction);
     } catch (error:any) {
-      logLine('error', [error.stack]);
+      log('error', [error.stack]);
       await interaction.followUp({ content: 'There was an error while executing this context menu!', ephemeral: true });
       return;
     }
@@ -139,7 +139,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
 });
 
 client.on('guildMemberUpdate', async (oldUser, member) => {
-  logLine('info', ['Received guild member update']);
+  log('info', ['Received guild member update']);
   const user = await database.getUser(member.user.id);
   if (!user) {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
@@ -153,7 +153,7 @@ client.on('guildMemberUpdate', async (oldUser, member) => {
 });
 
 client.on('guildMemberAdd', async member => {
-  logLine('info', ['New user arrived']);
+  log('info', ['New user arrived']);
   const user = await database.getUser(member.user.id);
   if (!user) {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
@@ -162,7 +162,7 @@ client.on('guildMemberAdd', async member => {
 });
 
 client.on('userUpdate', async (oldUser, newUser) => {
-  logLine('info', [`Received global user update for ${newUser.id}`]);
+  log('info', [`Received global user update for ${newUser.id}`]);
   const user = await database.getUser(newUser.id);
   if (!user) {
     await database.newUser({ id:newUser.id, username:newUser.username, discriminator:newUser.discriminator });
@@ -187,7 +187,7 @@ client.login(token);
 
 // handle exits
 process.on('SIGINT' || 'SIGTERM', async () => {
-  logLine('info', ['received termination command, exiting']);
+  log('info', ['received termination command, exiting']);
   await database.closeDB();
   process.exit();
 });

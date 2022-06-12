@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import * as utils from '../../utils.js';
-import { logLine } from '../../logger.js';
+import { log } from '../../logger.js';
 import * as database from '../../database.js';
 import { sanitize, sanitizePlaylists } from '../../regexes.js';
 import fetch from '../../acquire.js';
@@ -173,12 +173,12 @@ export async function execute(interaction: CommandInteraction) {
         try {
           await interaction.followUp({ embeds: [listEmbed as MessageEmbedOptions] });
         } catch (error:any) {
-          logLine('error', [error.stack]);
+          log('error', [error.stack]);
         }
         break;
       }
       default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+        log('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

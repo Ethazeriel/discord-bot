@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { MongoClient } from 'mongodb';
-import { logLine } from '../logger.js';
+import { log } from '../logger.js';
 const mongo = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).mongo;
 import chalk from 'chalk';
 const url = mongo.url;
@@ -20,7 +20,7 @@ async function stepone() {
     if (err) throw err;
     con = client;
     db = client!.db(proddb);
-    logLine('database', [`Connected to database: ${chalk.green(proddb)}`]);
+    log('database', [`Connected to database: ${chalk.green(proddb)}`]);
   });
   await sleep(1000);
   const trackdatabase = db.collection(prodtrackcol);
@@ -28,9 +28,9 @@ async function stepone() {
   const tracks:Array<Track> = await cursor.toArray();
   console.log(`Grabbed ${chalk.blue(tracks.length)} tracks`);
   try {
-    logLine('database', [`Closing connection: ${chalk.green(proddb)}`]);
+    log('database', [`Closing connection: ${chalk.green(proddb)}`]);
     await con.close();
-  } catch (error:any) { logLine('error', ['database error:', error.message]); }
+  } catch (error:any) { log('error', ['database error:', error.message]); }
 
 
   const track2s:Array<Track2> = [];
@@ -96,28 +96,28 @@ async function stepone() {
     if (err) throw err;
     con = client;
     db = client!.db(testdb);
-    logLine('database', [`Connected to database: ${chalk.green(testdb)}`]);
+    log('database', [`Connected to database: ${chalk.green(testdb)}`]);
   });
   await sleep(1000);
   const newtrackdatabase = db.collection(testtrackcol);
   const result1 = await newtrackdatabase.insertMany(track2s);
   console.log(`Inserted ${chalk.blue(result1.insertedCount)} tracks`);
   try {
-    logLine('database', [`Closing connection: ${chalk.green(testdb)}`]);
+    log('database', [`Closing connection: ${chalk.green(testdb)}`]);
     await con.close();
-  } catch (error:any) { logLine('error', ['database error:', error.message]); }
+  } catch (error:any) { log('error', ['database error:', error.message]); }
 }
 
 stepone();
 
 
 process.on('SIGINT' || 'SIGTERM', async () => {
-  logLine('info', ['received termination command, exiting']);
+  log('info', ['received termination command, exiting']);
   try {
-    logLine('database', ['Closing connection']);
+    log('database', ['Closing connection']);
     await con.close();
   } catch (error:any) {
-    logLine('error', ['database error:', error.message]);
+    log('error', ['database error:', error.message]);
     return error;
   }
   process.exit();

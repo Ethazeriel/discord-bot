@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { v2 } from '@google-cloud/translate';
-import { logDebug, logLine } from './logger.js';
+import { logDebug, log } from './logger.js';
 import * as utils from './utils.js';
 import { fileURLToPath } from 'url';
 const { apiKey } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8')).translate;
@@ -45,7 +45,7 @@ export default class Translator {
     if ((now - Translator.#localetimestamp) > 86400000) {
       let locales:{code:string, name:string}[] = [];
       try { [locales] = await Translator.#GTranslate.getLanguages(); } catch (error:any) {
-        logLine('error', [`Translate error: ${error.message}`]);
+        log('error', [`Translate error: ${error.message}`]);
       }
       Translator.locales = locales;
       Translator.#localetimestamp = Date.now();
@@ -60,7 +60,7 @@ export default class Translator {
   static async getLang(text:string) { // takes string, returns object { code:'en', name:'English' }
     let detected:DetectResult;
     try { [detected] = await Translator.#GTranslate.detect(text); } catch (error:any) {
-      logLine('error', [`Translate error: ${error.message}`]);
+      log('error', [`Translate error: ${error.message}`]);
     }
     const [language] = Translator.locales.filter(element => element.code === detected.language);
     return language;
@@ -70,7 +70,7 @@ export default class Translator {
     await Translator.#refreshLocales();
     let translation = '';
     try { [translation] = await Translator.#GTranslate.translate(text, 'en'); } catch (error:any) {
-      logLine('error', [`Translate error: ${error.message}`]);
+      log('error', [`Translate error: ${error.message}`]);
     }
     // console.log(text, translation);
     return translation;
@@ -80,7 +80,7 @@ export default class Translator {
     await Translator.#refreshLocales();
     let translation = '';
     try { [translation] = await Translator.#GTranslate.translate(text, target); } catch (error:any) {
-      logLine('error', [`Translate error: ${error.message}`]);
+      log('error', [`Translate error: ${error.message}`]);
     }
     // console.log(text, translation);
     return translation;
@@ -116,7 +116,7 @@ export default class Translator {
         const [result] = await Translator.#GTranslate.translate(messageContent, locale);
         translations[locale] = result || 'translate failed';
       } catch (error:any) {
-        logLine('error', [`Translate error: ${error.message}`]);
+        log('error', [`Translate error: ${error.message}`]);
       }
     }
     // console.log(translations);

@@ -1,6 +1,6 @@
 /* eslint-disable no-fallthrough */
 import { MessageAttachment, CommandInteraction, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
-import { logLine } from './logger.js';
+import { log } from './logger.js';
 import Canvas from 'canvas';
 import crypto from 'crypto';
 import axios, { AxiosResponse } from 'axios';
@@ -112,7 +112,7 @@ export async function mbArtistLookup(artist:string):Promise<string | undefined> 
   const track = await db.getTrack({ $and:[{ 'artist.official':{ $type:'string' } }, { 'artist.name':artist }] });
   if (track) { return track.artist.official; } else {
     const axData1:null | AxiosResponse<IArtistList> = await axios(`https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(artist)}&limit=1&offset=0&fmt=json`).catch(error => {
-      logLine('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
+      log('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
       return (null);
     });
     if (axData1) {
@@ -120,7 +120,7 @@ export async function mbArtistLookup(artist:string):Promise<string | undefined> 
       if (firstdata?.artists?.length) {
         const mbid = firstdata.artists[0].id;
         const axData2:null | AxiosResponse<IArtist> = await axios(`https://musicbrainz.org/ws/2/artist/${mbid}?inc=url-rels`).catch(error => {
-          logLine('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
+          log('error', ['MB artist lookup fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
           return (null);
         });
         if (axData2) {

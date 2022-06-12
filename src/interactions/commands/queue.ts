@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
-import { logLine } from '../../logger.js';
+import { log } from '../../logger.js';
 import * as db from '../../database.js';
 import { seekTime as seekRegex } from '../../regexes.js';
 import validator from 'validator';
@@ -220,7 +220,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
         }
 
         default: {
-          logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+          log('error', ['OH NO SOMETHING\'S FUCKED']);
           await interaction.editReply({ content: 'Something broke. Please try again' });
         }
 

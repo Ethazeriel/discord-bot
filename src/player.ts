@@ -5,7 +5,7 @@ import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioRes
 import crypto from 'crypto';
 import { ButtonInteraction, CommandInteraction, GuildMember, MessageAttachment, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, MessageEmbedOptions, Message, MessageEmbed } from 'discord.js';
 import * as db from './database.js';
-import { logLine, logDebug } from './logger.js';
+import { log, logDebug } from './logger.js';
 import { fileURLToPath } from 'url';
 const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
@@ -53,7 +53,7 @@ export default class Player {
     this.listeners = new Set();
 
     this.player = createAudioPlayer();
-    this.player.on('error', error => { logLine('error', [error.stack! ]); });
+    this.player.on('error', error => { log('error', [error.stack! ]); });
     this.player.on<'stateChange'>('stateChange', (oldState, newState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
@@ -151,7 +151,7 @@ export default class Player {
         }
       });
       return (player);
-    } else { logLine('error', [`invalid retrievePlayer type: ${type}`]); }
+    } else { log('error', [`invalid retrievePlayer type: ${type}`]); }
   }
 
   static async voiceEventDispatch(oldState:VoiceState, newState:VoiceState, client:Client) {
@@ -254,9 +254,9 @@ export default class Player {
           'user-agent': useragent,
         } as YtFlags, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
         this.player.play(resource);
-        logLine('track', ['Playing track:', (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
+        log('track', ['Playing track:', (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
       } catch (error:any) {
-        logLine('error', [error.stack]);
+        log('error', [error.stack]);
       }
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
   }
@@ -295,9 +295,9 @@ export default class Player {
         const source = await seekable(`https://www.youtube.com/watch?v=${track.youtube.id}`, { seek:time });
         const resource = createAudioResource(source.stream, { inputType: source.type });
         this.player.play(resource);
-        logLine('track', [`Seeking to time ${time} in `, (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
+        log('track', [`Seeking to time ${time} in `, (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
       } catch (error:any) {
-        logLine('error', [error.stack]);
+        log('error', [error.stack]);
       }
       track.goose.seek = time;
       track.start = (Date.now() / 1000) - (time || 0);

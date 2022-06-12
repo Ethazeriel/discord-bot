@@ -1,6 +1,6 @@
 import * as db from './database.js';
 import axios, { AxiosResponse } from 'axios';
-import { logDebug, logLine } from './logger.js';
+import { logDebug, log } from './logger.js';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 const { discord, spotify, mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
@@ -41,7 +41,7 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
     data: tokenconfig.data,
     timeout: 10000,
   }).catch(error => {
-    logLine('error', ['Oauth2: ', error.stack, error?.data]);
+    log('error', ['Oauth2: ', error.stack, error?.data]);
     return;
   });
 
@@ -73,7 +73,7 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
         Authorization: `Bearer ${token.access_token}`,
       },
     }).catch(error => {
-      logLine('error', ['Oauth2: ', error.stack, error?.data]);
+      log('error', ['Oauth2: ', error.stack, error?.data]);
       return;
     });
 
@@ -112,7 +112,7 @@ export async function getToken(user:object, type:'discord' | 'spotify') {
       const token = await updateToken(tokenuser, type);
       return token;
     }
-  } catch (error:any) { logLine('error', ['oauth error:', error.stack]); }
+  } catch (error:any) { log('error', ['oauth error:', error.stack]); }
 }
 
 async function updateToken(user:User, type:'discord' | 'spotify') {
@@ -154,7 +154,7 @@ async function updateToken(user:User, type:'discord' | 'spotify') {
         data: tokenconfig.data,
         timeout: 10000,
       }).catch(error => {
-        logLine('error', ['Oauth2: ', error.stack, error?.data]);
+        log('error', ['Oauth2: ', error.stack, error?.data]);
         return;
       });
       if (newtoken?.data) {
@@ -169,7 +169,7 @@ async function updateToken(user:User, type:'discord' | 'spotify') {
         const userdb = db.db.collection(usercol);
         const target = `tokens.${type}`;
         await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ [target]:token } });
-        logLine('database', [`Renewed Oauth2 token type ${type} for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
+        log('database', [`Renewed Oauth2 token type ${type} for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
         return token.access;
       }
     } else {
@@ -191,9 +191,9 @@ async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expire
       scope:authtoken.scope,
     };
     await userdb.updateOne({ 'discord.id': userdata.user.id }, { $set:{ 'tokens.discord':token }, $addToSet:{ webClientId:webClientId } });
-    logLine('database', [`Saving Oauth2 token for ${chalk.blue(userdata.user.id)}: expires ${chalk.green(token.expiry)}`]);
+    log('database', [`Saving Oauth2 token for ${chalk.blue(userdata.user.id)}: expires ${chalk.green(token.expiry)}`]);
   } catch (error:any) {
-    logLine('error', ['database error:', error.stack]);
+    log('error', ['database error:', error.stack]);
   }
 }
 
@@ -210,9 +210,9 @@ async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:strin
       scope:authtoken.scope,
     };
     await userdb.updateOne({ webClientId: webClientId }, { $set:{ 'tokens.spotify':token } });
-    logLine('database', [`Saving spotify Oauth2 token: expires ${chalk.green(token.expiry)}`]);
+    log('database', [`Saving spotify Oauth2 token: expires ${chalk.green(token.expiry)}`]);
   } catch (error:any) {
-    logLine('error', ['database error:', error.stack]);
+    log('error', ['database error:', error.stack]);
   }
 }
 
@@ -229,8 +229,8 @@ async function updateSpotifyUser(target:object, spotifyInfo:SpotifyApi.CurrentUs
   try {
     const userdb = db.db.collection(usercol);
     await userdb.updateOne(target, { $set: { spotify:dbspotify } });
-    logLine('database', [`Updating Spotify userdata for ${chalk.green(dbspotify.username)}`]);
+    log('database', [`Updating Spotify userdata for ${chalk.green(dbspotify.username)}`]);
   } catch (error:any) {
-    logLine('error', ['database error:', error.stack]);
+    log('error', ['database error:', error.stack]);
   }
 }
