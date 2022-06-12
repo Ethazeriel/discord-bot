@@ -96,15 +96,15 @@ type PlayerStatus = {
 interface Track2 {
 	goose: {
 		id: string
-		plays?: number
-		errors?: number
+		plays: number
+		errors: number
 		album: {
 			name: string
 			trackNumber: number
 		}
 		artist: {
 			name: string
-			official: string
+			official?: string
 		}
 		track: {
 			name: string
@@ -112,9 +112,9 @@ interface Track2 {
 			art: string
 		}
 	}
-	youtube: Array<Track2YoutubeSource>
 	keys: Array<string>
 	playlists: Record<string, number>
+	youtube: Array<Track2YoutubeSource>
 	bar?: ProgressBarOptions
 	spotify?: Track2Source
 	amazon?: Track2Source
@@ -150,4 +150,8 @@ interface Track2YoutubeSource {
   art: string
   duration: number
 	url: string
+	contentID?: {
+		name: string
+		artist: string
+	}
 }
