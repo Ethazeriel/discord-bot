@@ -31,13 +31,17 @@ async function fetchTracks(search:string):Promise<Array<Track2>> {
   search = search.replace(sanitize, '').trim();
 
   let sourceArray:Array<Track2 | Track2YoutubeSource | Track2Source> | undefined = undefined;
+  let sourceType:'youtube' | 'spotify' | 'text' | undefined = undefined;
 
   if (youtubePattern.test(search)) {
     sourceArray = await youtubeSource(search);
+    sourceType = 'youtube';
   } else if (spotifyPattern.test(search)) {
     sourceArray = await spotifySource(search);
+    sourceType = 'spotify';
   } else {
     sourceArray = await textSource(search);
+    sourceType = 'text';
   }
   if (typeof sourceArray === 'undefined') { throw new Error('no sources found!'); }
   const finishedArray:Array<Track2 | null> = [];
@@ -46,7 +50,8 @@ async function fetchTracks(search:string):Promise<Array<Track2>> {
     if (!isTrack(track)) {
       finishedArray.push(null);
       // goose does not exist, this is a new track source
-      // we may already have the track from a different source
+      // at this point we should have already checked if we have this track from a different source
+      // let's construct a new track
     } else { finishedArray.push(track); }
   }
 
@@ -150,10 +155,10 @@ async function spotifySource(search:string):Promise<Array<Track2Source | Track2>
 }
 
 async function checkTrack(track:Track2Source, type:'spotify'):Promise<Track2 | null> {
-  // note: check for exact id match before calling this function
 // takes a track source, and checks if we already have it by other method
 // if we do, updates the existing track and returns it
 // if not, returns null
+// assumes you've already checked for an exact id match
   // check the db to see if we have this by name/artist match
   const dbTrack = await db.getTrack({ $and: [{ 'goose.track.name': track.name }, { 'goose.artist.name': track.artist.name }] });
   if (dbTrack) {
