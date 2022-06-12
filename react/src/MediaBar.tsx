@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import React, { useEffect, useState } from 'react';
 // import type * as CSS from 'csstype';
 import styled from 'styled-components';
 import { timeDisplay } from './utils';
@@ -10,7 +11,7 @@ import { ReactComponent as Play } from './media/placeholder/play.svg';
 import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 import type { Track, PlayerStatus, PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek';
 
@@ -22,48 +23,110 @@ type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek
 
 // import './Test.css';
 
-export class MediaBar extends React.Component<{playerClick:(action:PlayerClick) => void, status?:PlayerStatus}, { value: number }> {
-  constructor(props: {playerClick:(action:PlayerClick) => void, status?:PlayerStatus}) {
-    super(props);
-    this.state = {
-      value: 52.5,
-    };
-    this.mediaClick = this.mediaClick.bind(this);
-    this.sliderClick = this.sliderClick.bind(this);
-  }
+export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void}) {
+  const seek = props.status?.tracks?.[props.status?.playhead]?.goose?.seek;
+  const start = props.status?.tracks?.[props.status?.playhead]?.start;
+  const duration = props.status?.tracks?.[props.status?.playhead]?.youtube?.duration || 0;
+  const paused = props.status?.paused as boolean;
+  const now = Date.now() / 1000;
+  const [timer, setTimer] = useState(0);
+  const [value, setValue] = useState((start) ? (now - start) : (seek) ? (now - seek) : 0);
+  useEffect(() => {
+    console.log(`seek: ${Math.trunc(seek || 0)}, start: ${Math.trunc(start || 0)}, duration: ${duration}, paused: ${paused}`);
+    if (paused) {
+      // clearInterval(timer);
+    } else if (seek) {
+      // clearInterval(timer);
+      // setValue(seek);
+    } else if (start) {
+      // setTimer(oldTimer => {
+      //   return (window.setInterval(() => {
+      //     if ((value + 1) < duration) {
+      //       setValue(oldValue => oldValue + 1);
+      //     } else {
+      //       // setValue(duration);
+      //       // clearInterval(timer);
+      //     }
+      //   }, 1000));
+      // });
+    } else { /* clearInterval(timer); */ }
 
-  // shouldComponentUpdate() {
-  //   return (true);
-  // }
+    return (() => clearInterval(timer));
+  }, [start, seek, paused]);
+  //
+  // useEffect(() => {
+  //   if (start && !paused) {
+  //     console.log(`start, timerID: ${timer}`);
+  //     clearInterval(timer);
+  //     setTimer(oldTimer => {
+  //       return (window.setInterval(() => {
+  //         if ((value + 1) < duration) {
+  //           setValue(oldValue => oldValue + 1);
+  //         } else {
+  //           setValue(duration);
+  //           clearInterval(timer);
+  //         }
+  //       }, 1000));
+  //     });
+  //     console.log(`start, timerID: ${timer}`);
+  //   } else { clearInterval(timer); }
+  //   return (() => clearInterval(timer));
+  // }, [start]);
+  // useEffect(() => {
+  //   if (seek) {
+  //     clearInterval(timer);
+  //     setValue(seek);
+  //   }
+  // }, [seek]);
+  // useEffect(() => {
+  //   if (paused) {
+  //     console.log(`paused, timerID: ${timer}`);
+  //     clearInterval(timer);
+  //     console.log(`paused, timerID: ${timer}`);
+  //   }
+  // }, [paused]);
 
-  mediaClick(action: Action) {
-    this.props.playerClick({ action: action });
-  }
+  const interaction = (action:string) => {
+    props.playerClick({ action: action });
+  };
+  const sliderChange = (event:any) => {
+    // clearInterval(timer);
+    setValue(event.target.value);
+  };
+  const sliderTest = (event:any) => {
+    props.playerClick({ action: 'seek', parameter: value });
+  };
+  return (
+    <MediaContainer>
+      <ButtonRow>
+        <Button onClick={() => interaction('shuffle')}><Shuffle /></Button>
+        <Button onClick={() => interaction('prev')}><Prev /></Button>
+        <Button onClick={() => interaction('togglePause')}><Play /></Button>
+        <Button onClick={() => interaction('next')}><Next /></Button>
+        <Button onClick={() => interaction('toggleLoop')}><Loop /></Button>
+      </ButtonRow>
+      <SliderRow>
+        <TimeStyle>{timeDisplay((value) ? value : 0)}</TimeStyle>
+        <SliderStyle type="range" min="0" max={duration} step="0.5" value={value} onChange={sliderChange} onMouseUp={sliderTest} />
+        <TimeStyle>{timeDisplay(duration)}</TimeStyle>
+      </SliderRow>
+    </MediaContainer>
+  ); // // <TimeElapsed status={props.status!} />
+} // <SliderStyle type="range" min="0" max="100" step="0.5" value={props.value} onChange={(event) => props.sliderClick(event)} />
+// <Slider value={value} sliderClick={sliderTesting} />
+const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (key: any, value: object | null) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+    }
+    return value;
+  };
+};
 
-  sliderClick(event:any) {
-    this.setState({ value: event.target.value });
-  }
-
-  render() {
-    return (
-      <MediaContainer>
-        <ButtonRow>
-          <Button onClick={() => this.mediaClick('shuffle')}><Shuffle /></Button>
-          <Button onClick={() => this.mediaClick('prev')}><Prev /></Button>
-          <Button onClick={() => this.mediaClick('togglePause')}><Play /></Button>
-          <Button onClick={() => this.mediaClick('next')}><Next /></Button>
-          <Button onClick={() => this.mediaClick('toggleLoop')}><Loop /></Button>
-        </ButtonRow>
-        <SliderRow>
-          <TimeElapsed status={this.props.status!}/>
-          <Slider type="range" min="0" max="100" step="0.5" value={this.state.value} onChange={(event) => this.sliderClick(event)} />
-        </SliderRow>
-      </MediaContainer>
-    );
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MediaContainer = styled.div`
   position: relative;
   width: 100%;
@@ -92,7 +155,6 @@ const ButtonRow = styled.div`
   justify-content: center;
 `;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const Button = styled.svg`
   width: 48px;
   height: 48px;
@@ -106,8 +168,7 @@ const Button = styled.svg`
 const SliderRow = styled.div`
 `;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const Slider = styled.input`
+const SliderStyle = styled.input`
   height: 100%;
   width: 220px;
   margin: 0;
@@ -120,41 +181,46 @@ const Slider = styled.input`
     accent-color: #e736c1;
   }
 `;
+function Slider(props:{ value:number, sliderClick:(event:any) => void }) {
+  return (<SliderStyle type="range" min="0" max="100" step="0.5" value={props.value} onChange={(event) => props.sliderClick(event)} />);
+} // <Slider type="range" min="0" max="100" step="0.5" value={(value && duration) ? (value / duration) : 0} onChange={(event) => this.sliderClick(event)} />
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TimeStyle = styled.span`
   
 `;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function TimeElapsed(props:{ status:PlayerStatus }) {
-  console.log('function main');
-  let timer: ReturnType<typeof setInterval>; // oh no
-  const [time, setTime] = React.useState(((Date.now() / 1000) - (props.status?.tracks?.[props.status?.playhead]?.start!)) || 0);
-  const tick = () => {
-    if (props.status && time < props.status.tracks![props.status.playhead]!.youtube.duration) {
-      console.log('tick time');
-      setTime(time + 1);
-    } else {
-      console.log('tick clear');
-      clearInterval(timer);
-    }
-  };
-  useEffect(() => {
-    if (props.status?.paused) {
-      console.log('paused. clearing timer');
-      clearInterval(timer);
-    } else {
-      console.log('unpaused. refreshing timer');
-      timer = setInterval(() => tick(), 1000);
-    }
-    return (() => {
-      console.log('cleanup');
-      clearInterval(timer);
-    });
-  }, [props.status?.paused]);
-  if (!props.status) {
-    return (<TimeStyle>{timeDisplay(0)}</TimeStyle>);
-  } else {
-    return (<TimeStyle>{timeDisplay(time)}</TimeStyle>);
-  }
-}
+// function TimeElapsed(props:{ status:PlayerStatus }) {
+//   let timer: ReturnType<typeof setInterval>; // oh no
+//   const [time, setTime] = React.useState(((Date.now() / 1000) - (props.status?.tracks?.[props.status?.playhead]?.start!)) || 0);
+//   const tick = () => {
+//     if (props.status && props.status?.tracks?.[props.status?.playhead]?.start! && time < props.status.tracks![props.status.playhead]!.youtube.duration) {
+//       console.log('tick time');
+//       setTime(prevTime => (prevTime + 1));
+//     } else {
+//       console.log('tick clear');
+//       clearInterval(timer);
+//     }
+//   };
+//   useEffect(() => {
+//     if (props.status?.paused) {
+//       console.log('paused. clearing timer');
+//       clearInterval(timer);
+//     } else {
+//       console.log('unpaused. refreshing timer');
+//       timer = setInterval(() => tick(), 1000);
+//     }
+//     return (() => {
+//       console.log('cleanup');
+//       clearInterval(timer);
+//     });
+//   }, [props.status?.paused]);
+//   useEffect(() => {
+//     if (!props.status?.tracks?.[props.status?.playhead]?.start!) {
+//       setTime(0);
+//     }
+//   }, [props.status?.tracks?.[props.status?.playhead]?.start!]);
+//   if (!props.status || !props.status?.tracks?.[props.status?.playhead]?.start!) {
+//     return (<TimeStyle>{timeDisplay(0)}</TimeStyle>);
+//   } else {
+//     return (<TimeStyle>{timeDisplay(time)}</TimeStyle>);
+//   }
+// }
