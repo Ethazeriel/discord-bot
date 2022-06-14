@@ -21,17 +21,17 @@ parentPort!.on('message', async data => {
 });
 logDebug('Acquire2 worker spawned.');
 
-async function fetchTracks(search:string):Promise<Array<Track2>> {
+async function fetchTracks(search:string):Promise<Array<Track>> {
   // Expectations:
   // takes a search string - can be a link to a track, playlist, album for any of the services we support; or a text search
   // go through a decision tree to decide what the search is, search the db to see if we already have it, if we have it from a different service add the relevant info and return
-  // if we don't have it, construct a new Track2 object, insert into the db, then return
+  // if we don't have it, construct a new Track object, insert into the db, then return
   // if playlist/album, do the above for each track
-  // return array of Track2 objects
+  // return array of Track objects
 
   search = search.replace(sanitize, '').trim();
 
-  let sourceArray:Array<Track2 | Track2YoutubeSource | Track2Source | {youtube:Track2YoutubeSource, spotify:Track2Source}> | undefined = undefined;
+  let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource}> | undefined = undefined;
   let sourceType:'youtube' | 'spotify' | 'text' | undefined = undefined;
 
   if (youtubePattern.test(search)) {
@@ -45,120 +45,132 @@ async function fetchTracks(search:string):Promise<Array<Track2>> {
     sourceType = 'text';
   }
   if (typeof sourceArray === 'undefined') { throw new Error('no sources found!'); }
-  const finishedArray:Array<Track2 | null> = [];
-  function isTrack(track:Track2 | Track2YoutubeSource | Track2Source | {youtube:Track2YoutubeSource, spotify:Track2Source}):track is Track2 { return (track as Track2).goose !== undefined; }
-  function isCombinedSources(track:Track2YoutubeSource | Track2Source | {youtube:Track2YoutubeSource, spotify:Track2Source}):track is {youtube:Track2YoutubeSource, spotify:Track2Source} { return (track as {youtube:Track2YoutubeSource, spotify:Track2Source}).youtube !== undefined; }
-  function isYoutubeSource(source:Track2Source | Track2YoutubeSource):source is Track2YoutubeSource { return !Array.isArray(source.id);}
+  const promiseArray:Array<Promise<Track>> = [];
+  function isTrack(track:Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource}):track is Track { return (track as Track).goose !== undefined; }
+  function isCombinedSources(track:TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource}):track is {youtube:TrackYoutubeSource, spotify:TrackSource} { return (track as {youtube:TrackYoutubeSource, spotify:TrackSource}).youtube !== undefined; }
+  function isYoutubeSource(source:TrackSource | TrackYoutubeSource):source is TrackYoutubeSource { return !Array.isArray(source.id);}
   for (const track of sourceArray) {
-    if (!isTrack(track)) {
-      finishedArray.push(null);
+    // build an array of promises so we can return them all at once
+    promiseArray.push((async () => {
+      if (!isTrack(track)) {
+      // finishedArray.push(null);
       // goose does not exist, this is a new track source
       // at this point we should have already checked if we have this track from a different source
       // let's construct a new track
-      if (sourceType === 'youtube') {
-        if (isCombinedSources(track)) {
+        if (sourceType === 'youtube') {
+          if (isCombinedSources(track)) {
           // this is from a youtube link, and we have info for both spotify and youtube
-          const actualTrack:Track2 = {
-            goose: {
-              id: await genNewGooseId(),
-              plays: 0,
-              errors: 0,
-              album: {
-                name: track.spotify.album.name,
-                trackNumber: track.spotify.album.trackNumber,
+            const actualTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: track.spotify.album.name,
+                  trackNumber: track.spotify.album.trackNumber,
+                },
+                artist: {
+                  name: track.spotify.artist.name,
+                  official: undefined,
+                },
+                track: {
+                  name: track.spotify.name,
+                  duration: track.youtube.duration,
+                  art: track.spotify.art,
+                },
               },
-              artist: {
-                name: track.spotify.artist.name,
-                official: undefined,
-              },
-              track: {
-                name: track.spotify.name,
-                duration: track.youtube.duration,
-                art: track.spotify.art,
-              },
-            },
-            keys: [],
-            playlists: {},
-            youtube: [track.youtube],
-            spotify: track.spotify,
-            status: {},
-          };
-          await db.insertTrack(actualTrack);
-          finishedArray.push(actualTrack);
-        } else {
+              keys: [],
+              playlists: {},
+              youtube: [track.youtube],
+              spotify: track.spotify,
+              status: {},
+            };
+            await db.insertTrack(actualTrack);
+            return actualTrack;
+          } else {
           // this is from a youtube link, and we only have that info
-          if (!isYoutubeSource(track)) {throw new Error('source isn\'t what it should be!'); }
-          const youtubeTrack:Track2 = {
+            if (!isYoutubeSource(track)) {throw new Error('source isn\'t what it should be!'); }
+            const youtubeTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: 'Unknown Album',
+                  trackNumber: 0,
+                },
+                artist: {
+                  name: track.contentID?.artist || 'Unknown Artist',
+                  official: undefined,
+                },
+                track: {
+                  name: track.contentID?.name || track.name,
+                  duration: track.duration,
+                  art: track.art,
+                },
+              },
+              keys: [],
+              playlists: {},
+              youtube: [track],
+              status: {},
+            };
+            await db.insertTrack(youtubeTrack);
+            return youtubeTrack;
+          }
+        } else {
+        // this track came from spotify or text
+          if (isCombinedSources(track) || isYoutubeSource(track)) {throw new Error('source isn\'t what it should be!'); }
+          const ytArray = await youtubeFromSearch(`${track.name} ${track.artist.name}`);
+          const finishedTrack:Track = {
             goose: {
               id: await genNewGooseId(),
               plays: 0,
               errors: 0,
               album: {
-                name: 'Unknown Album',
-                trackNumber: 0,
+                name: track.album.name,
+                trackNumber: track.album.trackNumber,
               },
               artist: {
-                name: track.contentID?.artist || 'Unknown Artist',
+                name: track.artist.name,
                 official: undefined,
               },
               track: {
-                name: track.contentID?.name || track.name,
-                duration: track.duration,
+                name: track.name,
+                duration: ytArray[0].duration,
                 art: track.art,
               },
             },
-            keys: [],
+            keys: (sourceType === 'text') ? [search] : [],
             playlists: {},
-            youtube: [track],
+            youtube: ytArray,
+            spotify: track, // temporary, remember to change once we've got more source types
             status: {},
           };
-          await db.insertTrack(youtubeTrack);
-          finishedArray.push(youtubeTrack);
+          // if (sourceType === 'spotify' || 'text') {finishedTrack.spotify = track;}
+          // if (sourceType === 'itunes') {finishedTrack.itunes = track;}
+          await db.insertTrack(finishedTrack);
+          return finishedTrack;
         }
-      } else {
-        // this track came from spotify or text
-        if (isCombinedSources(track) || isYoutubeSource(track)) {throw new Error('source isn\'t what it should be!'); }
-        const ytArray = await youtubeFromSearch(`${track.name} ${track.artist.name}`);
-        const finishedTrack:Track2 = {
-          goose: {
-            id: await genNewGooseId(),
-            plays: 0,
-            errors: 0,
-            album: {
-              name: track.album.name,
-              trackNumber: track.album.trackNumber,
-            },
-            artist: {
-              name: track.artist.name,
-              official: undefined,
-            },
-            track: {
-              name: track.name,
-              duration: ytArray[0].duration,
-              art: track.art,
-            },
-          },
-          keys: (sourceType === 'text') ? [search] : [],
-          playlists: {},
-          youtube: ytArray,
-          spotify: track,
-          status: {},
-        };
-        // if (sourceType === 'spotify' || 'text') {finishedTrack.spotify = track;}
-        // if (sourceType === 'itunes') {finishedTrack.itunes = track;}
-        await db.insertTrack(finishedTrack);
-        finishedArray.push(finishedTrack);
-      }
-    } else { finishedArray.push(track); }
+      } else { return track; }
+    })());
   }
+
+  const finishedArray:Array<Track> = [];
+  await Promise.allSettled(promiseArray).then(promises => {
+    for (const promise of promises) {
+      if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }
+      if (promise.status === 'rejected') { log('error', [JSON.stringify(promise, null, 2)]);}
+    }
+  });
 
   const lengthCheck = finishedArray.filter((track) => track);
   if (lengthCheck.length === sourceArray.length) {
-    return finishedArray as Array<Track2>;
+    return finishedArray as Array<Track>;
   } else { throw new Error('final result does not pass length check'); }
 }
 
 async function getSpotifyCreds():Promise<ClientCredentialsResponse> {
+  logDebug('getting spotify token');
   const spotifyCredentialsAxios:AxiosResponse<ClientCredentialsResponse> = await axios({
     url: 'https://accounts.spotify.com/api/token',
     method: 'post',
@@ -181,7 +193,7 @@ async function genNewGooseId():Promise<string> {
   return id;
 }
 
-async function youtubeSource(search:string):Promise<Array<Track2YoutubeSource | Track2 | {youtube:Track2YoutubeSource, spotify:Track2Source}> | undefined> {
+async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}> | undefined> {
   // search is a youtube url
   const match = search.match(youtubePattern);
   const track = await db.getTrack({ 'youtube.id': match![2] });
@@ -202,7 +214,7 @@ async function youtubeSource(search:string):Promise<Array<Track2YoutubeSource | 
     if (dbTrack) {
     // we found a track that matches spotify info, but has a different youtube id
     // save a new track to the db, copy over useful info
-      const finalTrack:Track2 = {
+      const finalTrack:Track = {
         goose: {
           id: await genNewGooseId(),
           plays: 0,
@@ -233,9 +245,10 @@ async function youtubeSource(search:string):Promise<Array<Track2YoutubeSource | 
   return Array(source);
 }
 
-async function youtubeFromId(id:string):Promise<Track2YoutubeSource> {
+async function youtubeFromId(id:string):Promise<TrackYoutubeSource> {
+  log('fetch', [`youtubeFromId: ${id}`]);
   const ytdlResult = await ytdl.getBasicInfo(id, { requestOptions: { family:4 } });
-  const source:Track2YoutubeSource = {
+  const source:TrackYoutubeSource = {
     id: id,
     name: ytdlResult.videoDetails.title,
     art: ytdlResult.videoDetails.thumbnails[0].url,
@@ -249,7 +262,8 @@ async function youtubeFromId(id:string):Promise<Track2YoutubeSource> {
   return source;
 }
 
-async function youtubeFromSearch(search:string):Promise<Array<Track2YoutubeSource>> {
+async function youtubeFromSearch(search:string):Promise<Array<TrackYoutubeSource>> {
+  log('fetch', [`youtubeFromSearch: ${search}`]);
   const youtubeResultAxios:AxiosResponse<YoutubeSearchResponse> = await axios({
     url: 'https://youtube.googleapis.com/youtube/v3/search?q=' + search + '&type=video&part=id%2Csnippet&fields%3Ditems%28id%2FvideoId%2Csnippet%28title%2Cthumbnails%29%29&maxResults=5&safeSearch=none&key=' + youtube.apiKey,
     method: 'get',
@@ -260,15 +274,22 @@ async function youtubeFromSearch(search:string):Promise<Array<Track2YoutubeSourc
     timeout: 10000,
   });
   const youtubeResults = youtubeResultAxios.data.items;
-  const ytArray:Array<Track2YoutubeSource> = [];
+  const ytPromiseArray:Array<Promise<TrackYoutubeSource>> = [];
   for (const item of youtubeResults) {
-    const ytSource = await youtubeFromId(item.id.videoId);
-    ytArray.push(ytSource);
+    const ytSource = youtubeFromId(item.id.videoId);
+    ytPromiseArray.push(ytSource);
   }
+  const ytArray:Array<TrackYoutubeSource> = [];
+  await Promise.allSettled(ytPromiseArray).then(promises => {
+    for (const promise of promises) {
+      if (promise.status === 'fulfilled') { ytArray.push(promise.value); }
+      if (promise.status === 'rejected') { log('error', [JSON.stringify(promise, null, 2)]);}
+    }
+  });
   return ytArray;
 }
 
-async function spotifySource(search:string):Promise<Array<Track2Source | Track2> | undefined> {
+async function spotifySource(search:string):Promise<Array<TrackSource | Track> | undefined> {
   // search is a spotify url
   const match = search.match(spotifyPattern);
   switch (match![1]) {
@@ -289,7 +310,7 @@ async function spotifySource(search:string):Promise<Array<Track2Source | Track2>
     case 'album':{
       const auth = await getSpotifyCreds();
       const newTracks = await spotifyFromAlbum(auth, match![2]);
-      const readyTracks:Array<Track2 | Track2Source> = [];
+      const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {
         const dbTrack = await checkTrack(source, 'spotify');
         if (dbTrack) {
@@ -306,7 +327,7 @@ async function spotifySource(search:string):Promise<Array<Track2Source | Track2>
     case 'playlist':{
       const auth = await getSpotifyCreds();
       const newTracks = await spotifyFromPlaylist(auth, match![2]);
-      const readyTracks:Array<Track2 | Track2Source> = [];
+      const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {
         const dbTrack = await checkTrack(source, 'spotify');
         if (dbTrack) {
@@ -322,10 +343,11 @@ async function spotifySource(search:string):Promise<Array<Track2Source | Track2>
   }
 }
 
-async function checkTrack(track:Track2Source, type:'spotify'):Promise<Track2 | null> {
-// takes a track source, and checks if we already have it
-// if we do, updates the existing track and returns it
-// if not, returns null
+async function checkTrack(track:TrackSource, type:'spotify'):Promise<Track | null> {
+  logDebug('checking track ', track.name);
+  // takes a track source, and checks if we already have it
+  // if we do, updates the existing track and returns it
+  // if not, returns null
   // check the db to see if we have this by exact id match
   const target = `${type}.id`;
   const track1 = await db.getTrack({ [target]: track.id });
@@ -347,7 +369,8 @@ async function checkTrack(track:Track2Source, type:'spotify'):Promise<Track2 | n
   } else {return null;}
 }
 
-async function spotifyFromTrack(auth:ClientCredentialsResponse, id:string):Promise<Track2Source> {
+async function spotifyFromTrack(auth:ClientCredentialsResponse, id:string):Promise<TrackSource> {
+  log('fetch', [`spotifyFromTrack: ${id}`]);
   const spotifyResultAxios:AxiosResponse<SpotifyApi.SingleTrackResponse> = await axios({
     url: `https://api.spotify.com/v1/tracks/${id}`,
     method: 'get',
@@ -359,8 +382,8 @@ async function spotifyFromTrack(auth:ClientCredentialsResponse, id:string):Promi
     timeout: 10000,
   });
   const spotifyResult = spotifyResultAxios.data;
-  // at this point we should have a result, now construct the Track2Source
-  const source:Track2Source = {
+  // at this point we should have a result, now construct the TrackSource
+  const source:TrackSource = {
     id: Array(spotifyResult.id),
     name: spotifyResult.name,
     art: spotifyResult.album.images[0].url,
@@ -379,7 +402,8 @@ async function spotifyFromTrack(auth:ClientCredentialsResponse, id:string):Promi
   return source;
 }
 
-async function spotifyFromText(auth:ClientCredentialsResponse, search:string):Promise<Track2Source> {
+async function spotifyFromText(auth:ClientCredentialsResponse, search:string):Promise<TrackSource> {
+  log('fetch', [`spotifyFromText: ${search}`]);
   const spotifyResultAxios:AxiosResponse<SpotifyApi.TrackSearchResponse> = await axios({
     url: `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`,
     method: 'get',
@@ -392,8 +416,8 @@ async function spotifyFromText(auth:ClientCredentialsResponse, search:string):Pr
   });
   const spotifyResult = spotifyResultAxios.data;
   if (!spotifyResult.tracks.items[0]) { throw new Error('Search returned no results!'); }
-  // at this point we should have a result, now construct the Track2Source
-  const source:Track2Source = {
+  // at this point we should have a result, now construct the TrackSource
+  const source:TrackSource = {
     id: Array(spotifyResult.tracks.items[0].id),
     name: spotifyResult.tracks.items[0].name,
     art: spotifyResult.tracks.items[0].album.images[0].url,
@@ -412,7 +436,8 @@ async function spotifyFromText(auth:ClientCredentialsResponse, search:string):Pr
   return source;
 }
 
-async function spotifyFromAlbum(auth:ClientCredentialsResponse, id:string):Promise<Array<Track2Source>> {
+async function spotifyFromAlbum(auth:ClientCredentialsResponse, id:string):Promise<Array<TrackSource>> {
+  log('fetch', [`spotifyFromAlbum: ${id}`]);
   const spotifyResultAxios:AxiosResponse<SpotifyApi.SingleAlbumResponse> = await axios({
     url: `https://api.spotify.com/v1/albums/${id}`,
     method: 'get',
@@ -424,7 +449,7 @@ async function spotifyFromAlbum(auth:ClientCredentialsResponse, id:string):Promi
     timeout: 10000,
   });
   const spotifyResult = spotifyResultAxios.data;
-  const sources:Array<Track2Source> = [];
+  const sources:Array<TrackSource> = [];
   for (const track of spotifyResult.tracks.items) {
     sources.push({
       id: Array(track.id),
@@ -446,7 +471,8 @@ async function spotifyFromAlbum(auth:ClientCredentialsResponse, id:string):Promi
   return sources;
 }
 
-async function spotifyFromPlaylist(auth:ClientCredentialsResponse, id:string):Promise<Array<Track2Source>> {
+async function spotifyFromPlaylist(auth:ClientCredentialsResponse, id:string):Promise<Array<TrackSource>> {
+  log('fetch', [`spotifyFromPlaylist: ${id}`]);
   const spotifyResultAxios:AxiosResponse<SpotifyApi.SinglePlaylistResponse> = await axios({
     url: `https://api.spotify.com/v1/playlists/${id}?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,href,duration_ms))`,
     method: 'get',
@@ -458,7 +484,7 @@ async function spotifyFromPlaylist(auth:ClientCredentialsResponse, id:string):Pr
     timeout: 10000,
   });
   const spotifyResult = spotifyResultAxios!.data;
-  const sources:Array<Track2Source> = [];
+  const sources:Array<TrackSource> = [];
   for (const track of spotifyResult.tracks.items) {
     if (track.track) {
       sources.push({
@@ -482,7 +508,7 @@ async function spotifyFromPlaylist(auth:ClientCredentialsResponse, id:string):Pr
   return sources;
 }
 
-async function textSource(search:string):Promise<Array<Track2Source | Track2> | undefined> {
+async function textSource(search:string):Promise<Array<TrackSource | Track> | undefined> {
   // search is not any of the url types we recognize, treat as text
   search = search.toLowerCase();
   const track = await db.getTrack({ keys: search });

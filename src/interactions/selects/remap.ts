@@ -14,8 +14,8 @@ export async function execute(interaction:SelectMenuInteraction) { // dropdown s
           color: 0xd64004,
           author: { name: 'Confirm remap:', icon_url: utils.pickPride('fish') as string },
           fields: [
-            { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-            { name: 'To:', value: `[${track.alternates[choice].name}](https://youtube.com/watch?v=${track.alternates[choice].id}) - ${new Date(track.alternates[choice].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+            { name: 'From:', value: `[${track.youtube[0].name}](https://youtube.com/watch?v=${track.youtube[0].id}) - ${new Date(track.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+            { name: 'To:', value: `[${track.youtube[choice + 1].name}](https://youtube.com/watch?v=${track.youtube[choice + 1].id}) - ${new Date(track.youtube[choice + 1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
           ],
           image: { url: 'attachment://combined.png', height: 0, width: 0 },
           footer: {

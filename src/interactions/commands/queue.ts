@@ -122,7 +122,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
               if (match![2]) {time = (Number(match![2]) * 60) + time;}
               if (match![1]) {time = (Number(match![1]) * 3600) + time;}
 
-              if (time > track.youtube.duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
+              if (time > track.youtube[0].duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
                 await player.seek(time);
                 const mediaEmbed = await player.mediaEmbed(true, 'Seeking...');
                 const queueEmbed = await player.queueEmbed();
@@ -181,7 +181,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
           if (player.getQueue().length) { // TODO: don\'t correct for input of 0, give error instead. also allow for removing range
             const position = Math.abs((interaction.options.getInteger('position') || 1) - 1);
             const removed = await player.remove(position);
-            await interaction.editReply({ content: (removed.length) ? `Removed: ${(removed[0].spotify.name || removed[0].youtube.name)}` : 'Remove failed. Most likely your input is too high.' });
+            await interaction.editReply({ content: (removed.length) ? `Removed: ${(removed[0].goose.track.name)}` : 'Remove failed. Most likely your input is too high.' });
 
             if (position == player.getPlayhead()) {
               const mediaEmbed = await player.mediaEmbed();

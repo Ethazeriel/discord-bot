@@ -3,7 +3,8 @@
     "outDir": "./build",
     "target": "es2022",
     "lib": [
-      "esnext"
+      "esnext",
+      "ES2020.Promise"
     ],
     "allowJs": true,
     "skipLibCheck": true,

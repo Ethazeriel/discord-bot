@@ -25,7 +25,7 @@ async function stepone() {
   await sleep(1000);
   const trackdatabase = db.collection(prodtrackcol);
   const cursor = await trackdatabase.find({});
-  const tracks:Array<Track> = await cursor.toArray();
+  const tracks:Array<OldTrack> = await cursor.toArray();
   console.log(`Grabbed ${chalk.blue(tracks.length)} tracks`);
   try {
     log('database', [`Closing connection: ${chalk.green(proddb)}`]);
@@ -33,9 +33,9 @@ async function stepone() {
   } catch (error:any) { log('error', ['database error:', error.message]); }
 
 
-  const track2s:Array<Track2> = [];
+  const track2s:Array<Track> = [];
   for (const track of tracks) {
-    const youtube:Array<Track2YoutubeSource> = [{
+    const youtube:Array<TrackYoutubeSource> = [{
       id: track.youtube.id,
       name: track.youtube.name,
       art: track.youtube.art,
@@ -51,7 +51,7 @@ async function stepone() {
         url: `https://youtu.be/${youtube2.id}`,
       });
     }
-    const spotify:Track2Source | undefined = track.spotify.id ? {
+    const spotify:TrackSource | undefined = track.spotify.id ? {
       id: track.spotify.id,
       name: track.spotify.name,
       art: track.spotify.art,
@@ -63,7 +63,7 @@ async function stepone() {
         name:track.artist.name,
       },
     } : undefined;
-    const track2:Track2 = {
+    const track2:Track = {
       goose: {
         id:track.goose.id,
         plays: track.goose.plays || 0,

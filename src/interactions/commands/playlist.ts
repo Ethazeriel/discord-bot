@@ -140,7 +140,7 @@ export async function execute(interaction: CommandInteraction) {
         const fromindex = Math.abs(interaction.options.getInteger('from-index')! - 1);
         const toindex = Math.abs(interaction.options.getInteger('to-index')! - 1);
         const result = workspace.moveTrack(fromindex, toindex);
-        interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
+        interaction.followUp({ content:`Moved track ${result[0].goose.track.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
         break;
       }
 

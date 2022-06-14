@@ -90,7 +90,7 @@ export function randomHexColor():number {
 // =================================
 
 export async function generateTrackEmbed(track:Track, messagetitle:string):Promise<InteractionReplyOptions> {
-  const albumart = new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg');
+  const albumart = new MessageAttachment((track.goose.track.art), 'art.jpg');
   const npEmbed = {
     color: 0x580087,
     author: {
@@ -98,7 +98,7 @@ export async function generateTrackEmbed(track:Track, messagetitle:string):Promi
       icon_url: pickPride('fish'),
     },
     fields: [
-      { name: messagetitle, value: `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})\nAlbum - ${track.album.name || '\u200b'}` },
+      { name: messagetitle, value: `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url})\nAlbum - ${track.goose.album.name || '\u200b'}` },
     ],
     thumbnail: {
       url: 'attachment://art.jpg',
@@ -109,8 +109,8 @@ export async function generateTrackEmbed(track:Track, messagetitle:string):Promi
 
 export async function mbArtistLookup(artist:string):Promise<string | undefined> {
   // check for Artist.official in db before sending lookup
-  const track = await db.getTrack({ $and:[{ 'artist.official':{ $type:'string' } }, { 'artist.name':artist }] });
-  if (track) { return track.artist.official; } else {
+  const track = await db.getTrack({ $and:[{ 'goose.artist.official':{ $type:'string' } }, { 'goose.artist.name':artist }] });
+  if (track) { return track.goose.artist.official; } else {
     const axData1:null | AxiosResponse<IArtistList> = await axios(`https://musicbrainz.org/ws/2/artist?query=${encodeURIComponent(artist)}&limit=1&offset=0&fmt=json`).catch(error => {
       log('error', ['MB artist search fail', `headers: ${JSON.stringify(error.response?.headers, null, 2)}`, error.stack]);
       return (null);

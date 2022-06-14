@@ -6,6 +6,7 @@ import { ButtonInteraction, InteractionUpdateOptions } from 'discord.js';
 export const name = 'remap';
 
 export async function execute(interaction:ButtonInteraction, which:string): Promise<void> { // button selection function
+  throw new Error('REMAP IS BROKEN');
   switch (which) {
 
     case 'db': {
@@ -77,7 +78,7 @@ export async function execute(interaction:ButtonInteraction, which:string): Prom
             color: 0xd64004,
             author: { name: 'Remapped:', icon_url: utils.pickPride('fish') },
             fields: [
-              { name: 'From:', value: `[${track!.youtube.name}](https://youtube.com/watch?v=${track!.youtube.id}) - ${new Date(track!.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+              { name: 'From:', value: `[${track!.youtube[0].name}](https://youtube.com/watch?v=${track!.youtube[0].id}) - ${new Date(track!.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
               { name: 'To:', value: `[${newtube.name}](https://youtube.com/watch?v=${newtube.id}) - ${new Date(newtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
             ],
             image: { url: 'attachment://combined.png', height: 0, width: 0 },

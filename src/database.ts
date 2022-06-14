@@ -13,7 +13,7 @@ const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
 export let db:any;
 let con:MongoClient | undefined;
-MongoClient.connect(url, function(err, client) {
+MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
   if (err) throw err;
   con = client;
   db = client?.db(dbname);
@@ -48,7 +48,7 @@ export async function closeDB():Promise<object | undefined> {
   }
 }
 
-export async function getTrack(query:object):Promise<Track2 | undefined> {// acquire2
+export async function getTrack(query:object):Promise<Track | undefined> {// acquire2
   // returns the first track object that matches the query
   await connected();
   try {
@@ -67,7 +67,7 @@ export async function getTrack(query:object):Promise<Track2 | undefined> {// acq
   */
 
 
-export async function insertTrack(track:Track2):Promise<object | undefined> {// acquire2
+export async function insertTrack(track:Track):Promise<object | undefined> {// acquire2
   // inserts a single track object into the database
   track.status = {}; // track status should be null, but just in case
   await connected();
@@ -113,7 +113,7 @@ export async function addSourceId(query:object, type:'spotify', newid:string) {/
 }
 // addSourceId({ 'goose.id': '12345abcde' }, 'spotify', '6i71OngJrJDr6hQIFmzYI0');
 
-export async function addTrackSource(query:object, type:'spotify', source:Track2Source) {// acquire2
+export async function addTrackSource(query:object, type:'spotify', source:TrackSource) {// acquire2
   await connected();
   try {
     const tracks = db.collection(trackcol);
@@ -124,7 +124,7 @@ export async function addTrackSource(query:object, type:'spotify', source:Track2
   }
 }
 
-export async function addPlaylist(trackarray:Track[], listname:string) {
+export async function addPlaylist(trackarray:Track[], listname:string) {// acquire2
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
   const name = listname.replace(sanitizePlaylists, '');
@@ -137,7 +137,7 @@ export async function addPlaylist(trackarray:Track[], listname:string) {
         const query = { 'goose.id': element.goose.id };
         const field = `playlists.${name}`;
         await tracks.updateOne(query, { $set: { [field]:index } });
-        log('database', [`Adding playlist entry ${chalk.blue(name + ':' + index)} to ${chalk.green(element.spotify.name || element.youtube.name)} by ${chalk.green(element.artist.name)}`]);
+        log('database', [`Adding playlist entry ${chalk.blue(name + ':' + index)} to ${chalk.green(element.goose.track.name)} by ${chalk.green(element.goose.artist.name)}`]);
       });
     } catch (error:any) {
       log('error', ['database error:', error.stack]);
@@ -378,12 +378,13 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
   }
 }
 
-export async function saveStash(discordid:string, playhead:number, queue:Track[]) { // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
+export async function saveStash(discordid:string, playhead:number, queue:Track[]) {// acquire2
+  // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
   await connected();
   const idarray = [];
-  for (const track of queue) { !track?.ephemeral ? idarray.push(track.goose.id) : null; }
+  for (const track of queue) { !track.status?.ephemeral ? idarray.push(track.goose.id) : null; }
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection(usercol);
