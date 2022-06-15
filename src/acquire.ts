@@ -3,10 +3,10 @@ import crypto from 'crypto';
 import { log, logDebug } from './logger.js';
 import { fileURLToPath } from 'url';
 
-let worker = new Worker(fileURLToPath(new URL('./workers/acquire2.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
+let worker = new Worker(fileURLToPath(new URL('./workers/acquire.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
 worker.on('exit', code => {
   logDebug(`Worker exited with code ${code}.`);
-  worker = new Worker(fileURLToPath(new URL('./workers/acquire2.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
+  worker = new Worker(fileURLToPath(new URL('./workers/acquire.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
 }); // if it exits just spawn a new one because that's good error handling, yes
 
 export default async function fetch(search:string, id = crypto.randomBytes(5).toString('hex')):Promise<Track[]> {

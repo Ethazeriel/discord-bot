@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 export const youtubePattern = /(?:youtube\.com|youtu\.be)(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]{11})(\S+)?/;
 export const spotifyPattern = /(?:spotify\.com|spotify)(?:\/|:)((?:track|playlist|album){1})(?:\/|:)([a-zA-Z0-9]{22})/;
+export const youtubePlaylistPattern = /(?:youtube\.com)(\/(?:playlist\?list=)?)([\w-]{34})(\S+)?/;
 /* usage:
 pattern.test(string); // boolean
 const match = string.match(pattern);
