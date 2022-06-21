@@ -60,6 +60,8 @@ export default class Player {
       if (newState.status == 'playing') {
         const diff = (this.queue.tracks[this.queue.playhead].status.pause) ? (this.queue.tracks[this.queue.playhead].status.pause! - this.queue.tracks[this.queue.playhead].status.start!) : 0;
         this.queue.tracks[this.queue.playhead].status.start = ((Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].status.seek || 0)) - diff;
+        if (this.queue.tracks[this.queue.playhead].status.seek) { this.queue.tracks[this.queue.playhead].status.seek = 0; }
+        if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
       } else if (newState.status == 'idle') {
         const track = this.queue.tracks[this.queue.playhead];
         if (track) {
