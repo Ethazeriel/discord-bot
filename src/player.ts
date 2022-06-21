@@ -54,7 +54,7 @@ export default class Player {
 
     this.player = createAudioPlayer();
     this.player.on('error', error => { log('error', [error.stack! ]); });
-    this.player.on<'stateChange'>('stateChange', (oldState, newState) => {
+    this.player.on<'stateChange'>('stateChange', async (oldState, newState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'playing') {
