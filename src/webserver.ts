@@ -69,7 +69,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
                   if (match![2]) {time = (Number(match![2]) * 60) + time;}
                   if (match![1]) {time = (Number(match![1]) * 3600) + time;}
 
-                  if (time > track.youtube.duration) { worker.postMessage({ id:message.id, error:'Can\'t seek beyond end of track' });} else {
+                  if (time > track.goose.track.duration) { worker.postMessage({ id:message.id, error:'Can\'t seek beyond end of track' });} else {
                     await player.seek(time);
                     player.webSync('media');
                     const status = player.getStatus();

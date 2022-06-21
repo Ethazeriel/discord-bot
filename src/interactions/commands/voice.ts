@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
-import { logLine } from '../../logger.js';
+import { log } from '../../logger.js';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { CommandInteraction, GuildMemberRoleManager, Message, WebhookEditMessageOptions } from 'discord.js';
@@ -45,7 +45,7 @@ export async function execute(interaction:MusicInteraction):Promise<void> {
           }
 
           default: {
-            logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+            log('error', ['OH NO SOMETHING\'S FUCKED']);
             await interaction.editReply({ content: 'Something broke. Please try again', ephemeral: true } as WebhookEditMessageOptions);
           }
         }

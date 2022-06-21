@@ -4,7 +4,7 @@ import express from 'express';
 import cookie from 'cookie';
 import cookieParser from 'cookie-parser';
 import validator from 'validator';
-import { logDebug, logLine } from '../logger.js';
+import { logDebug, log } from '../logger.js';
 import chalk from 'chalk';
 import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
@@ -19,7 +19,7 @@ import type { WebSocket } from 'ws';
 
 parentPort!.on('message', async data => {
   if (data.action === 'exit') {
-    logLine('info', ['Worker exiting']);
+    log('info', ['Worker exiting']);
     await db.closeDB();
     process.exit();
   }
@@ -42,14 +42,14 @@ app.use(express.json());
 app.use(cookieParser(discord.secret));
 
 app.get('/', (req, res) => {
-  logLine(req.method, [req.originalUrl]);
-  // logLine('get', [`Endpoint ${chalk.blue('/')}`]);
+  log(req.method, [req.originalUrl]);
+  // log('get', [`Endpoint ${chalk.blue('/')}`]);
   res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString()));
 });
 
 // minimum requirements for endpoints
 app.get('/example-endpoint', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
+  log(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
@@ -61,7 +61,7 @@ app.get('/example-endpoint', async (req, res) => {
 });
 
 app.get('/load', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
+  log(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
   logDebug(`Client load event with id ${webId}`);
   if (webId && webIdRegex.test(webId)) {
@@ -88,7 +88,7 @@ app.get('/load', async (req, res) => {
 
 // oauth flow
 app.get('/oauth2', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
+  log(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('This function requires a client ID cookie'); } else {
     const type = validator.escape(validator.stripLow(((req.query?.type as string)?.replace(sanitize, '') || ''))).trim(); // should always have this
@@ -127,8 +127,8 @@ app.get('/oauth2', async (req, res) => {
 
 // returns a track for the given id
 app.get('/tracks/:type(youtube|goose|spotify)-:id([\\w-]{11}|[a-zA-Z0-9]{22}|[0-9a-f]{10})', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
-  // logLine('get', [`Endpoint ${chalk.blue('/tracks')}, type ${chalk.green(req.params.type)}, id ${chalk.green(req.params.id)}`]);
+  log(req.method, [req.originalUrl]);
+  // log('get', [`Endpoint ${chalk.blue('/tracks')}, type ${chalk.green(req.params.type)}, id ${chalk.green(req.params.id)}`]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
@@ -143,8 +143,8 @@ app.get('/tracks/:type(youtube|goose|spotify)-:id([\\w-]{11}|[a-zA-Z0-9]{22}|[0-
 // returns a playlist
 // this regex should match sanitizePlaylists, but without the not
 app.get('/playlist/:name([\\w :/?=&-]+)', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
-  // logLine('get', [`Endpoint ${chalk.blue('/playlist')}, name ${chalk.green(req.params.name)}`]);
+  log(req.method, [req.originalUrl]);
+  // log('get', [`Endpoint ${chalk.blue('/playlist')}, name ${chalk.green(req.params.name)}`]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
@@ -157,8 +157,8 @@ app.get('/playlist/:name([\\w :/?=&-]+)', async (req, res) => {
 
 // returns the list of playlists
 app.get('/playlists', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
-  // logLine('get', [`Endpoint ${chalk.blue('/playlists')}`]);
+  log(req.method, [req.originalUrl]);
+  // log('get', [`Endpoint ${chalk.blue('/playlists')}`]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
@@ -170,7 +170,7 @@ app.get('/playlists', async (req, res) => {
 
 // returns the queue for the player with the given id
 app.get('/player-:playerId([0-9]{18})', async (req, res) => {
-  logLine(req.method, [req.originalUrl]);
+  log(req.method, [req.originalUrl]);
   const webId = req.signedCookies.id;
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
@@ -197,8 +197,8 @@ app.post('/player', async (req, res) => {
     if (user) {
       const action = validator.escape(validator.stripLow(req.body?.action?.replace(sanitize, '') || '')).trim();
       const parameter = validator.escape(validator.stripLow(('' + req.body?.parameter)?.replace(sanitize, '') || '')).trim();
-      logLine(req.method, [req.originalUrl, chalk.green(action)]);
-      // logLine('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
+      log(req.method, [req.originalUrl, chalk.green(action)]);
+      // log('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
       const id = crypto.randomBytes(5).toString('hex');
       parentPort!.postMessage({ type:'player', action:action, parameter:parameter, id:id, userId: user.discord.id });
       const messageAction = (result:WebParentMessage) => {
@@ -217,7 +217,7 @@ app.post('/player', async (req, res) => {
 
 
 const httpServer = app.listen(port, () => {
-  logLine('info', [`Web server active at http://localhost:${port}`]);
+  log('info', [`Web server active at http://localhost:${port}`]);
 });
 
 const wss = new WebSocketServer<WebSocket & {isAlive:boolean}>({ server: httpServer, clientTracking: true });

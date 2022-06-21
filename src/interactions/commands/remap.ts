@@ -50,7 +50,7 @@ export async function execute(interaction:CommandInteraction) {
             context.fillStyle = 'white';
             context.fillText(text, x, y);
           }
-          const alt0 = await Canvas.loadImage(track.youtube.art);
+          const alt0 = await Canvas.loadImage(track.youtube[0].art);
           const alt1 = await Canvas.loadImage(`https://i.ytimg.com/vi/${newtrack.videoDetails.videoId}/hqdefault.jpg`);
           context.drawImage(alt0, 0, 0, 480, 360);
           context.drawImage(alt1, 480, 0, 480, 360);
@@ -63,11 +63,11 @@ export async function execute(interaction:CommandInteraction) {
                 color: 0xd64004,
                 author: { name: 'Remapped:', icon_url: utils.pickPride('fish') as string },
                 fields: [
-                  { name: 'From:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'From:', value: `[${track.youtube[0].name}](https://youtube.com/watch?v=${track.youtube[0].id}) - ${new Date(track.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                   { name: 'To:', value: `[${newtrack.videoDetails.title}](https://youtube.com/watch?v=${newtrack.videoDetails.videoId}) - ${new Date(Number(newtrack.videoDetails.lengthSeconds) * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 ],
                 image: { url: 'attachment://combined.png' },
-                footer: { text: `${track.youtube.id}${newtrack.videoDetails.videoId}` },
+                footer: { text: `${track.youtube[0].id}${newtrack.videoDetails.videoId}` },
               },
             ],
             components: [
@@ -116,10 +116,10 @@ export async function execute(interaction:CommandInteraction) {
           context.fillStyle = 'white';
           context.fillText(text, x, y);
         }
-        const alt0 = await Canvas.loadImage(track.alternates[0].art);
-        const alt1 = await Canvas.loadImage(track.alternates[1].art);
-        const alt2 = await Canvas.loadImage(track.alternates[2].art);
-        const alt3 = await Canvas.loadImage(track.alternates[3].art);
+        const alt0 = await Canvas.loadImage(track.youtube[1].art);
+        const alt1 = await Canvas.loadImage(track.youtube[2].art);
+        const alt2 = await Canvas.loadImage(track.youtube[3].art);
+        const alt3 = await Canvas.loadImage(track.youtube[4].art);
         context.drawImage(alt0, 0, 0, 480, 360);
         context.drawImage(alt1, 480, 0, 480, 360);
         context.drawImage(alt2, 0, 360, 480, 360);
@@ -135,16 +135,16 @@ export async function execute(interaction:CommandInteraction) {
               color: 0xd64004,
               author: { name: 'Remap:', icon_url: utils.pickPride('fish') as string },
               fields: [
-                { name: 'Spotify:', value: `${track.artist.name || 'no artist'} - ${track.spotify.name || 'no track name'} - ${new Date(track.spotify.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Current Youtube:', value: `[${track.youtube.name}](https://youtube.com/watch?v=${track.youtube.id}) - ${new Date(track.youtube.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Spotify:', value: `${track.goose.artist.name || 'no artist'} - ${track.goose.track.name} - ${new Date(track.goose.track.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Current Youtube:', value: `[${track.youtube[0].name}](https://youtube.com/watch?v=${track.youtube[0].id}) - ${new Date(track.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 { name: '\u200b', value: '** **' },
-                { name: 'Alternate 1:', value: `[${track.alternates[0].name}](https://youtube.com/watch?v=${track.alternates[0].id}) - ${new Date(track.alternates[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 2:', value: `[${track.alternates[1].name}](https://youtube.com/watch?v=${track.alternates[1].id}) - ${new Date(track.alternates[1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 3:', value: `[${track.alternates[2].name}](https://youtube.com/watch?v=${track.alternates[2].id}) - ${new Date(track.alternates[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 4:', value: `[${track.alternates[3].name}](https://youtube.com/watch?v=${track.alternates[3].id}) - ${new Date(track.alternates[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 1:', value: `[${track.youtube[1].name}](https://youtube.com/watch?v=${track.youtube[1].id}) - ${new Date(track.youtube[1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 2:', value: `[${track.youtube[2].name}](https://youtube.com/watch?v=${track.youtube[2].id}) - ${new Date(track.youtube[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 3:', value: `[${track.youtube[3].name}](https://youtube.com/watch?v=${track.youtube[3].id}) - ${new Date(track.youtube[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 4:', value: `[${track.youtube[4].name}](https://youtube.com/watch?v=${track.youtube[4].id}) - ${new Date(track.youtube[4].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
               ],
               image: { url: 'attachment://combined.png' },
-              footer: { text: track.youtube.id },
+              footer: { text: track.youtube[0].id },
             },
           ],
           components: [
@@ -155,10 +155,10 @@ export async function execute(interaction:CommandInteraction) {
                   'type': 3,
                   'custom_id': 'remap',
                   'options':[
-                    { label: 'Alternative 1', value: '0', description: track.alternates[0].name },
-                    { label: 'Alternative 2', value: '1', description: track.alternates[1].name },
-                    { label: 'Alternative 3', value: '2', description: track.alternates[2].name },
-                    { label: 'Alternative 4', value: '3', description: track.alternates[3].name },
+                    { label: 'Alternative 1', value: '0', description: track.youtube[1].name },
+                    { label: 'Alternative 2', value: '1', description: track.youtube[2].name },
+                    { label: 'Alternative 3', value: '2', description: track.youtube[3].name },
+                    { label: 'Alternative 4', value: '3', description: track.youtube[4].name },
                     { label: 'Something else', value: '4', description: 'none of these are correct' },
                   ],
                   'placeholder': 'Select track...',

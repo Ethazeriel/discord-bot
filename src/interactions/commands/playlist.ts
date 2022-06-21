@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import * as utils from '../../utils.js';
-import { logLine } from '../../logger.js';
+import { log } from '../../logger.js';
 import * as database from '../../database.js';
 import { sanitize, sanitizePlaylists } from '../../regexes.js';
 import fetch from '../../acquire.js';
@@ -140,7 +140,7 @@ export async function execute(interaction: CommandInteraction) {
         const fromindex = Math.abs(interaction.options.getInteger('from-index')! - 1);
         const toindex = Math.abs(interaction.options.getInteger('to-index')! - 1);
         const result = workspace.moveTrack(fromindex, toindex);
-        interaction.followUp({ content:`Moved track ${result[0].spotify?.name || result[0].youtube?.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
+        interaction.followUp({ content:`Moved track ${result[0].goose.track.name} from index ${fromindex} to index ${toindex}.`, ephemeral: true });
         break;
       }
 
@@ -173,12 +173,12 @@ export async function execute(interaction: CommandInteraction) {
         try {
           await interaction.followUp({ embeds: [listEmbed as MessageEmbedOptions] });
         } catch (error:any) {
-          logLine('error', [error.stack]);
+          log('error', [error.stack]);
         }
         break;
       }
       default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+        log('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

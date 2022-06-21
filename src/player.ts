@@ -5,7 +5,7 @@ import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioRes
 import crypto from 'crypto';
 import { ButtonInteraction, CommandInteraction, GuildMember, MessageAttachment, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, MessageEmbedOptions, Message, MessageEmbed } from 'discord.js';
 import * as db from './database.js';
-import { logLine, logDebug } from './logger.js';
+import { log, logDebug } from './logger.js';
 import { fileURLToPath } from 'url';
 const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
@@ -53,31 +53,31 @@ export default class Player {
     this.listeners = new Set();
 
     this.player = createAudioPlayer();
-    this.player.on('error', error => { logLine('error', [error.stack!]); });
-    this.player.on<'stateChange'>('stateChange', async (oldState, newState) => {
+    this.player.on('error', error => { log('error', [error.stack! ]); });
+    this.player.on<'stateChange'>('stateChange', (oldState, newState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'playing') {
-        const diff = (this.queue.tracks[this.queue.playhead].pause) ? (this.queue.tracks[this.queue.playhead].pause! - this.queue.tracks[this.queue.playhead].start!) : 0;
-        this.queue.tracks[this.queue.playhead].start = ((Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].goose.seek || 0)) - diff;
-        if (this.queue.tracks[this.queue.playhead].goose.seek) { this.queue.tracks[this.queue.playhead].goose.seek = 0; }
+        const diff = (this.queue.tracks[this.queue.playhead].status.pause) ? (this.queue.tracks[this.queue.playhead].status.pause! - this.queue.tracks[this.queue.playhead].status.start!) : 0;
+        this.queue.tracks[this.queue.playhead].status.start = ((Date.now() / 1000) - (this.queue.tracks[this.queue.playhead].status.seek || 0)) - diff;
+        if (this.queue.tracks[this.queue.playhead].status.seek) { this.queue.tracks[this.queue.playhead].status.seek = 0; }
         if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
       } else if (newState.status == 'idle') {
         const track = this.queue.tracks[this.queue.playhead];
         if (track) {
-          const elapsed = (Date.now() / 1000) - track.start!;
-          const duration = track.youtube.duration;
+          const elapsed = (Date.now() / 1000) - track.status.start!;
+          const duration = track.goose.track.duration;
           const difference = Math.abs(duration - elapsed);
           const percentage = (100 * ((elapsed < duration) ? (elapsed / duration) : (duration / elapsed)));
           if (difference > 10 || percentage < 95) {
-            logDebug(`track: ${track.spotify.name || track.youtube.name}—goose: ${track.goose.id} duration discrepancy. start ${track.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`.replace(/(?<=\d*\.\d{3})\d+/g, ''));
+            logDebug(`track: ${track.goose.track.name}—goose: ${track.goose.id} duration discrepancy. start ${track.status.start}, elapsed ${elapsed}, duration ${duration}, difference ${difference}, percentage ${percentage}`.replace(/(?<=\d*\.\d{3})\d+/g, ''));
             db.logPlay(track.goose.id, false);
           } else { db.logPlay(track.goose.id); }
-          delete this.queue.tracks[this.queue.playhead].start;
+          delete this.queue.tracks[this.queue.playhead].status.start;
         }
         this.next();
       } else if (newState.status == 'paused') {
-        this.queue.tracks[this.queue.playhead].pause = (Date.now() / 1000);
+        this.queue.tracks[this.queue.playhead].status.pause = (Date.now() / 1000);
       }
     });
 
@@ -153,7 +153,7 @@ export default class Player {
         }
       });
       return (player);
-    } else { logLine('error', [`invalid retrievePlayer type: ${type}`]); }
+    } else { log('error', [`invalid retrievePlayer type: ${type}`]); }
   }
 
   static async voiceEventDispatch(oldState:VoiceState, newState:VoiceState, client:Client) {
@@ -239,14 +239,14 @@ export default class Player {
   async play() {
     let ephemeral;
     let track = this.queue.tracks[this.queue.playhead];
-    if (track) { ephemeral = track.ephemeral; }
+    if (track) { ephemeral = track.status.ephemeral; }
     track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-    if (track) { track.ephemeral = ephemeral; }
+    if (track) { track.status.ephemeral = ephemeral; }
     this.queue.tracks[this.queue.playhead] &&= track;
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const resource = createAudioResource((youtubedl as any).exec(`https://www.youtube.com/watch?v=${track.youtube.id}`, {
+        const resource = createAudioResource((youtubedl as any).exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
           o: '-', // I know the any in the above line is bad, but TS doesn't properly recognise the named exports after the default export
           q: '', // I think this is because youtube-dl-exec does things poorly, but this is better than having to patch their package
           'force-ipv4': '',
@@ -256,9 +256,9 @@ export default class Player {
           'user-agent': useragent,
         } as YtFlags, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
         this.player.play(resource);
-        logLine('track', ['Playing track:', (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
+        log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
       } catch (error:any) {
-        logLine('error', [error.stack]);
+        log('error', [error.stack]);
       }
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
   }
@@ -267,42 +267,42 @@ export default class Player {
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
     await this.play();
-    if (this.queue.tracks[priorPlayhead]?.ephemeral) { this.remove(priorPlayhead); }
+    if (this.queue.tracks[priorPlayhead].status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async next() { // next, loop or end
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
     await this.play();
-    if (this.queue.tracks[priorPlayhead]?.ephemeral) { this.remove(priorPlayhead); }
+    if (this.queue.tracks[priorPlayhead].status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async jump(position:number) {
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
     await this.play();
-    if (this.queue.tracks[priorPlayhead]?.ephemeral) { this.remove(priorPlayhead); }
+    if (this.queue.tracks[priorPlayhead].status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async seek(time:number) {
     let ephemeral;
     let track = this.queue.tracks[this.queue.playhead];
-    if (track) { ephemeral = track.ephemeral; }
+    if (track) { ephemeral = track.status.ephemeral; }
     track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-    if (track) { track.ephemeral = ephemeral; }
+    if (track) { track.status.ephemeral = ephemeral; }
     this.queue.tracks[this.queue.playhead] &&= track;
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const source = await seekable(`https://www.youtube.com/watch?v=${track.youtube.id}`, { seek:time });
+        const source = await seekable(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
         const resource = createAudioResource(source.stream, { inputType: source.type });
         this.player.play(resource);
-        logLine('track', [`Seeking to time ${time} in `, (track.artist.name || 'no artist'), ':', (track.spotify.name || track.youtube.name)]);
+        log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
       } catch (error:any) {
-        logLine('error', [error.stack]);
+        log('error', [error.stack]);
       }
-      track.goose.seek = time;
-      track.start = (Date.now() / 1000) - (time || 0);
+      track.status.seek = time;
+      track.status.start = (Date.now() / 1000) - (time || 0);
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
   }
 
@@ -379,16 +379,16 @@ export default class Player {
     // logDebug(`current: ${(current) ? current.spotify.name || current.youtube.name : 'none'} \n`);
 
     if (albumAware) {
-      tracks.sort((a, b) => (a.album.trackNumber < b.album.trackNumber) ? -1 : 1);
-      tracks.sort((a, b) => (a.album.name === b.album.name) ? 0 : (a.album.name < b.album.name) ? -1 : 1);
-      tracks.map((track) => track.album.name ||= crypto.randomInt(tracks.length)); // null album is not an album I want to group together
+      tracks.sort((a, b) => (a.goose.album.trackNumber < b.goose.album.trackNumber) ? -1 : 1);
+      tracks.sort((a, b) => (a.goose.album.name === b.goose.album.name) ? 0 : (a.goose.album.name < b.goose.album.name) ? -1 : 1);
+      tracks.map((track) => track.goose.album.name ||= String(crypto.randomInt(tracks.length))); // null album is not an album I want to group together
     }
-    tracks.sort((a, b) => (a.artist.name === b.artist.name) ? 0 : (a.artist.name < b.artist.name) ? -1 : 1);
+    tracks.sort((a, b) => (a.goose.artist.name === b.goose.artist.name) ? 0 : (a.goose.artist.name < b.goose.artist.name) ? -1 : 1);
     const groupBy = (albumAware) ? 'album' : 'artist';
 
     const groups:Track[][] = [];
     for (let grouping = 0, index = 0; index < tracks.length; index++) {
-      if (groups[grouping] && groups[grouping][0][groupBy].name !== tracks[index][groupBy].name) { grouping++; }
+      if (groups[grouping] && groups[grouping][0].goose[groupBy].name !== tracks[index].goose[groupBy].name) { grouping++; }
       if (!groups[grouping]) { (groups[grouping] = []); }
       groups[grouping].push(tracks[index]);
     }
@@ -424,7 +424,7 @@ export default class Player {
     } else {
       if (current) {
         let start = 0;
-        while (result[start].start != current.start) {
+        while (result[start].start != current.status.start) {
           start++;
         }
         let end = start + 1;
@@ -486,25 +486,25 @@ export default class Player {
     const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg')) : null;
     const track = this.getCurrent();
     const bar = {
-      start: track?.goose?.bar?.start,
-      end: track?.goose?.bar?.end,
-      barbefore: track?.goose?.bar?.barbefore,
-      barafter: track?.goose?.bar?.barafter,
-      head: track?.goose?.bar?.head,
+      start: track.bar?.start,
+      end: track.bar?.end,
+      barbefore: track.bar?.barbefore,
+      barafter: track.bar?.barafter,
+      head: track.bar?.head,
     };
-    const elapsedTime = (this.getPause() ? (track?.pause! - track?.start!) : ((Date.now() / 1000) - track?.start!)) || 0;
-    if (track?.artist?.name && !track?.artist?.official) {
-      const result = await utils.mbArtistLookup(track.artist.name);
+    const elapsedTime = (this.getPause() ? (track.status?.pause! - track.status?.start!) : ((Date.now() / 1000) - track.status?.start!)) || 0;
+    if ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official) {
+      const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
-      track.artist.official = result ? result : '';
+      track.goose.artist.official = result ? result : '';
     }
     const embed = {
       color: 0x3277a8,
       author: { name: messageTitle, icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
-        { name: '\u200b', value: (track) ? `${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtube.com/watch?v=${track.youtube.id})\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.' },
-        { name: `\` ${utils.progressBar(45, (track?.youtube?.duration || track?.spotify?.duration), elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.youtube?.duration || track?.spotify?.duration || 0)}` },
+        { name: '\u200b', value: (track) ? `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url})\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.' },
+        { name: `\` ${utils.progressBar(45, (track.goose.track.duration), elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.goose.track.duration || 0)}` },
       ],
     };
     const buttons = [
@@ -527,7 +527,7 @@ export default class Player {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page!) || Math.ceil((this.getPlayhead() + 1) / 10);
-    const albumart = (fresh && track) ? new MessageAttachment((track.spotify.art || track.youtube.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg'));
+    const albumart = (fresh && track) ? new MessageAttachment((track.goose.track.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg'));
     const pages = Math.ceil(queue.length / 10);
     const buttonEmbed = [
       {
@@ -555,36 +555,36 @@ export default class Player {
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
       const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
-      let songName = dbtrack.spotify.name || dbtrack.youtube.name;
+      let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
-      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.artist.name || ' ')} - [${songName}](https://youtube.com/watch?v=${dbtrack.youtube.id}) - ${utils.timeDisplay(dbtrack.youtube.duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
+      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${dbtrack.youtube[0].url}) - ${utils.timeDisplay(dbtrack.youtube[0].duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;
-    for (const item of queue) { queueTime = queueTime + Number(item.youtube.duration || item.spotify.duration); }
-    let elapsedTime = (this.getPause() ? (track?.pause! - track?.start!) : ((Date.now() / 1000) - track?.start!)) || 0;
+    for (const item of queue) { queueTime = queueTime + Number(item.goose.track.duration); }
+    let elapsedTime = (this.getPause() ? (track.status?.pause! - track.status?.start!) : ((Date.now() / 1000) - track.status?.start!)) || 0;
     for (const [i, item] of queue.entries()) {
       if (i < this.getPlayhead()) {
-        elapsedTime = elapsedTime + Number(item.youtube.duration || item.spotify.duration);
+        elapsedTime = elapsedTime + Number(item.goose.track.duration);
       } else { break;}
     }
     const bar = {
-      start: track?.goose?.bar?.start || '[',
-      end: track?.goose?.bar?.end || ']',
-      barbefore: track?.goose?.bar?.barbefore || '#',
-      barafter: track?.goose?.bar?.barafter || '-',
-      head: track?.goose?.bar?.head || '#',
+      start: track.bar?.start || '[',
+      end: track.bar?.end || ']',
+      barbefore: track.bar?.barbefore || '#',
+      barafter: track.bar?.barafter || '-',
+      head: track.bar?.head || '#',
     };
-    if (track?.artist?.name && !track?.artist?.official) {
-      const result = await utils.mbArtistLookup(track.artist.name);
+    if ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official) {
+      const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
-      track.artist.official = result ? result : '';
+      track.goose.artist.official = result ? result : '';
     }
     const embed = {
       color: 0x3277a8,
       author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
-      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.artist.name || ' ')} - [${(track.spotify.name || track.youtube.name)}](https://youtu.be/${track.youtube.id}) - ${utils.timeDisplay(track.youtube.duration)}\n[Support this artist!](${track.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
+      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url}) - ${utils.timeDisplay(track.youtube[0].duration)}\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
       fields: [
         { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },

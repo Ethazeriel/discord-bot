@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import * as utils from '../../utils.js';
-import { logLine } from '../../logger.js';
+import { log } from '../../logger.js';
 import * as database from '../../database.js';
 import fetch from '../../acquire.js';
 import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
@@ -64,7 +64,7 @@ export async function execute(interaction:CommandInteraction) {
           search.replace(sanitizePlaylists, '');
           tracks = await database.getPlaylist(search);
           if (tracks.length == 0) {
-            logLine('error', [`No playlist exists by name '${search}'`]);
+            log('error', [`No playlist exists by name '${search}'`]);
             await interaction.followUp({ content: `No internal playlist exists by name '${search}'. See /playlist list or /playlist help.` });
           }
         }
@@ -127,7 +127,7 @@ export async function execute(interaction:CommandInteraction) {
             break;
           }
           default: {
-            logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+            log('error', ['OH NO SOMETHING\'S FUCKED']);
             await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
           }
         }

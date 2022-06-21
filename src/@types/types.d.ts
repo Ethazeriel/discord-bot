@@ -1,4 +1,4 @@
-interface Track {
+interface OldTrack {
 	goose: {
 		id:string,
 		plays?:number
@@ -93,18 +93,18 @@ type PlayerStatus = {
   paused: boolean,
 }
 
-interface Track2 {
+interface Track {
 	goose: {
 		id: string
-		plays?: number
-		errors?: number
+		plays: number
+		errors: number
 		album: {
 			name: string
 			trackNumber: number
 		}
 		artist: {
 			name: string
-			official: string
+			official?: string
 		}
 		track: {
 			name: string
@@ -112,13 +112,13 @@ interface Track2 {
 			art: string
 		}
 	}
-	youtube: Array<Track2YoutubeSource>
 	keys: Array<string>
 	playlists: Record<string, number>
+	youtube: Array<TrackYoutubeSource>
 	bar?: ProgressBarOptions
-	spotify?: Track2Source
-	amazon?: Track2Source
-	itunes?: Track2Source
+	spotify?: TrackSource
+	amazon?: TrackSource
+	itunes?: TrackSource
 	status: {
 		seek?: number
 		ephemeral?: string
@@ -127,7 +127,7 @@ interface Track2 {
 	}
 }
 
-interface Track2Source {
+interface TrackSource {
 	id: Array<string>
 	name: string
 	art: string
@@ -144,10 +144,14 @@ interface Track2Source {
 	}
 }
 
-interface Track2YoutubeSource {
+interface TrackYoutubeSource {
   id: string
   name: string
   art: string
   duration: number
 	url: string
+	contentID?: {
+		name: string
+		artist: string
+	}
 }

@@ -27,7 +27,7 @@ function currentDT():string {
   return `[${date.getFullYear()}-${month}-${day}|${hour}:${minute}:${second}]`;
 }
 
-export async function logLine(level:string, args:string[]) {
+export async function log(level:string, args:string[]) {
   level = level.toUpperCase();
   let logStr = '';
   for (let i = 0; i < args.length; i++) {
@@ -174,6 +174,6 @@ export async function logDebug(...message:any) {
   }
 }
 
-export async function logSpace() {
+export async function logLine() {
   console.log();
 }

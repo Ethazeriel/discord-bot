@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { logLine } from '../../logger.js';
+import { log } from '../../logger.js';
 import { sanitize, youtubePattern, sanitizePlaylists } from '../../regexes.js';
 import * as database from '../../database.js';
 import validator from 'validator';
@@ -50,7 +50,7 @@ export async function execute(interaction:CommandInteraction) {
 
 
       default: {
-        logLine('error', ['OH NO SOMETHING\'S FUCKED']);
+        log('error', ['OH NO SOMETHING\'S FUCKED']);
         await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
       }
 

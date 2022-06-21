@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import fs from 'fs';
 import { MongoClient } from 'mongodb';
-import { logLine } from './logger.js';
+import { log } from './logger.js';
 const mongo = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url))).mongo;
 import chalk from 'chalk';
 import ytdl from 'ytdl-core';
@@ -16,7 +16,7 @@ MongoClient.connect(url, function(err, client) {
   if (err) throw err;
   con = client;
   db = client.db(dbname);
-  logLine('database', [`Connected to database: ${dbname}`]);
+  log('database', [`Connected to database: ${dbname}`]);
 });
 
 const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
@@ -87,10 +87,10 @@ async function dothing() {
 
   console.log(`Modified ${chalk.blue(count)} tracks`);
   try {
-    logLine('database', [`Closing connection: ${dbname}`]);
+    log('database', [`Closing connection: ${dbname}`]);
     await con.close();
   } catch (error) {
-    logLine('error', ['database error:', error.message]);
+    log('error', ['database error:', error.message]);
     return error;
   }
 }
@@ -99,12 +99,12 @@ dothing();
 
 
 process.on('SIGINT' || 'SIGTERM', async () => {
-  logLine('info', ['received termination command, exiting']);
+  log('info', ['received termination command, exiting']);
   try {
-    logLine('database', [`Closing connection: ${dbname}`]);
+    log('database', [`Closing connection: ${dbname}`]);
     await con.close();
   } catch (error) {
-    logLine('error', ['database error:', error.message]);
+    log('error', ['database error:', error.message]);
     return error;
   }
   process.exit();

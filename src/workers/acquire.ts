@@ -1,362 +1,679 @@
 import fs from 'fs';
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import ytdl from 'ytdl-core';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import * as db from '../database.js';
-import { logLine, logSpace, logDebug } from '../logger.js';
-import { fileURLToPath } from 'url';
-const { spotify, youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
-import { youtubePattern, spotifyPattern, sanitize } from '../regexes.js';
-
+import { logDebug, log } from '../logger.js';
+import { youtubePattern, spotifyPattern, sanitize, youtubePlaylistPattern } from '../regexes.js';
 import { parentPort } from 'worker_threads';
+import axios, { AxiosResponse } from 'axios';
+import ytdl from 'ytdl-core';
+const { spotify, youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 
 parentPort!.on('message', async data => {
   if (data.action === 'search') {
-    const tracks = await fetch(data.search);
+    const tracks = await fetchTracks(data.search);
     parentPort!.postMessage({ tracks:tracks, id:data.id });
   } else if (data.action === 'exit') {
-    logLine('info', ['Worker exiting']);
+    log('info', ['Worker exiting']);
     await db.closeDB();
     process.exit();
   }
 });
-logDebug('New worker spawned.');
+logDebug('Acquire2 worker spawned.');
 
-spotify.auth = {
-  url: 'https://accounts.spotify.com/api/token',
-  method: 'post',
-  headers: {
-    'Accept': 'application/json',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Authorization': 'Basic ' + (Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')),
-  },
-  data: 'grant_type=client_credentials',
-  timeout: 10000,
-};
+async function fetchTracks(search:string):Promise<Array<Track>> {
+  // Expectations:
+  // takes a search string - can be a link to a track, playlist, album for any of the services we support; or a text search
+  // go through a decision tree to decide what the search is, search the db to see if we already have it, if we have it from a different service add the relevant info and return
+  // if we don't have it, construct a new Track object, insert into the db, then return
+  // if playlist/album, do the above for each track
+  // return array of Track objects
 
-async function fetch(search:string) {
-  logDebug('In worker!');
-  search = search.replace(sanitize, ''); // destructive removal of invalid symbols
-  search = search.trim(); // remove leading and trailing spaces
+  search = search.replace(sanitize, '').trim();
+
+  let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;
+  let sourceType:'youtube' | 'spotify' | 'text' | undefined = undefined;
 
   if (youtubePattern.test(search)) {
-    return (await fromYoutube(search));
+    sourceArray = await youtubeSource(search);
+    sourceType = 'youtube';
+  } else if (youtubePlaylistPattern.test(search)) {
+    sourceArray = await youtubePlaylistSource(search);
+    sourceType = 'youtube';
+  } else if (spotifyPattern.test(search)) {
+    sourceArray = await spotifySource(search);
+    sourceType = 'spotify';
   } else {
-    return (await fromSpotify(search));
+    sourceArray = await textSource(search);
+    sourceType = 'text';
   }
+  if (typeof sourceArray === 'undefined') { throw new Error('no sources found!'); }
+  const promiseArray:Array<Promise<Track>> = [];
+  function isTrack(track:Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]):track is Track { return (track as Track).goose !== undefined; }
+  function isCombinedSources(track:TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]):track is {youtube:TrackYoutubeSource, spotify:TrackSource} { return (track as {youtube:TrackYoutubeSource, spotify:TrackSource}).youtube !== undefined; }
+  function isYoutubeSource(source:TrackSource | TrackYoutubeSource | TrackYoutubeSource[]):source is TrackYoutubeSource { return !Array.isArray(source) && !Array.isArray((source as TrackYoutubeSource).id);}
+  function isYoutubeArray(source:TrackSource | TrackYoutubeSource[]):source is TrackYoutubeSource[] { return Array.isArray(source);}
+  for (const track of sourceArray) {
+    // build an array of promises so we can return them all at once
+    promiseArray.push((async () => {
+      if (!isTrack(track)) {
+      // finishedArray.push(null);
+      // goose does not exist, this is a new track source
+      // at this point we should have already checked if we have this track from a different source
+      // let's construct a new track
+        if (sourceType === 'youtube') {
+          if (isCombinedSources(track)) {
+          // this is from a youtube link, and we have info for both spotify and youtube
+            const actualTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: track.spotify.album.name,
+                  trackNumber: track.spotify.album.trackNumber,
+                },
+                artist: {
+                  name: track.spotify.artist.name,
+                  official: undefined,
+                },
+                track: {
+                  name: track.spotify.name,
+                  duration: track.youtube.duration,
+                  art: track.spotify.art,
+                },
+              },
+              keys: [],
+              playlists: {},
+              youtube: [track.youtube],
+              spotify: track.spotify,
+              status: {},
+            };
+            await db.insertTrack(actualTrack);
+            return actualTrack;
+          } else {
+          // this is from a youtube link, and we only have that info
+            if (!isYoutubeSource(track)) {throw new Error('source isn\'t what it should be!'); }
+            const youtubeTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: 'Unknown Album',
+                  trackNumber: 0,
+                },
+                artist: {
+                  name: track.contentID?.artist || 'Unknown Artist',
+                  official: undefined,
+                },
+                track: {
+                  name: track.contentID?.name || track.name,
+                  duration: track.duration,
+                  art: track.art,
+                },
+              },
+              keys: [],
+              playlists: {},
+              youtube: [track],
+              status: {},
+            };
+            await db.insertTrack(youtubeTrack);
+            return youtubeTrack;
+          }
+        } else {
+        // this track came from spotify or text
+          if (isCombinedSources(track) || isYoutubeSource(track)) { throw new Error('source isn\'t what it should be!'); }
+          if (isYoutubeArray(track)) {
+            const youtubeTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: 'Unknown Album',
+                  trackNumber: 0,
+                },
+                artist: {
+                  name: track[0].contentID?.artist || 'Unknown Artist',
+                  official: undefined,
+                },
+                track: {
+                  name: track[0].contentID?.name || track[0].name,
+                  duration: track[0].duration,
+                  art: track[0].art,
+                },
+              },
+              keys: [],
+              playlists: {},
+              youtube: track,
+              status: {},
+            };
+            await db.insertTrack(youtubeTrack);
+            return youtubeTrack;
+          } else {
+            let query = `${track.name} ${track.artist.name}`;
+            // sanitize this query so youtube doesn't get mad about invalid characters
+            query = query.replace(sanitize, '');
+            query = query.replace(/(-)+/g, ' ');
+            const ytArray = await youtubeFromSearch(query);
+            const finishedTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: track.album.name,
+                  trackNumber: track.album.trackNumber,
+                },
+                artist: {
+                  name: track.artist.name,
+                  official: undefined,
+                },
+                track: {
+                  name: track.name,
+                  duration: ytArray[0].duration,
+                  art: track.art,
+                },
+              },
+              keys: (sourceType === 'text') ? [search] : [],
+              playlists: {},
+              youtube: ytArray,
+              spotify: track, // temporary, remember to change once we've got more source types
+              status: {},
+            };
+            // if (sourceType === 'spotify' || 'text') {finishedTrack.spotify = track;}
+            // if (sourceType === 'itunes') {finishedTrack.itunes = track;}
+            await db.insertTrack(finishedTrack);
+            return finishedTrack;
+          }
+        }
+      } else { return track; }
+    })());
+  }
+
+  const finishedArray:Array<Track> = [];
+  await Promise.allSettled(promiseArray).then(promises => {
+    for (const promise of promises) {
+      if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }
+      if (promise.status === 'rejected') { log('error', ['track assembly promise rejected', JSON.stringify(promise, null, 2)]);}
+    }
+  });
+
+  const lengthCheck = finishedArray.filter((track) => track);
+  if (lengthCheck.length === sourceArray.length) {
+    return finishedArray as Array<Track>;
+  } else { throw new Error('final result does not pass length check'); }
 }
 
-// search will be sanitized
-async function fromSpotify(search:string, partial = false) {
-  logLine('info', [`fromSpotify search= '${search}'`]);
-
-  const is:{playlist:undefined | true, album:undefined | true, track:undefined | true} = {
-    playlist : undefined,
-    album : undefined,
-    track : undefined,
-  };
-  let match:RegExpMatchArray | null = null;
-  if (spotifyPattern.test(search)) {
-    match = search.match(spotifyPattern);
-    is[match![1] as 'playlist' | 'album' | 'track'] = true;
-  }
-
-  {
-    let track;
-    if (!match) {
-      search = String(search).toLowerCase();
-      track = await db.getTrack({ keys: search });
-    } else if (is.track) {
-      track = await db.getTrack({ 'spotify.id': match[2] });
-    }
-
-    if (track) {
-      logLine('fetch', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
-      return (Array(track));
-    }
-  }
-
-  const spotifyCredentialsAxios:null | AxiosResponse<any> = await axios(spotify.auth).catch(error => {
-    logLine('error', ['spotifyAuth: ', `headers: ${error.response.headers}`, error.stack]);
-    return (null);
+async function getSpotifyCreds():Promise<ClientCredentialsResponse> {
+  logDebug('getting spotify token');
+  const spotifyCredentialsAxios:AxiosResponse<ClientCredentialsResponse> = await axios({
+    url: 'https://accounts.spotify.com/api/token',
+    method: 'post',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + (Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')),
+    },
+    data: 'grant_type=client_credentials',
+    timeout: 10000,
   });
-  const spotifyCredentials = spotifyCredentialsAxios!.data;
+  return spotifyCredentialsAxios.data;
+}
 
-  const fields = {
-    playlist : '?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,duration_ms))',
-    album : '', // is ignored, but should be '?fields=id,name,artists(id,name),images,tracks.items(track_number,id,name,duration_ms)',
-    track : '', // is ignored, but should be '?fields=track_number,id,name,duration_ms,album(id,name,images),artists(id,name)',
-    query : '', // is ignored, but should be '?fields=tracks.items(album(id,name,images),artists(id,name),track_number,id,name,duration_ms)',
+async function genNewGooseId():Promise<string> {
+  let id = crypto.randomBytes(5).toString('hex');
+  while (await db.getTrack({ 'goose.id': id })) {
+    id = crypto.randomBytes(5).toString('hex');
+  }
+  return id;
+}
+
+async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}> | undefined> {
+  // search is a youtube url
+  const match = search.match(youtubePattern);
+  const track = await db.getTrack({ 'youtube.id': match![2] });
+  if (track) {
+    log('fetch', [`[0] have '${ track.goose.track.name }'`]);
+    return (Array(track));
+  }
+  // we don't have this yet - go talk to youtube
+  log('fetch', [`[0] lack '${ match![2] }'`]);
+  const source = await youtubeFromId(match![2]);
+  // let's see if spotify knows anything about this track
+  // use ContentID info as search parameter, don't perform search if no ContentID match
+  const find = source.contentID ? `${source.contentID.name} ${source.contentID.artist}` : null;
+  const auth = find ? await getSpotifyCreds() : null;
+  const newTrack = find ? await spotifyFromText(auth!, find).catch(err => {logDebug(err.message);}) : null;
+  if (newTrack) {
+    const dbTrack = await checkTrack(newTrack, 'spotify');
+    if (dbTrack) {
+    // we found a track that matches spotify info, but has a different youtube id
+    // save a new track to the db, copy over useful info
+      const finalTrack:Track = {
+        goose: {
+          id: await genNewGooseId(),
+          plays: 0,
+          errors: 0,
+          album: dbTrack.goose.album,
+          artist: {
+            name: source.contentID?.name || dbTrack.goose.artist.name,
+            official: dbTrack.goose.artist.official || undefined,
+          },
+          track: {
+            name: source.contentID?.name || dbTrack.goose.track.name,
+            duration: source.duration,
+            art: source.art,
+          },
+        },
+        keys: [],
+        playlists: {},
+        youtube: [source],
+        status: {},
+      };
+      await db.insertTrack(finalTrack);
+      return Array(finalTrack);
+    }
+    // found spotify info, but no matching track - return both
+    return Array({ youtube:source, spotify:newTrack });
+  }
+  // no matching info found - return the youtube source so we can construct a fresh track from it
+  return Array(source);
+}
+
+async function youtubePlaylistSource(search:string):Promise<Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}> | undefined> {
+  // this works but doesn't behave well if contentid doesn't get a match. consider revising behaviour
+  const match = search.match(youtubePlaylistPattern);
+  const sources = await youtubeFromPlaylist(match![2]);
+  const ytPromiseArray:Array<Promise<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}>> = [];
+  const auth = await getSpotifyCreds();
+  for (const source of sources) {
+    ytPromiseArray.push((async () => {
+      const track = await db.getTrack({ 'youtube.id': source.id });
+      if (track) {
+        log('fetch', [`[0] have '${ track.goose.track.name }'`]);
+        return (track);
+      }
+      // we don't have this yet - go talk to youtube
+      log('fetch', [`[0] lack '${ source.id }'`]);
+      // let's see if spotify knows anything about this track
+      // use ContentID info as search parameter, don't perform search if no ContentID match
+      const find = source.contentID ? `${source.contentID.name} ${source.contentID.artist}` : null;
+      const newTrack = find ? await spotifyFromText(auth, find).catch(err => {logDebug(err.message);}) : null;
+      if (newTrack) {
+        const dbTrack = await checkTrack(newTrack, 'spotify');
+        if (dbTrack) {
+        // we found a track that matches spotify info, but has a different youtube id
+        // save a new track to the db, copy over useful info
+          const finalTrack:Track = {
+            goose: {
+              id: await genNewGooseId(),
+              plays: 0,
+              errors: 0,
+              album: dbTrack.goose.album,
+              artist: {
+                name: source.contentID?.name || dbTrack.goose.artist.name,
+                official: dbTrack.goose.artist.official || undefined,
+              },
+              track: {
+                name: source.contentID?.name || dbTrack.goose.track.name,
+                duration: source.duration,
+                art: source.art,
+              },
+            },
+            keys: [],
+            playlists: {},
+            youtube: [source],
+            status: {},
+          };
+          await db.insertTrack(finalTrack);
+          return finalTrack;
+        }
+        // found spotify info, but no matching track - return both
+        return { youtube:source, spotify:newTrack };
+      }
+      // no matching info found - return the youtube source so we can construct a fresh track from it
+      return source;
+    })());
+  }
+  const ytArray:Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}> = [];
+  await Promise.allSettled(ytPromiseArray).then(promises => {
+    for (const promise of promises) {
+      if (promise.status === 'fulfilled') { ytArray.push(promise.value); }
+      if (promise.status === 'rejected') { log('error', ['promise rejected in youtubePlaylistSource', JSON.stringify(promise, null, 2)]);}
+    }
+  });
+  return ytArray;
+}
+
+async function youtubeFromId(id:string):Promise<TrackYoutubeSource> {
+  log('fetch', [`youtubeFromId: ${id}`]);
+  const ytdlResult = await ytdl.getBasicInfo(id, { requestOptions: { family:4 } });
+  const source:TrackYoutubeSource = {
+    id: id,
+    name: ytdlResult.videoDetails.title,
+    art: ytdlResult.videoDetails.thumbnails[0].url,
+    duration: Number(ytdlResult.videoDetails.lengthSeconds),
+    url: `https://youtu.be/${id}`,
+    contentID: (ytdlResult.videoDetails.media?.song) ? {
+      name: ytdlResult.videoDetails.media.song,
+      artist: ytdlResult.videoDetails.media.artist!,
+    } : undefined,
   };
+  return source;
+}
 
-  const spotifyQuery = {
-    url: `${(match) ? `https://api.spotify.com/v1/${match[1]}s/${match[2]}${fields[match![1] as 'playlist']}` : `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`}`,
+async function youtubeFromSearch(search:string):Promise<Array<TrackYoutubeSource>> {
+  log('fetch', [`youtubeFromSearch: ${search}`]);
+  const youtubeResultAxios:AxiosResponse<YoutubeSearchResponse> = await axios({
+    url: 'https://youtube.googleapis.com/youtube/v3/search?q=' + search + '&type=video&part=id%2Csnippet&fields%3Ditems%28id%2FvideoId%2Csnippet%28title%2Cthumbnails%29%29&maxResults=5&safeSearch=none&key=' + youtube.apiKey,
     method: 'get',
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Bearer ' + spotifyCredentials.access_token,
     },
     timeout: 10000,
-  };
-
-  const spotifyResultAxios = await axios(spotifyQuery as AxiosRequestConfig).catch(error => {
-    logLine('error', ['spotifyQuery: ', error.stack]);
-    return (null);
   });
-  const spotifyResult = spotifyResultAxios!.data;
-
-  logSpace();
-
-  let i = 0;
-  let promises = [];
-  type TrackInfo = {
-    id:string
-    title: string | null
-    artist: string | null
-    query?:string
+  const youtubeResults = youtubeResultAxios.data.items;
+  const ytPromiseArray:Array<Promise<TrackYoutubeSource>> = [];
+  for (const item of youtubeResults) {
+    const ytSource = youtubeFromId(item.id.videoId);
+    ytPromiseArray.push(ytSource);
   }
-  const tracksInfo:TrackInfo[] = [];
-  do {//                               playlist                                 || album, text                       || track
-    const id = (is.track) ? match![2] : spotifyResult.tracks.items[i]?.track?.id || spotifyResult.tracks.items[i]?.id || spotifyResult.id;
-    tracksInfo[i] = {
-      id: id,
-      title: (id) ? spotifyResult.tracks?.items?.[i]?.track?.name || spotifyResult.tracks?.items?.[i]?.name || spotifyResult.name : null,
-      artist: (id) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name || spotifyResult.tracks?.items?.[i]?.artists?.[0]?.name || spotifyResult.artists?.[0]?.name : null,
-    };
-    if (tracksInfo[i].id) { promises[i] = db.getTrack({ $and: [{ 'spotify.name': tracksInfo[i].title }, { 'artist.name': tracksInfo[i].artist }] }); }
-    i++;
-  } while (i < spotifyResult?.tracks?.items?.length);
-
-  i = 0;
-  const tracks:any[] = [];
-  await Promise.allSettled(promises).then((values:any) => {
-    do {
-      if (values[i]?.status == 'rejected') {
-        logLine('error', ['db.getTrack by spotify info promise rejected,', `search: ${search}`, `for [${i}]= ${tracksInfo[i].title}`]);
-      } else if (values[i]?.value) {
-        if (values[i].value.spotify.id.includes(tracksInfo[i].id)) {
-          // a stored text search would have returned at the beginning, so store key. doing nothing otherwise is intentional
-          if (!match && !partial) { db.addKey({ 'spotify.id': values[i].value.spotify.id }, search); }
-        } else { db.addSpotifyId({ 'spotify.id': values[i].value.spotify.id }, tracksInfo[i].id); }
-        logLine('fetch', [`[${i}] have '${tracksInfo[i].title}'`]);
-        tracks[i] = values[i].value;
-      } else {
-        logLine('info', [` [${i}] lack '${tracksInfo[i].title || search}'`]);
-      }
-      i++;
-    } while (i < spotifyResult?.tracks?.items?.length);
-  });
-
-  logSpace();
-
-  i = 0;
-  promises = [];
-  do {
-    if (tracks[i]) {
-      logLine('fetch', [`[${i}] youtube skip`]);
-    } else if (!partial) { // else, with exception
-      let query =
-        (is.playlist) ? `${spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.track?.name}` :
-          (is.album) ? `${spotifyResult.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[i]?.name}` :
-            (is.track) ? `${spotifyResult.artists?.[0]?.name} ${spotifyResult.name}` :
-              (spotifyResult.tracks?.items?.[0]) ? `${spotifyResult.tracks?.items?.[0]?.artists?.[0]?.name} ${spotifyResult.tracks?.items?.[0]?.name}` : search;
-      query = query.replace(sanitize, '');
-      query = query.replace(/(-)+/g, ' ');
-      tracksInfo[i].query = query;
-      logLine('info', [` [${i}] youtube query: ${query}`]);
-
-      const youtubeQuery = {
-        url: 'https://youtube.googleapis.com/youtube/v3/search?q=' + query + '&type=video&part=id%2Csnippet&fields%3Ditems%28id%2FvideoId%2Csnippet%28title%2Cthumbnails%29%29&maxResults=5&safeSearch=none&key=' + youtube.apiKey,
-        method: 'get',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        timeout: 10000,
-      };
-
-      promises[i] = axios(youtubeQuery as AxiosRequestConfig).catch(error => {
-        logLine('error', [`[${i}] youtube query: ${query}`, error.stack]);
-      });
-    }
-    i++;
-  } while (i < spotifyResult?.tracks?.items?.length);
-
-  logSpace();
-
-  const youtubeResults:any[] = [];
-  await Promise.allSettled(promises).then((values:any) => {
-    for (i = 0; i < values.length; i++) {
-      if (values[i].value) {
-        if (values[i].status == 'fulfilled') {
-          logLine('info', [` [${i}] ${tracksInfo[i].title || search} retrieved, id= '${values[i].value?.data?.items?.[0]?.id?.videoId}'`]);
-          youtubeResults[i] = values[i].value.data;
-        } else {
-          logLine('error', [`[${i}] youtube promise rejected`, `for query '${tracksInfo[i].query}'`]);
-        }
-      }
+  const ytArray:Array<TrackYoutubeSource> = [];
+  await Promise.allSettled(ytPromiseArray).then(promises => {
+    for (const promise of promises) {
+      if (promise.status === 'fulfilled') { ytArray.push(promise.value); }
+      if (promise.status === 'rejected') { log('error', ['youtube promise rejected', JSON.stringify(promise, null, 2)]);}
     }
   });
-
-  logSpace();
-
-  promises = [];
-  for (i = 0; i < youtubeResults.length; i++) {
-    if (youtubeResults[i]) {
-      promises[i] = db.getTrack({ 'youtube.id': youtubeResults[i]?.items?.[0]?.id?.videoId });
-    }
-  }
-
-  await Promise.allSettled(promises).then((values:any) => {
-    for (i = 0; i < values.length; i++) {
-      if (values[i]) {
-        if (values[i].status == 'fulfilled') {
-          if (values[i].value) {
-            if (tracksInfo[i].id) { db.addSpotifyId({ 'youtube.id': values[i].value.youtube.id }, tracksInfo[i].id); }
-            if (!match) { db.addKey({ 'youtube.id': values[i].value.youtube.id }, search); }
-            tracks[i] = values[i].value;
-          }
-        } else {
-          logLine('error', ['db.getTrack by youtube.id promise rejected,', `***\nyoutubeResult: ${JSON.stringify(youtubeResults[i], null, 2)}`, `spotifyResult: ${JSON.stringify(spotifyResult.tracks.items[i], null, 2)}\n***`]);
-        }
-      }
-    }
-  });
-
-  i = 0;
-  promises = [];
-  do {
-    if (!tracks[i]) {
-      const track:any = {
-        'keys' : (match || partial) ? [] : [search],
-        'playlists': {},
-        'album' : {
-          'id' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.id : (is.album) ? spotifyResult.id : (is.track) ? spotifyResult.album?.id : spotifyResult.tracks?.items?.[0]?.album?.id || null,
-          'name' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.name : (is.album) ? spotifyResult.name : (is.track) ? spotifyResult.album?.name : spotifyResult.tracks?.items?.[0]?.album?.name || null,
-          'trackNumber' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.track_number : (is.album) ? spotifyResult.tracks?.items?.[i]?.track_number : (is.track) ? spotifyResult.track_number : spotifyResult.tracks?.items?.[0]?.track_number || null,
-        },
-        'artist' : {
-          'id' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.artists?.[0]?.id : (is.album) ? spotifyResult.artists?.[0]?.id : (is.track) ? spotifyResult.artists?.[0]?.id : spotifyResult.tracks?.items?.[0]?.artists?.[0]?.id || null,
-          'name' : tracksInfo[i].artist || null,
-        },
-        'spotify' : {
-          'id' : (tracksInfo[i].id) ? [tracksInfo[i].id] : [],
-          'name' : tracksInfo[i].title || null,
-          'art' : (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.album?.images?.[0]?.url : (is.album) ? spotifyResult.images?.[0]?.url : (is.track) ? spotifyResult.album?.images?.[0]?.url : spotifyResult.tracks?.items?.[0]?.album?.images?.[0]?.url || null,
-          'duration' : undefined, // defined just below
-        },
-        'youtube' : {
-          'id' : youtubeResults[i]?.items?.[0]?.id?.videoId,
-          'name' : youtubeResults[i]?.items?.[0]?.snippet?.title,
-          'art' : youtubeResults[i]?.items?.[0]?.snippet?.thumbnails?.high?.url,
-          'duration' : undefined, // defined below
-        },
-        'alternates': [],
-      };
-      const duration_ms = (is.playlist) ? spotifyResult.tracks?.items?.[i]?.track?.duration_ms : (is.album) ? spotifyResult.tracks?.items?.[i]?.duration_ms : (is.track) ? spotifyResult.duration_ms : spotifyResult.tracks?.items?.[0]?.duration_ms || null;
-      track.spotify.duration = (duration_ms) ? duration_ms / 1000 : null;
-
-      if (partial) { return Array(track); }
-
-      for (let k = 1; k < youtubeResults[i].items.length; k++) {
-        track.alternates.push({
-          'id': youtubeResults[i].items[k].id.videoId,
-          'name': youtubeResults[i].items[k].snippet.title,
-          'art': youtubeResults[i].items[k].snippet.thumbnails.high.url,
-          'duration': null,
-        });
-      }
-      const internalPromises = [];
-      try {
-        promises.push((async () => {
-          if (!track.youtube?.id) { return; } // from arrow function expression, not overall function
-          const l = i;
-          for (let j = 0; j < youtubeResults[i].items.length; j++) {
-            internalPromises.push((async () => {
-              const ytdlResult = await ytdl.getBasicInfo(youtubeResults[l].items[j].id.videoId, { requestOptions: { family:4 } });
-              if (j == 0) {
-                track.youtube.duration = Number(ytdlResult.videoDetails.lengthSeconds);
-              } else {
-                track.alternates[j - 1].duration = Number(ytdlResult.videoDetails.lengthSeconds);
-              }
-            })());
-          }
-          await Promise.allSettled(internalPromises);
-          let id = crypto.randomBytes(5).toString('hex');
-          while (await db.getTrack({ 'goose.id': id })) {
-            id = crypto.randomBytes(5).toString('hex');
-          }
-          track.goose = {
-            id: id,
-          };
-          logDebug(`[${l}] assigned id: ${id}`);
-          tracks[l] = track;
-          await db.insertTrack(track);
-        })());
-      } catch (error) {
-        logLine('error', ['ytdl, likely track not inserted', `***\n[${i}] ${tracksInfo[i].title}:\n${JSON.stringify(youtubeResults, null, 2)}\n***`]);
-      }
-    }
-    i++;
-  } while (i < spotifyResult?.tracks?.items?.length);
-
-  await Promise.allSettled(promises);
-
-  return (tracks);
+  return ytArray;
 }
 
-// search will be sanitized, and have passed youtubePattern.test();
-async function fromYoutube(search:string) {
-  logLine('info', [`fromYoutube search= '${search}'`]);
-
-  const match = search.match(youtubePattern);
-  let track = await db.getTrack({ 'youtube.id': match![2] });
-
-  if (track) {
-    logLine('fetch', [`[0] have '${ track.spotify.name || track.youtube.name }'`]);
-    return (Array(track));
-  } else {
-    const ytdlResult = await ytdl.getBasicInfo(match![2], { requestOptions: { family:4 } }).catch(err => {
-      // const error = new Error('message to user', { cause: err });
-      logLine('error', ['fromYoutube, ytdl', err.stack]);
-      throw err;
+async function youtubeFromPlaylist(id:string):Promise<Array<TrackYoutubeSource>> {
+  log('fetch', [`youtubeFromSearch: ${id}`]);
+  let pageToken = undefined;
+  const youtubeResults:Array<YoutubePlaylistItem> = [];
+  do {
+    const youtubeResultAxios:AxiosResponse<YoutubePlaylistResponse> = await axios({
+      url: `https://youtube.googleapis.com/youtube/v3/playlistItems?playlistId=${id}&part=snippet%2CcontentDetails&maxResults=50&key=${youtube.apiKey}${pageToken ? '&pageToken=' + pageToken : ''}`,
+      method: 'get',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      timeout: 10000,
     });
+    pageToken = youtubeResultAxios.data.nextPageToken;
+    youtubeResults.push(...youtubeResultAxios.data.items);
+  } while (pageToken);
+  logDebug(`Retrieved ${youtubeResults.length} tracks. Running ytdl...`);
+  const ytPromiseArray:Array<Promise<TrackYoutubeSource>> = [];
+  for (const item of youtubeResults) {
+    const ytSource = youtubeFromId(item.contentDetails.videoId);
+    ytPromiseArray.push(ytSource);
+  }
+  const ytArray:Array<TrackYoutubeSource> = [];
+  await Promise.allSettled(ytPromiseArray).then(promises => {
+    for (const promise of promises) {
+      if (promise.status === 'fulfilled') { ytArray.push(promise.value); }
+      if (promise.status === 'rejected') { log('error', [JSON.stringify(promise, null, 2)]);}
+    }
+  });
+  return ytArray;
+}
 
-    let query = (Object.keys(ytdlResult.videoDetails.media).length) ? `${ytdlResult.videoDetails.media.song} ${ytdlResult.videoDetails.media.artist}` : ytdlResult.videoDetails.title;
-    query = query.replace(sanitize, '');
-
-    [track] = await fromSpotify(query, true);
-
-    if (track!.youtube.id) {
-      // complete track, different id. null keys, playlists and spotify album, artist and track ids
-
-      track!.keys.length = 0;
-      track!.playlists = {};
-      track!.album.id = null;
-      track!.artist.id = null;
-      track!.spotify.id.length = 0;
+async function spotifySource(search:string):Promise<Array<TrackSource | Track> | undefined> {
+  // search is a spotify url
+  const match = search.match(spotifyPattern);
+  switch (match![1]) {
+    case 'track':{
+      const track = await db.getTrack({ 'spotify.id': match![2] });
+      if (track) {
+        log('fetch', [`[0] have '${ track.goose.track.name }'`]);
+        return (Array(track));
+      }
+      // this is a new id, so we need to go talk to spotify
+      const auth = await getSpotifyCreds();
+      const newTrack = await spotifyFromTrack(auth, match![2]);
+      const dbTrack = await checkTrack(newTrack, 'spotify');
+      if (dbTrack) {return Array(dbTrack);}
+      return Array(newTrack);
     }
 
-    let id = crypto.randomBytes(5).toString('hex');
-    while (await db.getTrack({ 'goose.id': id })) {
-      id = crypto.randomBytes(5).toString('hex');
+    case 'album':{
+      const auth = await getSpotifyCreds();
+      const newTracks = await spotifyFromAlbum(auth, match![2]);
+      const readyTracks:Array<Track | TrackSource> = [];
+      for (const [i, source] of newTracks.entries()) {
+        const dbTrack = await checkTrack(source, 'spotify');
+        if (dbTrack) {
+          readyTracks.push(dbTrack);
+          log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);
+        } else {
+          readyTracks.push(source);
+          log('fetch', [`[${i}] lack '${ source.name }'`]);
+        }
+      }
+      return readyTracks;
     }
 
-    track!.goose = {
-      id: id,
-    };
-    logDebug(`[0] assigned id: ${id}`);
+    case 'playlist':{
+      const auth = await getSpotifyCreds();
+      const newTracks = await spotifyFromPlaylist(auth, match![2]);
+      const readyTracks:Array<Track | TrackSource> = [];
+      for (const [i, source] of newTracks.entries()) {
+        const dbTrack = await checkTrack(source, 'spotify');
+        if (dbTrack) {
+          readyTracks.push(dbTrack);
+          log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);
+        } else {
+          readyTracks.push(source);
+          log('fetch', [`[${i}] lack '${ source.name }'`]);
+        }
+      }
+      return readyTracks;
+    }
+  }
+}
 
-    track!.youtube = {
-      id: match![2],
-      name: ytdlResult.videoDetails.title,
-      art: ytdlResult.player_response.microformat.playerMicroformatRenderer.thumbnail.thumbnails[0].url,
-      duration: Number(ytdlResult.videoDetails.lengthSeconds),
-    };
-    if (!track) {return;} // satisfies typescript; we know we should have a track at this point
-    await db.insertTrack(track);
+async function checkTrack(track:TrackSource, type:'spotify'):Promise<Track | null> {
+  logDebug('checking track ', track.name);
+  // takes a track source, and checks if we already have it
+  // if we do, updates the existing track and returns it
+  // if not, returns null
+  // check the db to see if we have this by exact id match
+  const target = `${type}.id`;
+  const track1 = await db.getTrack({ [target]: track.id });
+  if (track1) { return track1; }
+  // check the db to see if we have this by name/artist match
+  const dbTrack = await db.getTrack({ $and: [{ 'goose.track.name': track.name }, { 'goose.artist.name': track.artist.name }] });
+  if (dbTrack) {
+    // we have this track by name/artist, but didn't have this exact id
+    if (dbTrack[type]) {
+      // this track already has a source of this type, so we just need to add the id
+      db.addSourceId({ 'goose.id':dbTrack.goose.id }, type, track.id[0]);
+      dbTrack[type]!.id.push(track.id[0]);
+    } else {
+      // track doesn't have a source of this type yet, so create one
+      db.addTrackSource({ 'goose.id':dbTrack.goose.id }, type, track);
+      dbTrack.spotify = track;
+    }
+    return dbTrack;
+  } else {return null;}
+}
 
+async function spotifyFromTrack(auth:ClientCredentialsResponse, id:string):Promise<TrackSource> {
+  log('fetch', [`spotifyFromTrack: ${id}`]);
+  const spotifyResultAxios:AxiosResponse<SpotifyApi.SingleTrackResponse> = await axios({
+    url: `https://api.spotify.com/v1/tracks/${id}`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Bearer ' + auth.access_token,
+    },
+    timeout: 10000,
+  });
+  const spotifyResult = spotifyResultAxios.data;
+  // at this point we should have a result, now construct the TrackSource
+  const source:TrackSource = {
+    id: Array(spotifyResult.id),
+    name: spotifyResult.name,
+    art: spotifyResult.album.images[0].url,
+    duration: spotifyResult.duration_ms / 1000,
+    url: spotifyResult.href,
+    album: {
+      id: spotifyResult.album.id,
+      name: spotifyResult.album.name,
+      trackNumber: spotifyResult.track_number, // TODO: compensate for multiple discs
+    },
+    artist: {
+      id: spotifyResult.artists[0].id,
+      name: spotifyResult.artists[0].name,
+    },
+  };
+  return source;
+}
+
+async function spotifyFromText(auth:ClientCredentialsResponse, search:string):Promise<TrackSource | null> {
+  log('fetch', [`spotifyFromText: ${search}`]);
+  const spotifyResultAxios:AxiosResponse<SpotifyApi.TrackSearchResponse> = await axios({
+    url: `https://api.spotify.com/v1/search?type=track&limit=1&q=${search}`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Bearer ' + auth.access_token,
+    },
+    timeout: 10000,
+  });
+  const spotifyResult = spotifyResultAxios.data;
+  if (!spotifyResult.tracks.items[0]) { return null; }
+  // at this point we should have a result, now construct the TrackSource
+  const source:TrackSource = {
+    id: Array(spotifyResult.tracks.items[0].id),
+    name: spotifyResult.tracks.items[0].name,
+    art: spotifyResult.tracks.items[0].album.images[0].url,
+    duration: spotifyResult.tracks.items[0].duration_ms / 1000,
+    url: spotifyResult.tracks.items[0].href,
+    album: {
+      id: spotifyResult.tracks.items[0].album.id,
+      name: spotifyResult.tracks.items[0].album.name,
+      trackNumber: spotifyResult.tracks.items[0].track_number,
+    },
+    artist: {
+      id: spotifyResult.tracks.items[0].artists[0].id,
+      name: spotifyResult.tracks.items[0].artists[0].name,
+    },
+  };
+  return source;
+}
+
+async function spotifyFromAlbum(auth:ClientCredentialsResponse, id:string):Promise<Array<TrackSource>> {
+  log('fetch', [`spotifyFromAlbum: ${id}`]);
+  const spotifyResultAxios:AxiosResponse<SpotifyApi.SingleAlbumResponse> = await axios({
+    url: `https://api.spotify.com/v1/albums/${id}`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Bearer ' + auth.access_token,
+    },
+    timeout: 10000,
+  });
+  const spotifyResult = spotifyResultAxios.data;
+  const sources:Array<TrackSource> = [];
+  for (const track of spotifyResult.tracks.items) {
+    sources.push({
+      id: Array(track.id),
+      name: track.name,
+      art: spotifyResult.images[0].url,
+      duration: track.duration_ms,
+      url: track.href,
+      album: {
+        id: spotifyResult.id,
+        name: spotifyResult.name,
+        trackNumber: track.track_number,
+      },
+      artist: {
+        id: spotifyResult.artists[0].id,
+        name: spotifyResult.artists[0].name,
+      },
+    });
+  }
+  return sources;
+}
+
+async function spotifyFromPlaylist(auth:ClientCredentialsResponse, id:string):Promise<Array<TrackSource>> {
+  log('fetch', [`spotifyFromPlaylist: ${id}`]);
+  const spotifyResultAxios:AxiosResponse<SpotifyApi.SinglePlaylistResponse> = await axios({
+    url: `https://api.spotify.com/v1/playlists/${id}?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,href,duration_ms))`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Bearer ' + auth.access_token,
+    },
+    timeout: 10000,
+  });
+  const spotifyResult = spotifyResultAxios!.data;
+  const sources:Array<TrackSource> = [];
+  for (const track of spotifyResult.tracks.items) {
+    if (track.track) {
+      sources.push({
+        id: Array(track.track.id),
+        name: track.track.name,
+        art: track.track.album.images[0].url,
+        duration: track.track.duration_ms,
+        url: track.track.href,
+        album: {
+          id: track.track.album.id,
+          name: track.track.album.name,
+          trackNumber: track.track.track_number,
+        },
+        artist: {
+          id: track.track.artists[0].id,
+          name: track.track.artists[0].name,
+        },
+      });
+    }
+  }
+  return sources;
+}
+
+async function textSource(search:string):Promise<Array<TrackSource | Track | TrackYoutubeSource[]> | undefined> {
+  // search is not any of the url types we recognize, treat as text
+  search = search.toLowerCase();
+  const track = await db.getTrack({ keys: search });
+  if (track) {
+    log('fetch', [`[0] have '${ track.goose.track.name }'`]);
     return (Array(track));
+  }
+  // this is a new search
+  const auth = await getSpotifyCreds();
+  const newTrack = await spotifyFromText(auth, search);
+  if (newTrack) {
+    const dbTrack = await checkTrack(newTrack, 'spotify');
+    if (dbTrack) {
+      log('fetch', [`[0] have '${ dbTrack.goose.track.name }'`]);
+      // we didn't have the key, but had the track by name/artist or id match
+      db.addKey({ 'goose.id':dbTrack.goose.id }, search);
+      return Array(dbTrack);
+    }
+    log('fetch', [`[0] lack '${ newTrack.name }'`]);
+    return Array(newTrack);
+  } else {
+    const youtubeTrack = await youtubeFromSearch(search);
+    const dbTrack = await db.getTrack({ 'youtube.id': youtubeTrack[0].id });
+    if (dbTrack) {
+      log('fetch', [`[0] have '${ dbTrack.goose.track.name }'`]);
+      // we didn't have the key, but had the track by name/artist or id match
+      db.addKey({ 'goose.id':dbTrack.goose.id }, search);
+      return Array(dbTrack);
+    }
+    log('fetch', [`[0] lack '${ youtubeTrack[0].name }'`]);
+    return Array(youtubeTrack);
   }
 }
