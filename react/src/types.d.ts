@@ -1,34 +1,35 @@
 export interface Track {
 	goose: {
-		id:string,
-		plays?:number
-		errors?:number
-		seek?:number,
-		bar:ProgressBarOptions
-	},
-  keys: string[],
-	playlists: Record<string, number>,
-	album: {
-		id: string,
-		name:string | number, // this needs to be able to be a number for shuffle
-		trackNumber:number
-	},
-	artist: {
-		id: string,
-		name: string,
-		official: string // url link to official site, if !official then bandcamp, etc
-	},
-	spotify: {
-		id: string[],
-    name: string,
-		art: string,
-		duration: number
-	},
-	youtube: youtubeObject,
-	alternates: youtubeObject[],
-	ephemeral?: string
-	pause?: number
-	start?: number
+		id: string
+		plays: number
+		errors: number
+		album: {
+			name: string
+			trackNumber: number
+		}
+		artist: {
+			name: string
+			official?: string
+		}
+		track: {
+			name: string
+			duration: number
+			art: string
+		}
+	}
+	keys: Array<string>
+	playlists: Record<string, number>
+	youtube: Array<TrackYoutubeSource>
+	bar?: ProgressBarOptions
+	spotify?: TrackSource
+	amazon?: TrackSource
+	itunes?: TrackSource
+	status: {
+		seek?: number
+		ephemeral?: string
+		pause?: number
+		start?: number
+	}
 }
 
 type ProgressBarOptions = {
@@ -39,11 +40,33 @@ type ProgressBarOptions = {
   head?:string
 }
 
-interface youtubeObject {
-  id: string,
-  name: string,
-  art: string,
+interface TrackSource {
+	id: Array<string>
+	name: string
+	art: string
+	duration: number
+	url: string
+	album: {
+		id: string
+		name: string
+		trackNumber: number
+	}
+	artist: {
+		id: string
+		name: string
+	}
+}
+
+interface TrackYoutubeSource {
+  id: string
+  name: string
+  art: string
   duration: number
+	url: string
+	contentID?: {
+		name: string
+		artist: string
+	}
 }
 
 export type PlayerClick = {
