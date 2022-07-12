@@ -24,17 +24,17 @@ export class TrackSmall extends React.Component<{playerClick:(a: PlayerClick) =>
     if (Object.keys(this.props.track).length) {
       return (
         <TrackStyle>
-          <Art src={this.props.track?.spotify?.art || this.props.track?.youtube?.art} alt="album art" crossOrigin='anonymous'/>
+          <Art src={this.props.track.goose.track.art} alt="album art" crossOrigin='anonymous'/>
           <ButtonContainer>
             <Button src={playButton} onClick={() => this.trackClick('jump')} />
             <Number>{(this.props.id + 1)}</Number>
             <Button src={removeButton} onClick={() => this.trackClick('remove')} />
           </ButtonContainer>
           <Details>
-            <Title>{this.props.track?.spotify?.name || this.props.track?.youtube?.name}</Title>
-            <AlbumInfo>{this.props.track?.artist?.name} - <em>{this.props.track?.album?.name}</em></AlbumInfo>
+            <Title>{this.props.track.goose.track.name}</Title>
+            <AlbumInfo>{this.props.track.goose.artist.name} - <em>{this.props.track.goose.album.name}</em></AlbumInfo>
           </Details>
-          <Duration>{timeDisplay(this.props.track?.youtube?.duration)}</Duration>
+          <Duration>{timeDisplay(this.props.track?.youtube[0]?.duration)}</Duration>
         </TrackStyle>
       );
     } else {return null;}

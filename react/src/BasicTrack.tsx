@@ -8,15 +8,15 @@ export default function BasicTrack(props:{track:Track, id:number}) {
   if (Object.keys(props.track).length) {
     return (
       <TrackStyle>
-        <Art src={props.track?.spotify?.art || props.track?.youtube?.art} alt="album art" crossOrigin='anonymous'/>
+        <Art src={props.track?.goose.track.art} alt="album art" crossOrigin='anonymous'/>
         <ButtonContainer>
           <Number>{(props.id + 1)}</Number>
         </ButtonContainer>
         <Details>
-          <Title>{props.track?.spotify?.name || props.track?.youtube?.name}</Title>
-          <AlbumInfo>{props.track?.artist?.name} - <em>{props.track?.album?.name}</em></AlbumInfo>
+          <Title>{props.track?.goose.track.name}</Title>
+          <AlbumInfo>{props.track?.goose?.artist?.name} - <em>{props.track?.goose?.album?.name}</em></AlbumInfo>
         </Details>
-        <Duration>{timeDisplay(props.track?.youtube?.duration)}</Duration>
+        <Duration>{timeDisplay(props.track?.goose?.track?.duration)}</Duration>
       </TrackStyle>
     );
   } else {return null;}
