@@ -1,4 +1,5 @@
 {
+  "root": true,
 	"extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
 	"env": {
 		"node": true,
@@ -60,6 +61,9 @@
 		"spaced-comment": "error",
 		"yoda": "error",
     "react/jsx-uses-react": "error",   
-     "react/jsx-uses-vars": "error" 
+    "react/jsx-uses-vars": "error",
+    "@typescript-eslint/no-non-null-assertion": "off",
+		"@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+		"@typescript-eslint/no-explicit-any": "off"
 	}
 }

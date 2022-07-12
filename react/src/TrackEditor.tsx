@@ -38,36 +38,34 @@ export default function TrackEditor() {
           </TrackPart>
           <TrackPart>
             <h3>Album</h3>
-            <label>id:<input readOnly={true} value={track.album.id}/></label>
-            <label>name:<input readOnly={true} value={track.album.name}/></label>
-            <label>number:<input readOnly={true} value={track.album.trackNumber}/></label>
+            <label>name:<input readOnly={true} value={track.goose.album.name}/></label>
+            <label>number:<input readOnly={true} value={track.goose.album.trackNumber}/></label>
           </TrackPart>
           <TrackPart>
             <h3>Artist</h3>
-            <label>id:<input readOnly={true} value={track.artist.id}/></label>
-            <label>name:<input readOnly={true} value={track.artist.name}/></label>
-            <label>support link:<input readOnly={true} value={track.artist.official}/></label>
+            <label>name:<input readOnly={true} value={track.goose.artist.name}/></label>
+            <label>support link:<input readOnly={true} value={track.goose.artist.official}/></label>
           </TrackPart>
           <TrackPart>
             <h3>Spotify</h3>
-            <label>ids:<input readOnly={true} value={track.spotify.id}/></label>
-            <label>name:<input readOnly={true} value={track.spotify.name}/></label>
-            <label>duration:<input readOnly={true} value={track.spotify.duration}/></label>
-            <label>art:<input readOnly={true} value={track.spotify.art}/></label>
+            <label>ids:<input readOnly={true} value={track.spotify?.id}/></label>
+            <label>name:<input readOnly={true} value={track.spotify?.name}/></label>
+            <label>duration:<input readOnly={true} value={track.spotify?.duration}/></label>
+            <label>art:<input readOnly={true} value={track.spotify?.art}/></label>
           </TrackPart>
           <TrackPart>
             <h3>Youtube</h3>
-            <label>id:<input readOnly={true} value={track.youtube.id}/></label>
-            <label>name:<input readOnly={true} value={track.youtube.name}/></label>
-            <label>duration:<input readOnly={true} value={track.youtube.duration}/></label>
-            <label>art:<input readOnly={true} value={track.youtube.art}/></label>
+            <label>id:<input readOnly={true} value={track.youtube[0].id}/></label>
+            <label>name:<input readOnly={true} value={track.youtube[0].name}/></label>
+            <label>duration:<input readOnly={true} value={track.youtube[0].duration}/></label>
+            <label>art:<input readOnly={true} value={track.youtube[0].art}/></label>
           </TrackPart>
           <TrackPart>
             <h3>Alternates</h3>
-            <label>1:<input readOnly={true} value={track.alternates[0].id}/></label>
-            <label>2:<input readOnly={true} value={track.alternates[1].id}/></label>
-            <label>3:<input readOnly={true} value={track.alternates[2].id}/></label>
-            <label>4:<input readOnly={true} value={track.alternates[3].id}/></label>
+            <label>1:<input readOnly={true} value={track.youtube[1].id}/></label>
+            <label>2:<input readOnly={true} value={track.youtube[2].id}/></label>
+            <label>3:<input readOnly={true} value={track.youtube[3].id}/></label>
+            <label>4:<input readOnly={true} value={track.youtube[4].id}/></label>
           </TrackPart>
         </WholeTrack>
       </div>

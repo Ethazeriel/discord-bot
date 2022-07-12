@@ -24,9 +24,9 @@ type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek
 // import './Test.css';
 
 export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void}) {
-  const seek = props.status?.tracks?.[props.status?.playhead]?.goose?.seek;
-  const start = props.status?.tracks?.[props.status?.playhead]?.start;
-  const duration = props.status?.tracks?.[props.status?.playhead]?.youtube?.duration || 0;
+  const seek = props.status?.tracks?.[props.status?.playhead]?.status?.seek;
+  const start = props.status?.tracks?.[props.status?.playhead]?.status?.start;
+  const duration = props.status?.tracks?.[props.status?.playhead]?.goose?.track?.duration || 0;
   const paused = props.status?.paused as boolean;
   const now = Date.now() / 1000;
   const [timer, setTimer] = useState(0);
