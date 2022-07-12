@@ -38,7 +38,7 @@ function ContentContainer(props: {content:string}) { // naming things is hard ok
 }
 
 function PlaylistDisplay() {
-  const [playlists, setPlaylists] = React.useState<string[]>(new Array);
+  const [playlists, setPlaylists] = React.useState<string[]>([]);
   const [selValue, setSelValue] = React.useState<string>('');
   const [tracks, setTracks] = React.useState<Track[]>([]);
   React.useEffect(() => {

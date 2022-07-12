@@ -30,9 +30,9 @@ display: flex;
 }
 `;
 
-export default class App extends React.Component<{}, AppState> {
+export default class App extends React.Component<Record<string, never>, AppState> {
 
-  constructor(props:AppState) {
+  constructor(props:Record<string, never>) {
     super(props);
     this.state = {
       playerStatus:undefined,
