@@ -221,12 +221,12 @@ const httpServer = app.listen(port, () => {
 });
 
 const wss = new WebSocketServer<WebSocket & {isAlive:boolean}>({ server: httpServer, clientTracking: true });
-httpServer.on('upgrade', (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    logDebug('WebSocket upgrade event—have not tested if this works.');
-    wss.emit('connection', ws, request);
-  });
-});
+// httpServer.on('upgrade', (request, socket, head) => {
+//   wss.handleUpgrade(request, socket, head, (ws) => {
+//     logDebug('WebSocket upgrade event—have not tested if this works.');
+//     wss.emit('connection', ws, request);
+//   });
+// }); commenting this out because it makes us crash
 const wssInterval = setInterval(() => {
   for (const client of wss.clients) {
     if (client.isAlive === false) {
