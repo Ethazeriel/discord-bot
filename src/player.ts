@@ -267,21 +267,21 @@ export default class Player {
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
     await this.play();
-    if (this.queue.tracks[priorPlayhead].status?.ephemeral) { this.remove(priorPlayhead); }
+    if (this.queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async next() { // next, loop or end
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
     await this.play();
-    if (this.queue.tracks[priorPlayhead].status?.ephemeral) { this.remove(priorPlayhead); }
+    if (this.queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async jump(position:number) {
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((value = Math.abs(position), length = this.queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
     await this.play();
-    if (this.queue.tracks[priorPlayhead].status?.ephemeral) { this.remove(priorPlayhead); }
+    if (this.queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async seek(time:number) {
