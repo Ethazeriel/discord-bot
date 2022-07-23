@@ -9,7 +9,7 @@ const url = mongo.url;
 const proddb = 'goose';
 const prodtrackcol = 'tracks';
 const testdb = 'test';
-const testtrackcol = 'track2s';
+const testtrackcol = 'tracks';
 let db:any;
 let con:any;
 
@@ -51,7 +51,7 @@ async function stepone() {
         url: `https://youtu.be/${youtube2.id}`,
       });
     }
-    const spotify:TrackSource | undefined = track.spotify.id ? {
+    const spotify:TrackSource | undefined = (track.spotify.id && track.spotify.id.length) ? {
       id: track.spotify.id,
       name: track.spotify.name,
       art: track.spotify.art,

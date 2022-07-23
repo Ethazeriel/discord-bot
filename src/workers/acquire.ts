@@ -47,7 +47,9 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
     sourceArray = await textSource(search);
     sourceType = 'text';
   }
+
   if (typeof sourceArray === 'undefined') { throw new Error('no sources found!'); }
+
   const promiseArray:Array<Promise<Track>> = [];
   function isTrack(track:Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]):track is Track { return (track as Track).goose !== undefined; }
   function isCombinedSources(track:TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]):track is {youtube:TrackYoutubeSource, spotify:TrackSource} { return (track as {youtube:TrackYoutubeSource, spotify:TrackSource}).youtube !== undefined; }

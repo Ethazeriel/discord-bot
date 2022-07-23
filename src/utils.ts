@@ -85,6 +85,38 @@ export function randomHexColor():number {
   return Number(`0x${crypto.randomBytes(3).toString('hex')}`);
 }
 
+export function numbersToTrackIndexes(input:string):Array<number> {
+  // takes a comma-separated string of numbers and ranges
+  // returns an array of numbers in descending order
+  // assumes the user gave us 1-indexed numbers and we want 0-indexed
+  const uniques:Set<number> = new Set();
+  input = input.replace(/([^\d-,])+/g, '');
+  const values = input.split(',');
+  for (const value of values) {
+    if (value.includes('-')) {
+      const ends = value.match(/(\d+)?(?:-)(\d+)?/);
+      if (value.startsWith('-')) {
+        uniques.add(Math.abs(Number(value)));
+      } else if (value.endsWith('-')) {
+        uniques.add(Number(ends![1]));
+      } else {
+        let i = Number(ends![1]);
+        while (i <= Number(ends![2])) {
+          uniques.add(i);
+          i++;
+        }
+      }
+    } else {
+      uniques.add(Number(value));
+    }
+  }
+  uniques.delete(0);
+  const result = Array.from(uniques);
+  result.sort((a, b) => b - a);
+  for (const [j, k] of result.entries()) {result[j] = (k - 1);}
+  return result;
+}
+
 // =================================
 //               EMBEDS
 // =================================
