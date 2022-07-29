@@ -14,7 +14,7 @@
       "modules": true
     }
 	},
-  "plugins": ["react", "@typescript-eslint"],
+  "plugins": ["react", "react-hooks", "@typescript-eslint"],
 	"root": true,
 	"rules": {
 		"arrow-spacing": ["warn", { "before": true, "after": true }],
@@ -61,9 +61,11 @@
 		"spaced-comment": "error",
 		"yoda": "error",
     "react/jsx-uses-react": "error",   
-     "react/jsx-uses-vars": "error",
-		 "@typescript-eslint/no-non-null-assertion": "off",
-		 "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
-		 "@typescript-eslint/no-explicit-any": "off"
+    "react/jsx-uses-vars": "error",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+		"@typescript-eslint/no-non-null-assertion": "off",
+		"@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+		"@typescript-eslint/no-explicit-any": "off"
 	}
 }
