@@ -9,6 +9,11 @@ worker.on('exit', code => {
   worker = new Worker(fileURLToPath(new URL('./workers/acquire.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
 }); // if it exits just spawn a new one because that's good error handling, yes
 
+worker.on('error', code => {
+  logDebug(`Worker threw error ${code.message}.`, '\n', code.stack);
+  worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
+}); // ehh fuck it, probably better than just crashing I guess
+
 export default async function fetch(search:string, id = crypto.randomBytes(5).toString('hex')):Promise<Track[]> {
   worker.postMessage({ action:'search', search:search, id:id });
   const promise = new Promise((resolve, reject) => {
