@@ -28,13 +28,13 @@ export default class Player {
       idleTimer:NodeJS.Timeout
       refreshTimer:NodeJS.Timeout
       getPage:() => number
-      update:(userId:string, description:string, content?:InteractionUpdateOptions) => void
+      update:(userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => void
     }
     media?: {
       interaction?:CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction
       idleTimer:NodeJS.Timeout
       refreshTimer:NodeJS.Timeout
-      update:(userId:string, description:string, content?:InteractionUpdateOptions) => void
+      update:(userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => void
     }
   }>;
   listeners:Set<string>;
@@ -523,7 +523,7 @@ export default class Player {
     return fresh ? { embeds: [embed], components: buttons, files: [thumb] } as InteractionReplyOptions : { embeds: [embed as MessageEmbedOptions], components: buttons };
   }
 
-  async queueEmbed(messagetitle = 'Current Queue:', page?:number | undefined, fresh = true):Promise<InteractionReplyOptions> {
+  async queueEmbed(messagetitle = 'Current Queue:', page?:number | undefined, fresh = true):Promise<InteractionUpdateOptions | InteractionReplyOptions> {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page!) || Math.ceil((this.getPlayhead() + 1) / 10);
@@ -592,10 +592,10 @@ export default class Player {
         { name: `\` ${utils.progressBar(45, queueTime, elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(queueTime)}` },
       ],
     };
-    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } as InteractionReplyOptions : { embeds: [embed as MessageEmbedOptions], components: buttonEmbed };
+    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } as InteractionUpdateOptions : { embeds: [embed as MessageEmbedOptions], components: buttonEmbed };
   }
 
-  async decommission(interaction:CommandInteraction | ButtonInteraction, type: 'queue' | 'media', embed:InteractionReplyOptions, message = '\u27F3 expired') {
+  async decommission(interaction:CommandInteraction | ButtonInteraction, type: 'queue' | 'media', embed:InteractionReplyOptions | InteractionUpdateOptions, message = '\u27F3 expired') {
     const { embeds, components } = JSON.parse(JSON.stringify(embed));
     switch (type) {
       case 'queue': {
@@ -624,7 +624,7 @@ export default class Player {
     }
   }
 
-  async register(interaction: CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction, type: 'queue'|'media', embed:InteractionReplyOptions) {
+  async register(interaction: CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction, type: 'queue'|'media', embed:InteractionUpdateOptions | InteractionReplyOptions) {
     const id = interaction.member!.user.id;
     if (!this.embeds[id]) { this.embeds[id] = {}; }
 
@@ -669,7 +669,7 @@ export default class Player {
               }
               return (this.embeds[id].queue!.userPage);
             },
-            update: async (userId:string, description:string, content?:InteractionUpdateOptions) => {
+            update: async (userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => {
               logDebug(`${name} queue: ${description}`);
               const contentPage = (content) ? content.embeds![0]?.fields?.[1]?.value?.match(embedPage) : null;
               const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.embeds[id].queue!.getPage()) : null;
@@ -706,10 +706,10 @@ export default class Player {
             refreshTimer: setInterval(() => {
               this.embeds[id].media!.update(id, 'interval');
             }, 15000).unref(),
-            update: async (userId:string, description:string, content?:InteractionUpdateOptions) => {
+            update: async (userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => {
               content ||= await this.mediaEmbed(false);
               logDebug(`${name} media: ${description}`);
-              const { embeds, components, files } = content;
+              const { embeds, components, files } = content!;
               if (!this.embeds[userId].media!.interaction!.replied && files) {
                 this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components, files: files });
               } else { this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components }); }
@@ -726,7 +726,7 @@ export default class Player {
     }
   }
 
-  async sync(interaction:CommandInteraction | ButtonInteraction, type: 'queue'|'media', queueEmbed:InteractionReplyOptions, mediaEmbed?:InteractionReplyOptions) {
+  async sync(interaction:CommandInteraction | ButtonInteraction, type: 'queue'|'media', queueEmbed:InteractionReplyOptions | InteractionUpdateOptions, mediaEmbed?:InteractionReplyOptions | InteractionUpdateOptions) {
     switch (type) {
       case 'queue': { // strip non-false parameter thing
         Object.keys(this.embeds).map(async (id) => {

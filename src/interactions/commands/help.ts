@@ -9,15 +9,15 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option.setName('section')
       .setDescription('What do you want help with?')
-      .addChoice('General', 'index')
-      .addChoice('Stickers', 'stickers')
-      .addChoice('Locale command', 'locale')
-      .addChoice('Play command', 'play')
-      .addChoice('Playlist command', 'playlist')
-      .addChoice('Queue command', 'queue')
-      .addChoice('Voice command', 'voice')
-      .addChoice('Remap command', 'remap')
-      .addChoice('Admin command', 'admin'));
+      .addChoices({ name:'General', value:'index' },
+        { name:'Stickers', value:'stickers' },
+        { name:'Locale command', value:'locale' },
+        { name:'Play command', value:'play' },
+        { name:'Playlist command', value:'playlist' },
+        { name:'Queue command', value:'queue' },
+        { name:'Voice command', value:'voice' },
+        { name:'Remap command', value:'remap' },
+        { name:'Admin command', value:'admin' }));
 
 export async function execute(interaction:CommandInteraction) {
   await interaction.deferReply({ ephemeral: true });

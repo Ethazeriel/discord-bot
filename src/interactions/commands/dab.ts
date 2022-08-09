@@ -9,24 +9,24 @@ export const data = new SlashCommandBuilder()
     option.setName('type')
       .setDescription('Dab type')
       .setRequired(true)
-      .addChoice('Random', 'random')
-      .addChoice('Pride', 'pride')
-      .addChoice('Progress pride', 'progressive')
-      .addChoice('PoC pride', 'poc')
-      .addChoice('Trans', 'trans')
-      .addChoice('Agender', 'agender')
-      .addChoice('Aromantic', 'aromantic')
-      .addChoice('Asexual', 'asexual')
-      .addChoice('Bigender', 'bigender')
-      .addChoice('Demisexual', 'demisexual')
-      .addChoice('Gay(men)', 'gaymen')
-      .addChoice('Genderfluid', 'genderfluid')
-      .addChoice('Genderqueer', 'genderqueer')
-      .addChoice('Intersex', 'intersex')
-      .addChoice('Lesbian', 'lesbian')
-      .addChoice('Nonbinary', 'nonbinary')
-      .addChoice('Pan', 'pan')
-      .addChoice('Poly', 'poly'));
+      .addChoices({ name:'Random', value:'random' },
+        { name:'Pride', value:'pride' },
+        { name:'Progress pride', value:'progressive' },
+        { name:'PoC pride', value:'poc' },
+        { name:'Trans', value:'trans' },
+        { name:'Agender', value:'agender' },
+        { name:'Aromantic', value:'aromantic' },
+        { name:'Asexual', value:'asexual' },
+        { name:'Bigender', value:'bigender' },
+        { name:'Demisexual', value:'demisexual' },
+        { name:'Gay(men)', value:'gaymen' },
+        { name:'Genderfluid', value:'genderfluid' },
+        { name:'Genderqueer', value:'genderqueer' },
+        { name:'Intersex', value:'intersex' },
+        { name:'Lesbian', value:'lesbian' },
+        { name:'Nonbinary', value:'nonbinary' },
+        { name:'Pan', value:'pan' },
+        { name:'Poly', value:'poly' }));
 
 export async function execute(interaction:CommandInteraction) {
   utils.prideSticker(interaction, 'dab');

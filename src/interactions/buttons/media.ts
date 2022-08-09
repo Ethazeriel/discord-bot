@@ -1,6 +1,6 @@
 import Player from '../../player.js';
 import { logDebug } from '../../logger.js';
-import { InteractionDeferUpdateOptions, ButtonInteraction } from 'discord.js';
+import { InteractionDeferUpdateOptions, ButtonInteraction, MessagePayload } from 'discord.js';
 
 export const name = 'media';
 
@@ -44,7 +44,7 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
 
         case 'showqueue': {
           const queueEmbed = await player.queueEmbed(undefined, undefined, true);
-          interaction.message = await interaction.editReply(queueEmbed);
+          interaction.message = await interaction.editReply(queueEmbed as MessagePayload);
           player.register(interaction, 'queue', queueEmbed);
           break;
         }

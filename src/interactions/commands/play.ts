@@ -21,22 +21,19 @@ export const data = new SlashCommandBuilder()
     option.setName('search').setDescription('search term/youtube url/spotify uri/playlist name').setRequired(true))
   .addStringOption(option =>
     option.setName('when').setDescription('Where in the queue should this go?')
-      .addChoice('Play Last', 'last')
-      .addChoice('Play Next', 'next')
-      .addChoice('Play Now', 'now'))
+      .addChoices({ name:'Play Last', value:'last' },
+        { name:'Play Next', value:'next' },
+        { name:'Play Now', value:'now' }))
   .addStringOption(option =>
     option.setName('what').setDescription('Flag as internal playlist, not external search')
-      .addChoice('External Search', 'search')
-      .addChoice('Internal bot playlist', 'playlist'))
+      .addChoices({ name:'External Search', value:'search' },
+        { name:'Internal bot playlist', value:'playlist' }))
   .addStringOption(option =>
     option.setName('shuffle').setDescription('Shuffle?')
-      .addChoice('No', 'no')
-      .addChoice('Yes', 'tracks')
-      .addChoice('Yes, but keep albums in order', 'albums'))
+      .addChoices({ name:'No', value:'no' }, { name:'Yes', value:'tracks' }, { name:'Yes, but keep albums in order', value:'albums' }))
   .addStringOption(option =>
     option.setName('ephemeral').setDescription('Should this remain in the queue after it plays (ie. be loopable)?')
-      .addChoice('No', 'no')
-      .addChoice('Yes', 'yes'));
+      .addChoices({ name:'No', value:'no' }, { name:'Yes', value:'yes' }));
 
 export async function execute(interaction:CommandInteraction) {
   const search = interaction.options.getString('search')?.replace(sanitize, '')?.trim();

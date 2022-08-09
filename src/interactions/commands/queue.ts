@@ -6,7 +6,7 @@ import { seekTime as seekRegex } from '../../regexes.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { CommandInteraction, GuildMemberRoleManager, Message } from 'discord.js';
+import { CommandInteraction, GuildMemberRoleManager, Message, MessagePayload } from 'discord.js';
 import type { APIMessage } from 'discord-api-types';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
@@ -46,8 +46,7 @@ export const data = new SlashCommandBuilder()
     .setDescription('Shuffles the queue')
     .addIntegerOption(option => option
       .setName('album-aware').setDescription('Should shuffle keep albums in order?')
-      .addChoice('No', 0)
-      .addChoice('Yes', 1)))
+      .addChoices({ name:'No', value:0 }, { name:'Yes', value:1 })))
   .addSubcommand(subcommand => subcommand
     .setName('remove')
     .setDescription('Remove current or specified track from the queue')
@@ -73,7 +72,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
           if (player.getQueue().length) {
             const page = Math.abs(Number(interaction.options.getInteger('page'))) || undefined;
             const queueEmbed = await player.queueEmbed(undefined, page);
-            interaction.message = await interaction.editReply(queueEmbed) as Message;
+            interaction.message = await interaction.editReply(queueEmbed as MessagePayload) as Message;
             player.register(interaction, 'queue', queueEmbed);
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
