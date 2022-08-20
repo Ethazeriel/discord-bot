@@ -1,0 +1,23 @@
+version: '3.7'
+services:
+  mongo:
+    image: mongo:latest
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: username
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - ./compose/mongo:/data/db
+  goose:
+    image: goosebot
+    restart: unless-stopped
+    volumes:
+      - ./compose/goose/logs:/goose/logs
+      - ./config.json:/goose/config.json
+      - ./cookies.txt:/goose/cookies.txt
+    environment:
+      DOCKER: true
+      MONGO_CONN_STR: mongodb://username:password@mongo:27017/?authSource=admin
+    ports:
+      - 2468:2468
+      

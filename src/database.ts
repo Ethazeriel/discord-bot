@@ -7,10 +7,11 @@ const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.js
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
 // Connection URL
-const url = mongo.url;
+let url = mongo.url;
 const dbname = mongo.database;
 const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
+if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR; }
 export let db:any;
 let con:MongoClient | undefined;
 MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {

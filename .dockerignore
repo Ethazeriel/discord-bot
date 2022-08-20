@@ -3,3 +3,6 @@ build
 .vscode
 react/build
 react/node_modules
+compose
+logs
+templates

@@ -8,3 +8,4 @@ cookies.txt
 .vscode
 config/*
 build/*
+compose/*
