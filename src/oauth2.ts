@@ -3,12 +3,12 @@ import axios, { AxiosResponse } from 'axios';
 import { logDebug, log } from './logger.js';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-const { discord, spotify, mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord, spotify, mongo, napster } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../config.json', import.meta.url).toString()), 'utf-8'));
 const usercol = mongo.usercollection;
 import chalk from 'chalk';
 import { APIUser } from 'discord-api-types/v9';
 
-export async function flow(type:'discord' | 'spotify', code:string, webClientId:string):Promise<boolean> {
+export async function flow(type:'discord' | 'spotify' | 'napster', code:string, webClientId:string):Promise<boolean> {
 
   let tokenconfig;
   switch (type) {
@@ -28,6 +28,14 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
           'Content-Type': 'application/x-www-form-urlencoded',
           Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
         },
+      };
+      break;}
+
+    case 'napster': {
+      tokenconfig = {
+        url: 'https://api.napster.com/oauth/access_token',
+        data:`client_id=${napster.client_id}&client_secret=${napster.client_secret}&response_type=code&grant_type=authorization_code&code=${code}&redirect_uri=${napster.redirect_uri}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       };
       break;}
 
@@ -51,18 +59,9 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
 
     let userconfig;
     switch (type) {
-      case 'discord': {
-        userconfig = {
-          url: 'https://discord.com/api/v9/oauth2/@me',
-        };
-        break;}
-
-      case 'spotify': {
-        userconfig = {
-          url: 'https://api.spotify.com/v1/me',
-        };
-        break;}
-
+      case 'discord': { userconfig = { url: 'https://discord.com/api/v9/oauth2/@me' }; break;}
+      case 'spotify': { userconfig = { url: 'https://api.spotify.com/v1/me' }; break;}
+      case 'napster': { userconfig = { url: 'https://api.napster.com/v2.2/me/account' }; break;}
       default:{ return false; }
     }
     const AxUser:void | AxiosResponse<any> = await axios({
@@ -91,6 +90,11 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
           await updateSpotifyUser({ webClientId: webClientId }, user);
           break;}
 
+        case 'napster': {
+          await saveTokenNapster(token, webClientId);
+          await updateNapsterUser({ webClientId: webClientId }, user);
+          break;}
+
         default:{ return false; }
       }
       // if we haven't returned at this point everything should have worked
@@ -101,7 +105,7 @@ export async function flow(type:'discord' | 'spotify', code:string, webClientId:
   return false;
 }
 
-export async function getToken(user:object, type:'discord' | 'spotify') {
+export async function getToken(user:object, type:'discord' | 'spotify' | 'napster') {
   // takes a db query object, and refreshes/returns the relevant tokens, ready to use
   await db.connected();
   try {
@@ -115,12 +119,13 @@ export async function getToken(user:object, type:'discord' | 'spotify') {
   } catch (error:any) { log('error', ['oauth error:', error.stack]); }
 }
 
-async function updateToken(user:User, type:'discord' | 'spotify') {
+async function updateToken(user:User, type:'discord' | 'spotify' | 'napster') {
   let timeout;
 
   switch (type) {
     case 'discord': { timeout = 86400000; break;} // token lasts one week, so use one day as timeout
     case 'spotify': { timeout = 1800000; break;} // token lasts one hour, so use half hour as timeout
+    case 'napster': { timeout = 64800000; break;} // token lasts one day, so use 18 hours as timeout
   }
   if (user.tokens && user.tokens[type]) {
     if ((user.tokens[type]!.expiry - Date.now()) < timeout) {
@@ -143,6 +148,14 @@ async function updateToken(user:User, type:'discord' | 'spotify') {
               'Content-Type': 'application/x-www-form-urlencoded',
               Authorization:  `Basic ${Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')}`,
             },
+          };
+          break;}
+
+        case 'napster': {
+          tokenconfig = {
+            url: 'https://api.napster.com/oauth/access_token',
+            data: `client_id=${napster.client_id}&client_secret=${napster.client_secret}&response_type=code&grant_type=refresh_token&refresh_token=${user.tokens.napster!.renew}`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           };
           break;}
       }
@@ -216,6 +229,23 @@ async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:strin
   }
 }
 
+async function saveTokenNapster(authtoken:AccessTokenResponse, webClientId:string):Promise<void> {
+  await db.connected();
+  try {
+    const userdb = db.db.collection(usercol);
+    const token = {
+      access:authtoken.access_token,
+      renew:authtoken.refresh_token,
+      expiry:((Date.now() - 10000) + (authtoken.expires_in * 1000)),
+      scope:authtoken.scope || 'no such thing',
+    };
+    await userdb.updateOne({ webClientId: webClientId }, { $set:{ 'tokens.napster':token } });
+    log('database', [`Saving napster Oauth2 token: expires ${chalk.green(token.expiry)}`]);
+  } catch (error:any) {
+    log('error', ['database error:', error.stack]);
+  }
+}
+
 async function updateSpotifyUser(target:object, spotifyInfo:SpotifyApi.CurrentUsersProfileResponse):Promise<void> { // usage: updateSpotifyUser({discord.id:''}, {...})
   // updates spotify user info from object formatted as per
   // https://api.spotify.com/v1/me
@@ -230,6 +260,22 @@ async function updateSpotifyUser(target:object, spotifyInfo:SpotifyApi.CurrentUs
     const userdb = db.db.collection(usercol);
     await userdb.updateOne(target, { $set: { spotify:dbspotify } });
     log('database', [`Updating Spotify userdata for ${chalk.green(dbspotify.username)}`]);
+  } catch (error:any) {
+    log('error', ['database error:', error.stack]);
+  }
+}
+
+async function updateNapsterUser(target:object, napsterInfo:any):Promise<void> { // TODO - make a type for this
+  const dbnapster = {
+    id:napsterInfo.account.id,
+    username:napsterInfo.account.screenName,
+    locale:napsterInfo.account.preferredLanguage,
+  };
+  await db.connected();
+  try {
+    const userdb = db.db.collection(usercol);
+    await userdb.updateOne(target, { $set: { napster:dbnapster } });
+    log('database', [`Updating Napster userdata for ${chalk.green(dbnapster.username)}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }

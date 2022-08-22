@@ -24,4 +24,9 @@ type WebUser = {
 		username:string,
 		locale:string
 	}
+  napster?: {
+    id:string,
+    username:string,
+    locale:string
+  }
 }

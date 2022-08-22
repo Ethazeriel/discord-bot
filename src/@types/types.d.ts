@@ -69,6 +69,12 @@ interface User {
       expiry:number,
       scope:string,
     }
+		napster?:{
+      access:string,
+      renew:string,
+      expiry:number,
+      scope:string,
+    }
   },
 	webClientId?:string[],
 	spotify?: {

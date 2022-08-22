@@ -113,10 +113,12 @@ export function StatusBar(props: { status: Status }) {
               Connections ▼ <br />
             <ConLogo type='discord' active={(props?.status?.user?.discord?.username ? true : false)} />
             <ConLogo type='spotify' active={(props?.status?.user?.spotify?.username ? true : false)} />
+            <ConLogo type='napster' active={(props?.status?.user?.napster?.username ? true : false)} />
           </AlwaysVisible>
           <Connections>
             <Account type='discord' user={props?.status?.user} />
             <Account type='spotify' user={props?.status?.user} />
+            <Account type='napster' user={props?.status?.user} />
 
           </Connections>
         </div>
@@ -130,7 +132,7 @@ height: 1.5vh;
 width: auto; 
 margin-right:4px;
 `;
-function ConLogo(props:{ type:'spotify' | 'discord', active:boolean }) {
+function ConLogo(props:{ type:'spotify' | 'discord' | 'napster', active:boolean }) {
   const loc = `${process.env.PUBLIC_URL}/media/connections/${props.type}/${props.active}.png`;
   return (
     <>
@@ -139,18 +141,27 @@ function ConLogo(props:{ type:'spotify' | 'discord', active:boolean }) {
   );
 }
 
-function Account(props:{ type:'spotify' | 'discord', user:User}) {
+function Account(props:{ type:'spotify' | 'discord' | 'napster', user:User}) {
   switch (props.type) {
     case 'spotify': {
       if (props.user?.spotify) {
-        return (
-          <ConAccount><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />{props.user?.spotify?.username}</ConAccount>
-
-        );
+        return (<ConAccount><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />{props.user?.spotify?.username}</ConAccount>);
       } else {
         return (
           <div>
             <AuthLink href='./oauth2?type=spotify'><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
+          </div>
+        );
+      }
+    }
+
+    case 'napster': {
+      if (props.user?.napster) {
+        return (<ConAccount><ConLogo type='napster' active={(props.user?.napster?.username ? true : false)} />{props.user?.napster?.username}</ConAccount>);
+      } else {
+        return (
+          <div>
+            <AuthLink href='./oauth2?type=napster'><ConLogo type='napster' active={(props.user?.napster?.username ? true : false)} />Link Napster</AuthLink>
           </div>
         );
       }

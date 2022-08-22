@@ -428,6 +428,7 @@ export async function getUserWeb(webid:string):Promise<WebUser | undefined> {
           discriminator: result.discord.discriminator.current,
         },
         spotify: result.spotify,
+        napster: result.napster,
         status: 'known',
       };
       return basicuser;

@@ -88,4 +88,5 @@ export type User = {
     discriminator: string,
 }
 	spotify?: { username: string }
+	napster?: { username: string }
 }
