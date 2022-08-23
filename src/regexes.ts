@@ -20,3 +20,9 @@ export const sanitizePlaylists = /([^\w :/?=&-])+/g;
 export const embedPage = /(?:Page )(\d+)(?: of )(\d+)/;
 export const seekTime = /^(?:(\d+):)?(?:(\d+):)?(\d+)$/;
 export const webClientId = /^([\da-f]){128}$/;
+
+export const napsterPattern = /(?:play\.napster\.com)(?:\/album\/|\/playlist\/)((?:alb\.|pp\.|mp\.)(?:\d{9}){1}).*((?<=&rsrc=)(?:track|playlist|album){1})(?:&trackId=)?((?:tra\.\d{9}))?/;
+// [0] is the original string
+// [1] is the ID for albums and playlists
+// [2] is the link type - track, album, playlist
+// [3] is the ID for tracks

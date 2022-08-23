@@ -61,7 +61,7 @@ background-color: #242526;
 const Connections = styled.div`
 position: absolute;
 right:0px;
-top:-5em;
+top:-7em;
 overflow-y:visible;
 width: fit-content;
 max-width: 33vw;
@@ -77,10 +77,10 @@ z-index: 1;
 //transform: translateY(100%);
 transition: 0.2s transform;
 &:hover,:focus-within {
-  transform: translateY(4.5em);
+  transform: translateY(6.5em);
 }
 ${AlwaysVisible}:hover + & {
-  transform: translateY(4.5em);
+  transform: translateY(6.5em);
 }
 `;
 

@@ -99,7 +99,7 @@ export async function addKey(query:object, newkey:string) {// acquire2
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
-export async function addSourceId(query:object, type:'spotify', newid:string) {// acquire2
+export async function addSourceId(query:object, type:'spotify' | 'napster', newid:string) {// acquire2
   // adds a new id of the specified type to a track we already have
   // silently fails if we don't have the track in the DB already
   await connected();
@@ -114,7 +114,7 @@ export async function addSourceId(query:object, type:'spotify', newid:string) {/
 }
 // addSourceId({ 'goose.id': '12345abcde' }, 'spotify', '6i71OngJrJDr6hQIFmzYI0');
 
-export async function addTrackSource(query:object, type:'spotify', source:TrackSource) {// acquire2
+export async function addTrackSource(query:object, type:'spotify' | 'napster', source:TrackSource) {// acquire2
   await connected();
   try {
     const tracks = db.collection(trackcol);

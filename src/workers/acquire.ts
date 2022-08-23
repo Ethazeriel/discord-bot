@@ -3,11 +3,11 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import * as db from '../database.js';
 import { logDebug, log } from '../logger.js';
-import { youtubePattern, spotifyPattern, sanitize, youtubePlaylistPattern } from '../regexes.js';
+import { youtubePattern, spotifyPattern, sanitize, youtubePlaylistPattern, napsterPattern } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import axios, { AxiosResponse } from 'axios';
 import ytdl from 'ytdl-core';
-const { spotify, youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { spotify, youtube, napster } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 
 parentPort!.on('message', async data => {
   if (data.action === 'search') {
@@ -32,7 +32,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   search = search.replace(sanitize, '').trim();
 
   let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;
-  let sourceType:'youtube' | 'spotify' | 'text' | undefined = undefined;
+  let sourceType:'youtube' | 'spotify' | 'napster' | 'text' | undefined = undefined;
 
   if (youtubePattern.test(search)) {
     sourceArray = await youtubeSource(search);
@@ -43,6 +43,9 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   } else if (spotifyPattern.test(search)) {
     sourceArray = await spotifySource(search);
     sourceType = 'spotify';
+  } else if (napsterPattern.test(search)) {
+    sourceArray = await napsterSource(search);
+    sourceType = 'napster';
   } else {
     sourceArray = await textSource(search);
     sourceType = 'text';
@@ -181,11 +184,10 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               keys: (sourceType === 'text') ? [search] : [],
               playlists: {},
               youtube: ytArray,
-              spotify: track, // temporary, remember to change once we've got more source types
               status: {},
             };
-            // if (sourceType === 'spotify' || 'text') {finishedTrack.spotify = track;}
-            // if (sourceType === 'itunes') {finishedTrack.itunes = track;}
+            if (sourceType === 'spotify' || sourceType === 'text') {finishedTrack.spotify = track;}
+            if (sourceType === 'napster') {finishedTrack.napster = track;}
             await db.insertTrack(finishedTrack);
             return finishedTrack;
           }
@@ -480,7 +482,7 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
   }
 }
 
-async function checkTrack(track:TrackSource, type:'spotify'):Promise<Track | null> {
+async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise<Track | null> {
   logDebug('checking track ', track.name);
   // takes a track source, and checks if we already have it
   // if we do, updates the existing track and returns it
@@ -592,7 +594,7 @@ async function spotifyFromAlbum(auth:ClientCredentialsResponse, id:string):Promi
       id: Array(track.id),
       name: track.name,
       art: spotifyResult.images[0].url,
-      duration: track.duration_ms,
+      duration: track.duration_ms / 1000,
       url: track.href,
       album: {
         id: spotifyResult.id,
@@ -628,7 +630,7 @@ async function spotifyFromPlaylist(auth:ClientCredentialsResponse, id:string):Pr
         id: Array(track.track.id),
         name: track.track.name,
         art: track.track.album.images[0].url,
-        duration: track.track.duration_ms,
+        duration: track.track.duration_ms / 1000,
         url: track.track.href,
         album: {
           id: track.track.album.id,
@@ -678,4 +680,166 @@ async function textSource(search:string):Promise<Array<TrackSource | Track | Tra
     log('fetch', [`[0] lack '${ youtubeTrack[0].name }'`]);
     return Array(youtubeTrack);
   }
+}
+
+// NAPSTER
+
+async function napsterSource(search:string):Promise<Array<TrackSource | Track> | undefined> {
+  // search is a spotify url
+  const match = search.match(napsterPattern);
+  switch (match![2]) {
+    case 'track':{
+      const track = await db.getTrack({ 'napster.id': match![3] });
+      if (track) {
+        log('fetch', [`[0] have '${ track.goose.track.name }'`]);
+        return (Array(track));
+      }
+      // this is a new id, so we need to go talk to napster
+      const newTrack = await napsterFromTrack(match![3]);
+      const dbTrack = await checkTrack(newTrack, 'napster');
+      if (dbTrack) {return Array(dbTrack);}
+      return Array(newTrack);
+    }
+
+    case 'album':{
+      const newTracks = await napsterFromAlbum(match![1]);
+      const readyTracks:Array<Track | TrackSource> = [];
+      for (const [i, source] of newTracks.entries()) {
+        const dbTrack = await checkTrack(source, 'napster');
+        if (dbTrack) {
+          readyTracks.push(dbTrack);
+          log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);
+        } else {
+          readyTracks.push(source);
+          log('fetch', [`[${i}] lack '${ source.name }'`]);
+        }
+      }
+      return readyTracks;
+    }
+
+    case 'playlist':{
+      const newTracks = await napsterFromPlaylist(match![1]);
+      const readyTracks:Array<Track | TrackSource> = [];
+      for (const [i, source] of newTracks.entries()) {
+        const dbTrack = await checkTrack(source, 'napster');
+        if (dbTrack) {
+          readyTracks.push(dbTrack);
+          log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);
+        } else {
+          readyTracks.push(source);
+          log('fetch', [`[${i}] lack '${ source.name }'`]);
+        }
+      }
+      return readyTracks;
+    }
+  }
+}
+
+async function napsterFromTrack(id:string):Promise<TrackSource> {
+  log('fetch', [`napsterFromTrack: ${id}`]);
+  const napsterResultAxios:AxiosResponse<NapsterTrackResult> = await axios({
+    url: `http://api.napster.com/v2.2/tracks/${id}?apikey=${napster.client_id}`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    timeout: 10000,
+  });
+  const napsterResult = napsterResultAxios.data;
+  // at this point we should have a result, now construct the TrackSource
+  const source:TrackSource = {
+    id: Array(napsterResult.tracks[0].id),
+    name: napsterResult.tracks[0].name,
+    art: `https://api.napster.com/imageserver/v2/albums/${napsterResult.tracks[0].albumId}/images/200x200.jpg`,
+    duration: napsterResult.tracks[0].playbackSeconds,
+    url: napsterResult.tracks[0].href,
+    album: {
+      id: napsterResult.tracks[0].albumId,
+      name: napsterResult.tracks[0].albumName,
+      trackNumber: napsterResult.tracks[0].index, // TODO: compensate for multiple discs
+    },
+    artist: {
+      id: napsterResult.tracks[0].artistId,
+      name: napsterResult.tracks[0].artistName,
+    },
+  };
+  return source;
+}
+
+async function napsterFromAlbum(id:string):Promise<Array<TrackSource>> {
+  log('fetch', [`napsterFromAlbum: ${id}`]);
+  const napsterResultAxios:AxiosResponse<NapsterTrackResult> = await axios({
+    url: `https://api.napster.com/v2.2/albums/${id}/tracks?apikey=${napster.client_id}`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    timeout: 10000,
+  });
+  const napsterResult = napsterResultAxios.data;
+  const sources:Array<TrackSource> = [];
+  for (const track of napsterResult.tracks) {
+    sources.push({
+      id: Array(track.id),
+      name: track.name,
+      art: `https://api.napster.com/imageserver/v2/albums/${track.albumId}/images/200x200.jpg`,
+      duration: track.playbackSeconds,
+      url: track.href,
+      album: {
+        id: track.albumId,
+        name: track.albumName,
+        trackNumber: track.index,
+      },
+      artist: {
+        id: track.artistId,
+        name: track.artistName,
+      },
+    });
+  }
+  return sources;
+}
+
+async function napsterFromPlaylist(id:string):Promise<Array<TrackSource>> {
+  log('fetch', [`napsterFromPlaylist: ${id}`]);
+  const napsterTracks = [];
+  const limit = 50;
+  let offset = 0;
+  let total = 0;
+  do {
+    const napsterResultAxios:AxiosResponse<NapsterPlaylistTracksResult> = await axios({
+      url: `https://api.napster.com/v2.2/playlists/${id}/tracks?apikey=${napster.client_id}&limit=${limit}&offset=${offset}`,
+      method: 'get',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      timeout: 10000,
+    });
+    const napsterResult = napsterResultAxios.data;
+    total = napsterResult.meta.totalCount;
+    napsterTracks.push(...napsterResult.tracks);
+    offset = offset + limit;
+  } while (offset < total);
+  const sources:Array<TrackSource> = [];
+  for (const track of napsterTracks) {
+    sources.push({
+      id: Array(track.id),
+      name: track.name,
+      art: `https://api.napster.com/imageserver/v2/albums/${track.albumId}/images/200x200.jpg`,
+      duration: track.playbackSeconds,
+      url: track.href,
+      album: {
+        id: track.albumId,
+        name: track.albumName,
+        trackNumber: track.index,
+      },
+      artist: {
+        id: track.artistId,
+        name: track.artistName,
+      },
+    });
+  }
+  return sources;
 }

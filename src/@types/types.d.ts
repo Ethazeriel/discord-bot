@@ -123,6 +123,7 @@ interface Track {
 	youtube: Array<TrackYoutubeSource>
 	bar?: ProgressBarOptions
 	spotify?: TrackSource
+	napster?: TrackSource
 	amazon?: TrackSource
 	itunes?: TrackSource
 	status: {
