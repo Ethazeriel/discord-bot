@@ -42,7 +42,7 @@ function PlaylistDisplay() {
   const [selValue, setSelValue] = React.useState<string>('');
   const [tracks, setTracks] = React.useState<Track[]>([]);
   React.useEffect(() => {
-    fetch('./playlists').then(res => res.json()).then((json: string[]) => {
+    fetch(`${window.location.origin}/playlists`).then(res => res.json()).then((json: string[]) => {
       setPlaylists(json);
     });
   }, []);
@@ -57,7 +57,7 @@ function PlaylistDisplay() {
   };
 
   const goClick = () => {
-    fetch(`./playlist/${selValue}`).then(res => res.json()).then((json: Track[]) => {
+    fetch(`${window.location.origin}/playlist/${selValue}`).then(res => res.json()).then((json: Track[]) => {
       setTracks(json);
     });
   };

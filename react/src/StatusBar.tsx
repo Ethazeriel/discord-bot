@@ -99,7 +99,7 @@ export function StatusBar(props: { status: Status }) {
   if (props?.status?.user?.status == 'new') {
     return (
       <Bar>
-        <AuthLink href='./oauth2?type=discord'>Please click here to link your discord account.</AuthLink>
+        <AuthLink href={`${window.location.origin}/oauth2?type=discord`}>Please click here to link your discord account.</AuthLink>
       </Bar>
     );
   } else {
@@ -149,7 +149,7 @@ function Account(props:{ type:'spotify' | 'discord' | 'napster', user:User}) {
       } else {
         return (
           <div>
-            <AuthLink href='./oauth2?type=spotify'><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
+            <AuthLink href={`${window.location.origin}/oauth2?type=spotify`}><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
           </div>
         );
       }
@@ -161,7 +161,7 @@ function Account(props:{ type:'spotify' | 'discord' | 'napster', user:User}) {
       } else {
         return (
           <div>
-            <AuthLink href='./oauth2?type=napster'><ConLogo type='napster' active={(props.user?.napster?.username ? true : false)} />Link Napster</AuthLink>
+            <AuthLink href={`${window.location.origin}/oauth2?type=napster`}><ConLogo type='napster' active={(props.user?.napster?.username ? true : false)} />Link Napster</AuthLink>
           </div>
         );
       }

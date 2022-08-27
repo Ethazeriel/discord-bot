@@ -24,6 +24,7 @@ export interface Track {
 	spotify?: TrackSource
 	amazon?: TrackSource
 	itunes?: TrackSource
+	napster?: TrackSource
 	status: {
 		seek?: number
 		ephemeral?: string

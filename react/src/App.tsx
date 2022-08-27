@@ -44,7 +44,7 @@ export default class App extends React.Component<Record<string, never>, AppState
   }
 
   playerClick(playerClick: PlayerClick) {
-    fetch('./player', {
+    fetch(`${window.location.origin}/player`, {
       method: 'POST',
       body: JSON.stringify({ action: playerClick.action, parameter: playerClick.parameter }),
       headers: {
@@ -58,7 +58,7 @@ export default class App extends React.Component<Record<string, never>, AppState
   }
 
   componentDidMount(): void {
-    fetch('./load', {
+    fetch(`${window.location.origin}/load`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -73,7 +73,7 @@ export default class App extends React.Component<Record<string, never>, AppState
       } else { this.setState({ error:'unexpected loaduser response' }); }
       // console.log(json);
     }).then(() => {
-      const socket = new WebSocket('ws://localhost:2468');
+      const socket = new WebSocket('ws://localhost:2468'); // this is a problem
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       socket.addEventListener('open', (event: any) => {
         //

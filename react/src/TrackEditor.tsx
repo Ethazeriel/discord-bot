@@ -7,7 +7,7 @@ export default function TrackEditor() {
   const [track, setTrack] = React.useState<Track | undefined>(undefined);
 
   const getTrack = () => {
-    fetch(`./tracks/${search}`, {
+    fetch(`${window.location.origin}/tracks/${search}`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',

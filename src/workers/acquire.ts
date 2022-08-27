@@ -685,7 +685,7 @@ async function textSource(search:string):Promise<Array<TrackSource | Track | Tra
 // NAPSTER
 
 async function napsterSource(search:string):Promise<Array<TrackSource | Track> | undefined> {
-  // search is a spotify url
+  // search is a napster url
   const match = search.match(napsterPattern);
   switch (match![2]) {
     case 'track':{
