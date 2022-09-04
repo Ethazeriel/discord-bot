@@ -10,7 +10,7 @@ import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord, spotify, napster } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord, spotify, napster, root_url } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import * as oauth2 from '../oauth2.js';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
@@ -37,14 +37,15 @@ app.use(helmet({
     },
   },
 }));
-app.use(express.static('./react/build'));
+// app.use(express.static('./react/build'));
 app.use(express.json());
 app.use(cookieParser(discord.secret));
 
 app.get('/', (req, res) => {
+  // we're behind a proxy, this should never get hit
   log(req.method, [req.originalUrl]);
   // log('get', [`Endpoint ${chalk.blue('/')}`]);
-  res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString()));
+  res.redirect(302, root_url);
 });
 
 // minimum requirements for endpoints
@@ -103,7 +104,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString())) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }
@@ -115,7 +116,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString())) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }
@@ -127,7 +128,7 @@ app.get('/oauth2', async (req, res) => {
           res.status(409).end();
         } else {
           const auth = await oauth2.flow(type, code, webId);
-          auth ? res.sendFile(fileURLToPath(new URL('../../react/build/index.html', import.meta.url).toString())) : res.status(500).send('Server error during oauth2 flow');
+          auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
         }
         break;
       }

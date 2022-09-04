@@ -1,13 +1,24 @@
 version: '3.7'
 services:
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    volumes:
+      - client-assets:/goose
+      - nginx-config:/etc/nginx/templates
+    ports:
+      - 80:8080
+
   mongo:
     image: mongo:latest
-    restart: always
+    restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: username
       MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
       - ./compose/mongo:/data/db
+
   goose:
     image: goosebot
     restart: unless-stopped
@@ -15,9 +26,13 @@ services:
       - ./compose/goose/logs:/goose/logs
       - ./config.json:/goose/config.json
       - ./cookies.txt:/goose/cookies.txt
+      - client-assets:/client-assets
+      - nginx-config:/nginx
     environment:
       DOCKER: true
       MONGO_CONN_STR: mongodb://username:password@mongo:27017/?authSource=admin
-    ports:
-      - 2468:2468
+
+volumes:
+  client-assets:
+  nginx-config:
       

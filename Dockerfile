@@ -23,6 +23,10 @@ COPY --chown=node:node tsconfig.json ./tsconfig.json
 COPY --chown=node:node src ./src
 RUN tsc
 RUN rm -r src tsconfig.json
-COPY --chown=node:node --from=clientbuild /react/build ./react/build
+WORKDIR /client-assets
+COPY --chown=node:node --from=clientbuild /react/build .
+WORKDIR /nginx
+COPY --chown=node:node nginx.conf ./goose.conf.template
+WORKDIR /goose
 CMD ["dumb-init", "node", "build/index"]
 EXPOSE 2468
