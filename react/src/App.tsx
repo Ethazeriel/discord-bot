@@ -73,7 +73,7 @@ export default class App extends React.Component<Record<string, never>, AppState
       } else { this.setState({ error:'unexpected loaduser response' }); }
       // console.log(json);
     }).then(() => {
-      const socket = new WebSocket('ws://localhost:2468'); // this is a problem
+      const socket = new WebSocket(`wss://${window.location.hostname}/websocket`); // this is not a problem
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       socket.addEventListener('open', (event: any) => {
         //
