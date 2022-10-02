@@ -1,5 +1,5 @@
 import Player from './player.js';
-import { CommandInteraction, MessageAttachment, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
+import { CommandInteraction, AttachmentBuilder, InteractionReplyOptions } from 'discord.js';
 import * as utils from './utils.js';
 import * as db from './database.js';
 import { logDebug } from './logger.js';
@@ -69,7 +69,7 @@ export default class Workspace {
   async makeEmbed(messagetitle:string, page:number, fresh = true):Promise<InteractionReplyOptions> {
     this.expiry.refresh();
     page = Math.abs(page) || 1;
-    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab')as any, 'thumb.jpg')) : null;
+    const thumb = fresh ? (new AttachmentBuilder(utils.pickPride('dab')as string, { name:'thumb.jpg' })) : null;
     const pages = Math.ceil(this.list.length / 10); // this should be the total number of pages? rounding up
     const buttonEmbed = [ {
       type: 1,
@@ -110,7 +110,7 @@ export default class Workspace {
         { name: '\u200b', value: `Duration: ${utils.timeDisplay(queueTime)}`, inline: true },
       ],
     };
-    return fresh ? { embeds: [embed as MessageEmbedOptions], components: buttonEmbed, files: [thumb!] } : { embeds: [embed as MessageEmbedOptions], components: buttonEmbed };
+    return fresh ? { embeds: [embed], components: buttonEmbed, files: [thumb!] } as InteractionReplyOptions : { embeds: [embed], components: buttonEmbed } as InteractionReplyOptions;
   }
 
 }

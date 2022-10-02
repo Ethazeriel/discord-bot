@@ -4,7 +4,7 @@ import Translator from '../../translate.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import type { GuildMember, GuildMemberRoleManager, MessageContextMenuInteraction } from 'discord.js';
+import type { GuildMember, GuildMemberRoleManager, MessageContextMenuCommandInteraction } from 'discord.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -12,7 +12,7 @@ export const data = new ContextMenuCommandBuilder()
   .setName('Translate this')
   .setType(3); // type 3 for message, 2 for user
 
-export async function execute(interaction:MessageContextMenuInteraction) {
+export async function execute(interaction:MessageContextMenuCommandInteraction) {
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.translate)) {
     await interaction.deferReply({ ephemeral: true });
     const user = await db.getUser(interaction.user.id);

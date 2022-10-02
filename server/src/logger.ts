@@ -5,7 +5,7 @@ import { sanitize } from './regexes.js';
 import { fileURLToPath } from 'url';
 const debugMode = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).debug;
 import { isMainThread } from 'worker_threads';
-import { ButtonInteraction, CommandInteraction, ContextMenuInteraction, GuildMember, MessageInteraction, SelectMenuInteraction } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, MessageContextMenuCommandInteraction, GuildMember, MessageInteraction, SelectMenuInteraction, ComponentType } from 'discord.js';
 
 if (!fs.existsSync('../logs')) {
   fs.mkdirSync('../logs');
@@ -103,7 +103,7 @@ export async function log(level:string, args:string[]) {
 
 }
 
-export async function logCommand(interaction:(CommandInteraction | ContextMenuInteraction) & {options:any}) {
+export async function logCommand(interaction:(CommandInteraction | MessageContextMenuCommandInteraction) & {options:any}) {
   // TS - I'm using a bunch of things that don't exist in discord.js types, so have to include the any
   // takes an interaction, logs relevant details to file and console
   // for console
@@ -147,7 +147,7 @@ export async function logComponent(interaction:ButtonInteraction | SelectMenuInt
   let conStr = `Guild: ${chalk.blue((interaction.member as GuildMember).guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan((interaction.message.interaction as MessageInteraction)?.commandName || 'component')}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;
   // for file
   let logStr = `Guild: ${(interaction.member as GuildMember).guild.name.replace(sanitize, '').trim()}(${interaction.guildId}), User: ${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}(${interaction.user.id}), Source: ${(interaction.message.interaction as MessageInteraction)?.commandName || 'component'}(${interaction.message.id}), Type: ${interaction.componentType}, ID: ${interaction.customId}`;
-  if (interaction.componentType == 'SELECT_MENU') {
+  if (interaction.componentType == ComponentType.SelectMenu) {
     logStr = logStr.concat(', Values: ');
     conStr = conStr.concat(', Values: ');
     interaction.values.forEach((element:string) => {

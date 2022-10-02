@@ -5,7 +5,7 @@ import * as utils from './utils.js';
 import { fileURLToPath } from 'url';
 const { apiKey } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).translate;
 import validator from 'validator';
-import { ButtonInteraction, CommandInteraction, InteractionReplyOptions, Message, MessageEmbedOptions } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, InteractionReplyOptions, Message, EmbedBuilder } from 'discord.js';
 import { DetectResult } from '@google-cloud/translate/build/src/v2';
 
 export default class Translator {
@@ -86,21 +86,21 @@ export default class Translator {
     return translation;
   }
 
-  static langEmbed(src:string, srcloc:string, srcusr:string, dest:string, destloc:string):MessageEmbedOptions {
+  static langEmbed(src:string, srcloc:string, srcusr:string, dest:string, destloc:string):EmbedBuilder {
     srcloc = Translator.locales.filter(element => element.code === srcloc)[0].name;
     destloc = Translator.locales.filter(element => element.code === destloc)[0].name;
     const embed = {
       color: utils.randomHexColor(),
       author: {
         name: `${srcusr} translated`,
-        icon_url: utils.pickPride('fish'),
+        icon_url: utils.pickPride('fish') as string,
       },
       fields: [
         { name: `From ${srcloc}`, value: src },
         { name: `To ${destloc}`, value: dest },
       ],
     };
-    return embed as MessageEmbedOptions;
+    return EmbedBuilder.from(embed);
   }
 
   static messageEventDispatch(message:Message) {

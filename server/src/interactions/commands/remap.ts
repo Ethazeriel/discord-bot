@@ -1,6 +1,6 @@
 /* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { CommandInteraction, MessageAttachment, GuildMemberRoleManager } from 'discord.js';
+import { ChatInputCommandInteraction, AttachmentBuilder, GuildMemberRoleManager } from 'discord.js';
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
@@ -19,7 +19,7 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option => option.setName('newtrack').setDescription('optional remap target'));
 
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
 
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
@@ -56,7 +56,7 @@ export async function execute(interaction:CommandInteraction) {
           context.drawImage(alt1, 480, 0, 480, 360);
           drawtext('From', 15, 70);
           drawtext('To', 500, 70);
-          const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
+          const combined = new AttachmentBuilder(canvas.toBuffer(), { name:'combined.png' });
           const reply = {
             embeds: [
               {
@@ -128,7 +128,7 @@ export async function execute(interaction:CommandInteraction) {
         drawtext('2', 900, 70);
         drawtext('3', 15, 705);
         drawtext('4', 900, 705);
-        const combined = new MessageAttachment(canvas.toBuffer(), 'combined.png');
+        const combined = new AttachmentBuilder(canvas.toBuffer(), { name:'combined.png' });
         const reply = {
           embeds: [
             {

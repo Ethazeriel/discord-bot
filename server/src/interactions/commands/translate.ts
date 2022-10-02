@@ -5,7 +5,7 @@ import * as db from '../../database.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { CommandInteraction, GuildMember, GuildMemberRoleManager } from 'discord.js';
+import { ChatInputCommandInteraction, GuildMember, GuildMemberRoleManager } from 'discord.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -21,7 +21,7 @@ export const data = new SlashCommandBuilder()
     .setName('subscribe')
     .setDescription('Subscribes you to translations for this channel'));
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.translate)) {
     const action = interaction.options.getSubcommand();
     await interaction.deferReply({ ephemeral: (action === 'to_english') ? false : true });

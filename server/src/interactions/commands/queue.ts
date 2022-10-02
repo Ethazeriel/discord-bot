@@ -6,7 +6,7 @@ import { seekTime as seekRegex } from '../../regexes.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { CommandInteraction, GuildMemberRoleManager, Message, MessagePayload } from 'discord.js';
+import { ChatInputCommandInteraction, GuildMemberRoleManager, Message } from 'discord.js';
 import type { APIMessage } from 'discord-api-types';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
@@ -60,7 +60,7 @@ export const data = new SlashCommandBuilder()
     .setDescription('Reloads the previous session'));
 
 
-export async function execute(interaction:CommandInteraction & { message?: APIMessage | Message<boolean> }) {
+export async function execute(interaction:ChatInputCommandInteraction & { message?: APIMessage | Message<boolean> }) {
 
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
@@ -72,7 +72,7 @@ export async function execute(interaction:CommandInteraction & { message?: APIMe
           if (player.getQueue().length) {
             const page = Math.abs(Number(interaction.options.getInteger('page'))) || undefined;
             const queueEmbed = await player.queueEmbed(undefined, page);
-            interaction.message = await interaction.editReply(queueEmbed as MessagePayload) as Message;
+            interaction.message = await interaction.editReply(queueEmbed) as Message;
             player.register(interaction, 'queue', queueEmbed);
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;

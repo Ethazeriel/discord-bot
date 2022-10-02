@@ -5,7 +5,7 @@ import { sanitize } from '../../regexes.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import type { CommandInteraction, GuildMemberRoleManager } from 'discord.js';
+import type { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -17,7 +17,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('see /help locale for valid options')
       .setRequired(true));
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.translate)) {
     await interaction.deferReply({ ephemeral: true });
     const choice = validator.escape(validator.stripLow(interaction.options.getString('code')?.replace(sanitize, '') || '')).trim();

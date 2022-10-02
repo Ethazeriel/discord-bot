@@ -10,9 +10,7 @@
   "author": "Ethazeriel, Whuppee",
   "license": "CC BY-NC-SA 4.0",
   "dependencies": {
-    "@discordjs/builders": "^1.1.0",
     "@discordjs/opus": "^0.8.0",
-    "@discordjs/rest": "^0.3.0",
     "@discordjs/voice": "^0.8.0",
     "@google-cloud/translate": "^6.3.1",
     "@types/cookie": "^0.5.1",
@@ -26,7 +24,7 @@
     "cookie": "^0.5.0",
     "cookie-parser": "^1.4.6",
     "discord-api-types": "^0.23.1",
-    "discord.js": "^13.9.2",
+    "discord.js": "^14.5.0",
     "express": "^4.17.1",
     "ffmpeg-static": "^4.4.0",
     "fs": "^0.0.1-security",

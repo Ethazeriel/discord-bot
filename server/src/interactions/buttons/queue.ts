@@ -1,7 +1,7 @@
 import { embedPage } from '../../regexes.js';
 import Player from '../../player.js';
 import { logDebug } from '../../logger.js';
-import { ButtonInteraction, InteractionDeferUpdateOptions, MessagePayload } from 'discord.js';
+import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
 
 export const name = 'queue';
 
@@ -15,14 +15,14 @@ export async function execute(interaction:ButtonInteraction, which:string) {
       switch (which) {
         case 'refresh': {
           const queueEmbed = await player.queueEmbed(undefined, page, false);
-          interaction.message = await interaction.editReply(queueEmbed as MessagePayload);
+          interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
           break;
         }
 
         case 'prev': {
           const queueEmbed = await player.queueEmbed(undefined, --(page as number), false);
-          interaction.message = await interaction.editReply(queueEmbed as MessagePayload);
+          interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
           break;
         }
@@ -30,14 +30,14 @@ export async function execute(interaction:ButtonInteraction, which:string) {
         case 'home': {
           page = Math.ceil((player.getPlayhead() + 1) / 10);
           const queueEmbed = await player.queueEmbed(undefined, page, false);
-          interaction.message = await interaction.editReply(queueEmbed as MessagePayload);
+          interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
           break;
         }
 
         case 'next': {
           const queueEmbed = await player.queueEmbed(undefined, ++(page as number), false);
-          interaction.message = await interaction.editReply(queueEmbed as MessagePayload);
+          interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
           break;
         }

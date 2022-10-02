@@ -3,7 +3,7 @@ import Player from '../../player.js';
 import { log } from '../../logger.js';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { CommandInteraction, GuildMemberRoleManager, Message, WebhookEditMessageOptions } from 'discord.js';
+import { ChatInputCommandInteraction, GuildMemberRoleManager, Message, WebhookEditMessageOptions } from 'discord.js';
 import { APIMessage } from 'discord-api-types';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
@@ -21,7 +21,7 @@ export const data = new SlashCommandBuilder()
     .setName('leave')
     .setDescription('forces the bot to leave voice'));
 
-interface MusicInteraction extends CommandInteraction {
+interface MusicInteraction extends ChatInputCommandInteraction {
   message: APIMessage | Message<boolean>
 }
 export async function execute(interaction:MusicInteraction):Promise<void> {

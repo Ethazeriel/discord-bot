@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import type { CommandInteraction, InteractionUpdateOptions, WebhookEditMessageOptions } from 'discord.js';
+import type { ChatInputCommandInteraction, InteractionUpdateOptions, WebhookEditMessageOptions } from 'discord.js';
 import * as utils from '../../utils.js';
 
 
@@ -19,7 +19,7 @@ export const data = new SlashCommandBuilder()
         { name:'Remap command', value:'remap' },
         { name:'Admin command', value:'admin' }));
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
   const which = interaction.options.getString('section') || 'index';
   const response = helpEmbed(which);

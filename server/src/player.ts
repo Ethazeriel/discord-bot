@@ -3,7 +3,7 @@ import youtubedl from 'youtube-dl-exec';
 import type { YtFlags } from 'youtube-dl-exec';
 import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayer, DiscordGatewayAdapterCreator } from '@discordjs/voice';
 import crypto from 'crypto';
-import { ButtonInteraction, CommandInteraction, GuildMember, MessageAttachment, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, MessageEmbedOptions, Message, MessageEmbed } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, GuildMember, AttachmentBuilder, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, Message, APIEmbed } from 'discord.js';
 import * as db from './database.js';
 import { log, logDebug } from './logger.js';
 import { fileURLToPath } from 'url';
@@ -483,7 +483,7 @@ export default class Player {
 
   // embeds
   async mediaEmbed(fresh = true, messageTitle = 'Current Track:'):Promise<InteractionReplyOptions> {
-    const thumb = fresh ? (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg')) : null;
+    const thumb = fresh ? (new AttachmentBuilder(utils.pickPride('dab') as string, { name:'art.jpg' })) : null;
     const track = this.getCurrent();
     const bar = {
       start: track.bar?.start,
@@ -520,14 +520,14 @@ export default class Player {
         ],
       },
     ];
-    return fresh ? { embeds: [embed], components: buttons, files: [thumb] } as InteractionReplyOptions : { embeds: [embed as MessageEmbedOptions], components: buttons };
+    return fresh ? { embeds: [embed], components: buttons, files: [thumb] } as InteractionReplyOptions : { embeds: [embed], components: buttons } as InteractionReplyOptions;
   }
 
   async queueEmbed(messagetitle = 'Current Queue:', page?:number | undefined, fresh = true):Promise<InteractionUpdateOptions | InteractionReplyOptions> {
     const track = this.getCurrent();
     const queue = this.getQueue();
     page = Math.abs(page!) || Math.ceil((this.getPlayhead() + 1) / 10);
-    const albumart = (fresh && track) ? new MessageAttachment((track.goose.track.art), 'art.jpg') : (new MessageAttachment(utils.pickPride('dab') as string, 'art.jpg'));
+    const albumart = (fresh && track) ? new AttachmentBuilder((track.goose.track.art), { name:'art.jpg' }) : (new AttachmentBuilder(utils.pickPride('dab') as string, { name:'art.jpg' }));
     const pages = Math.ceil(queue.length / 10);
     const buttonEmbed = [
       {
@@ -592,7 +592,7 @@ export default class Player {
         { name: `\` ${utils.progressBar(45, queueTime, elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(queueTime)}` },
       ],
     };
-    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } as InteractionUpdateOptions : { embeds: [embed as MessageEmbedOptions], components: buttonEmbed };
+    return fresh ? { embeds: [embed], components: buttonEmbed, files: [albumart] } as InteractionUpdateOptions : { embeds: [embed], components: buttonEmbed } as InteractionReplyOptions;
   }
 
   async decommission(interaction:CommandInteraction | ButtonInteraction, type: 'queue' | 'media', embed:InteractionReplyOptions | InteractionUpdateOptions, message = '\u27F3 expired') {
@@ -632,7 +632,7 @@ export default class Player {
 
     switch (type) {
       case 'queue': {
-        const match = embed.embeds![0].fields![1]?.value.match(embedPage);
+        const match = (embed.embeds![0] as APIEmbed).fields![1]?.value.match(embedPage);
         if (this.embeds[id].queue) {
           this.embeds[id].queue!.idleTimer.refresh();
           this.embeds[id].queue!.refreshTimer.refresh();
@@ -671,13 +671,13 @@ export default class Player {
             },
             update: async (userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => {
               logDebug(`${name} queue: ${description}`);
-              const contentPage = (content) ? content.embeds![0]?.fields?.[1]?.value?.match(embedPage) : null;
+              const contentPage = (content) ? (content.embeds![0] as APIEmbed)?.fields?.[1]?.value?.match(embedPage) : null;
               const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.embeds[id].queue!.getPage()) : null;
               if (!content || differentPage) { content = await this.queueEmbed('Current Queue:', this.embeds[id].queue!.getPage(), false); }
               const { embeds, components, files } = content!;
               if (!this.embeds[userId].queue!.interaction!.replied && files) {
-                this.embeds[userId].queue!.interaction!.message = await this.embeds[userId].queue!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components, files: files });
-              } else { this.embeds[userId].queue!.interaction!.message = await this.embeds[userId].queue!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components }); }
+                this.embeds[userId].queue!.interaction!.message = await this.embeds[userId].queue!.interaction!.editReply({ embeds: embeds, components: components, files: files });
+              } else { this.embeds[userId].queue!.interaction!.message = await this.embeds[userId].queue!.interaction!.editReply({ embeds: embeds, components: components }); }
             },
           };
         }
@@ -711,8 +711,8 @@ export default class Player {
               logDebug(`${name} media: ${description}`);
               const { embeds, components, files } = content!;
               if (!this.embeds[userId].media!.interaction!.replied && files) {
-                this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components, files: files });
-              } else { this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds as MessageEmbed[], components: components }); }
+                this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds, components: components, files: files });
+              } else { this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds, components: components }); }
             },
           };
         }

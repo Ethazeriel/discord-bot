@@ -1,6 +1,6 @@
 import fs from 'fs';
 import crypto from 'crypto';
-import { Client, Collection, Intents } from 'discord.js';
+import { Client, Collection, GatewayIntentBits } from 'discord.js';
 import { fileURLToPath } from 'url';
 const { discord, internal, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const token = discord.token;
@@ -11,13 +11,13 @@ import Player from './player.js';
 import Translator from './translate.js';
 import validator from 'validator';
 import type { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
-import type { CommandInteraction, ContextMenuInteraction, ButtonInteraction, SelectMenuInteraction, InteractionReplyOptions } from 'discord.js';
+import type { ChatInputCommandInteraction, MessageContextMenuCommandInteraction, ButtonInteraction, SelectMenuInteraction, InteractionReplyOptions } from 'discord.js';
 
 // Create a new client instance
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_VOICE_STATES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.GUILD_MESSAGES] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 // dynamic import of commands, buttons, select menus
-const commands = new Collection<string, { data:SlashCommandBuilder, execute:(interaction:CommandInteraction) => void}>();
+const commands = new Collection<string, { data:SlashCommandBuilder, execute:(interaction:ChatInputCommandInteraction) => void}>();
 const commandFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/commands', import.meta.url).toString())).filter(file => file.endsWith('.js'));
 let commandHash = '';
 for (const file of commandFiles) {
@@ -25,7 +25,7 @@ for (const file of commandFiles) {
   const command = await import(`./interactions/commands/${file}`);
   commands.set(command.data.name, command);
 }
-const contexts = new Collection<string, { data:ContextMenuCommandBuilder, execute:(interaction:ContextMenuInteraction) => void}>();
+const contexts = new Collection<string, { data:ContextMenuCommandBuilder, execute:(interaction:MessageContextMenuCommandInteraction) => void}>();
 const contextFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/contexts', import.meta.url).toString())).filter(file => file.endsWith('.js'));
 for (const file of contextFiles) {
   commandHash = commandHash.concat(crypto.createHash('sha256').update(fs.readFileSync(fileURLToPath(new URL(`./interactions/contexts/${file}`, import.meta.url).toString()))).digest('base64'));
@@ -89,7 +89,7 @@ client.once('ready', async () => {
 // handle interactions
 client.on('interactionCreate', async (interaction):Promise<void> => {
   // console.log(interaction);
-  if (interaction.isCommand()) {
+  if (interaction.isChatInputCommand()) {
     const command = commands.get(interaction.commandName);
     if (!command) return;
 
@@ -124,7 +124,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
       await interaction.editReply({ content: 'There was an error while processing this button press!', components: [], ephemeral: true } as InteractionReplyOptions);
       return;
     }
-  } else if (interaction.isContextMenu()) {
+  } else if (interaction.isMessageContextMenuCommand()) {
     const context = contexts.get(interaction.commandName);
     if (!context) return;
     try {

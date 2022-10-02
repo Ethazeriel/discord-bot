@@ -7,7 +7,7 @@ import fetch from '../../acquire.js';
 import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { CommandInteraction, GuildMemberRoleManager } from 'discord.js';
+import { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -35,7 +35,7 @@ export const data = new SlashCommandBuilder()
     option.setName('ephemeral').setDescription('Should this remain in the queue after it plays (ie. be loopable)?')
       .addChoices({ name:'No', value:'no' }, { name:'Yes', value:'yes' }));
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
   const search = interaction.options.getString('search')?.replace(sanitize, '')?.trim();
   const when = interaction.options.getString('when') || 'last';
   const what = interaction.options.getString('what') || 'search';

@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { REST } from '@discordjs/rest';
+import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v9';
 import { log } from './logger.js';
 import { fileURLToPath } from 'url';
@@ -19,7 +19,7 @@ export async function deploy() {
     commands.push(command.data.toJSON());
   }
 
-  const rest = new REST({ version: '9' }).setToken(token);
+  const rest = new REST({ version: '10' }).setToken(token);
   try {
     if (scope === 'guild') {
       await rest.put(

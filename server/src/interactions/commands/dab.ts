@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { CommandInteraction } from 'discord.js';
+import { ChatInputCommandInteraction } from 'discord.js';
 import * as utils from '../../utils.js';
 
 export const data = new SlashCommandBuilder()
@@ -28,6 +28,6 @@ export const data = new SlashCommandBuilder()
         { name:'Pan', value:'pan' },
         { name:'Poly', value:'poly' }));
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
   utils.prideSticker(interaction, 'dab');
 }

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import * as utils from '../../utils.js';
-import type { CommandInteraction } from 'discord.js';
+import type { ChatInputCommandInteraction } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
   .setName('heart')
@@ -28,6 +28,6 @@ export const data = new SlashCommandBuilder()
         { name:'Pan', value:'pan' },
         { name:'Poly', value:'poly' }));
 
-export async function execute(interaction:CommandInteraction) {
+export async function execute(interaction:ChatInputCommandInteraction) {
   utils.prideSticker(interaction, 'heart');
 }

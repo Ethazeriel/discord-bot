@@ -8,7 +8,7 @@ import fetch from '../../acquire.js';
 import Workspace from '../../workspace.js';
 import validator from 'validator';
 import fs from 'fs';
-import type { CommandInteraction, GuildMemberRoleManager, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
+import type { ChatInputCommandInteraction, GuildMemberRoleManager, InteractionReplyOptions } from 'discord.js';
 import { fileURLToPath } from 'url';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
@@ -64,7 +64,7 @@ export const data = new SlashCommandBuilder()
     .setDescription('lists all internal playlists'));
 
 
-export async function execute(interaction: CommandInteraction) {
+export async function execute(interaction: ChatInputCommandInteraction) {
 
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
@@ -171,7 +171,7 @@ export async function execute(interaction: CommandInteraction) {
           fields: [{ name: 'Playlists:', value: listStr }],
         };
         try {
-          await interaction.followUp({ embeds: [listEmbed as MessageEmbedOptions] });
+          await interaction.followUp({ embeds: [listEmbed] } as InteractionReplyOptions);
         } catch (error:any) {
           log('error', [error.stack]);
         }

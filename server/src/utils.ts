@@ -1,5 +1,5 @@
 /* eslint-disable no-fallthrough */
-import { MessageAttachment, CommandInteraction, InteractionReplyOptions, MessageEmbedOptions } from 'discord.js';
+import { AttachmentBuilder, ChatInputCommandInteraction, InteractionReplyOptions } from 'discord.js';
 import { log } from './logger.js';
 import Canvas from 'canvas';
 import crypto from 'crypto';
@@ -45,7 +45,7 @@ export function pickPride<T extends boolean>(type:'heart' | 'dab' | 'fish', deta
   return <PrideResponse<T>>prideStr;
 }
 
-export async function prideSticker(interaction:CommandInteraction, type:'heart' | 'dab' | 'fish'):Promise<void> {
+export async function prideSticker(interaction:ChatInputCommandInteraction, type:'heart' | 'dab' | 'fish'):Promise<void> {
   const size = {
     heart:{ width:160, height:160 },
     dab:{ width:160, height:100 },
@@ -65,7 +65,7 @@ export async function prideSticker(interaction:CommandInteraction, type:'heart' 
   }
   const prideimg = await Canvas.loadImage(result.url);
   context.drawImage(prideimg, 0, 0, canvas.width, canvas.height);
-  const attachment = new MessageAttachment(canvas.toBuffer(), `${type}_${result.name}.png`).setDescription(`${result.name} ${type}`);
+  const attachment = new AttachmentBuilder(canvas.toBuffer(), { name:`${type}_${result.name}.png`, description:`${result.name} ${type}` });
   // console.log(attachment.description);
   await interaction.reply({ files: [attachment] });
 
@@ -122,7 +122,7 @@ export function numbersToTrackIndexes(input:string):Array<number> {
 // =================================
 
 export async function generateTrackEmbed(track:Track, messagetitle:string):Promise<InteractionReplyOptions> {
-  const albumart = new MessageAttachment((track.goose.track.art), 'art.jpg');
+  const albumart = new AttachmentBuilder((track.goose.track.art), { name:'art.jpg' });
   const npEmbed = {
     color: 0x580087,
     author: {
@@ -136,7 +136,7 @@ export async function generateTrackEmbed(track:Track, messagetitle:string):Promi
       url: 'attachment://art.jpg',
     },
   };
-  return { embeds: [npEmbed as MessageEmbedOptions], files: [albumart] };
+  return { embeds: [npEmbed], files: [albumart] } as InteractionReplyOptions;
 }
 
 export async function mbArtistLookup(artist:string):Promise<string | undefined> {
