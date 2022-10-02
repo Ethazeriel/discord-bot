@@ -127,7 +127,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
             return youtubeTrack;
           }
         } else {
-        // this track came from spotify or text
+        // this track came from a non-youtube source (spotify, napster, youtubeplaylist or text)
           if (isCombinedSources(track) || isYoutubeSource(track)) { throw new Error('source isn\'t what it should be!'); }
           if (isYoutubeArray(track)) {
             const youtubeTrack:Track = {
@@ -206,7 +206,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
 
   const lengthCheck = finishedArray.filter((track) => track);
   if (lengthCheck.length === sourceArray.length) {
-    return finishedArray as Array<Track>;
+    return finishedArray;
   } else { throw new Error('final result does not pass length check'); }
 }
 
@@ -502,7 +502,7 @@ async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise
     } else {
       // track doesn't have a source of this type yet, so create one
       db.addTrackSource({ 'goose.id':dbTrack.goose.id }, type, track);
-      dbTrack.spotify = track;
+      dbTrack[type] = track;
     }
     return dbTrack;
   } else {return null;}
