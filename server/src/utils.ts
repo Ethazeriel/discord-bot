@@ -35,7 +35,7 @@ export function pickPride<T extends boolean>(type:'heart' | 'dab' | 'fish', deta
     const pridearray2 = ['pride', 'progressive', 'poc'];
     ranpride = pridearray2[Math.floor(Math.random() * pridearray2.length)];
   }
-  const prideStr = 'https://ethazeriel.net/pride/sprites/' + type + '_' + ranpride + '.png';
+  const prideStr = `https://ethazeriel.net/pride/sprites/${type}_${ranpride}.png`;
   if (detail === true) {
     return <PrideResponse<T>>{
       url:prideStr,

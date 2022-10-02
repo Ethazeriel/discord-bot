@@ -6,6 +6,7 @@ COPY client/package* ./
 RUN npm install
 COPY client/public ./public
 COPY client/src ./src
+COPY @types ./src/@types
 COPY client/tsconfig.json ./tsconfig.json
 RUN npm run build
 
@@ -21,6 +22,7 @@ RUN npm install
 RUN npm install -g typescript
 COPY --chown=node:node server/tsconfig.json ./tsconfig.json
 COPY --chown=node:node server/src ./src
+COPY --chown=node:node @types ./src/@types
 RUN tsc
 RUN rm -r src tsconfig.json
 WORKDIR /client-assets
