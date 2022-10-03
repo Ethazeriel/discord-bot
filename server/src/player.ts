@@ -452,7 +452,7 @@ export default class Player {
     return (this.queue.tracks[position]);
   }
 
-  getCurrent():Track {
+  getCurrent():Track | undefined {
     return (this.queue.tracks[this.queue.playhead]);
   }
 
@@ -486,14 +486,14 @@ export default class Player {
     const thumb = fresh ? (new AttachmentBuilder(utils.pickPride('dab') as string, { name:'art.jpg' })) : null;
     const track = this.getCurrent();
     const bar = {
-      start: track.bar?.start,
-      end: track.bar?.end,
-      barbefore: track.bar?.barbefore,
-      barafter: track.bar?.barafter,
-      head: track.bar?.head,
+      start: track?.bar?.start,
+      end: track?.bar?.end,
+      barbefore: track?.bar?.barbefore,
+      barafter: track?.bar?.barafter,
+      head: track?.bar?.head,
     };
-    const elapsedTime = (this.getPause() ? (track.status?.pause! - track.status?.start!) : ((Date.now() / 1000) - track.status?.start!)) || 0;
-    if ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official) {
+    const elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
+    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';
@@ -504,7 +504,7 @@ export default class Player {
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
         { name: '\u200b', value: (track) ? `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url})\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.' },
-        { name: `\` ${utils.progressBar(45, (track.goose.track.duration), elapsedTime, bar)} \``, value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track.goose.track.duration || 0)}` },
+        { name: (track) ? `\` ${utils.progressBar(45, (track.goose.track.duration), elapsedTime, bar)} \`` : utils.progressBar(45, 100, 0), value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.goose.track.duration || 0)}` },
       ],
     };
     const buttons = [
@@ -562,20 +562,20 @@ export default class Player {
     }
     let queueTime = 0;
     for (const item of queue) { queueTime = queueTime + Number(item.goose.track.duration); }
-    let elapsedTime = (this.getPause() ? (track.status?.pause! - track.status?.start!) : ((Date.now() / 1000) - track.status?.start!)) || 0;
+    let elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
     for (const [i, item] of queue.entries()) {
       if (i < this.getPlayhead()) {
         elapsedTime = elapsedTime + Number(item.goose.track.duration);
       } else { break;}
     }
     const bar = {
-      start: track.bar?.start || '[',
-      end: track.bar?.end || ']',
-      barbefore: track.bar?.barbefore || '#',
-      barafter: track.bar?.barafter || '-',
-      head: track.bar?.head || '#',
+      start: track?.bar?.start || '[',
+      end: track?.bar?.end || ']',
+      barbefore: track?.bar?.barbefore || '#',
+      barafter: track?.bar?.barafter || '-',
+      head: track?.bar?.head || '#',
     };
-    if ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official) {
+    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';

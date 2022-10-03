@@ -112,7 +112,8 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
 
         case 'seek': {
           if (player.getQueue().length) {
-            const track = player.getCurrent();
+            const track = player.getCurrent() ? player.getCurrent() : (await player.prev(), player.getCurrent());
+            if (!track) {throw new Error('nothing playing and no ability to go back one');}
             const usrtime = validator.escape(validator.stripLow(interaction.options.getString('time') || '')).trim();
             if (!seekRegex.test(usrtime)) { await interaction.editReply({ content: 'That doesn\'t look like a valid timestamp.' }); } else {
               const match = usrtime.match(seekRegex);
