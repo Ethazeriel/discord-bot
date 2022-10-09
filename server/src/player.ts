@@ -263,17 +263,17 @@ export default class Player {
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
   }
 
-  async prev() { // prior, loop or restart current
+  async prev(play = true) { // prior, loop or restart current
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead > 0) ? --playhead : (this.queue.loop) ? (length &&= length - 1) : 0)();
-    await this.play();
+    if (play) {await this.play();}
     if (this.queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
-  async next() { // next, loop or end
+  async next(play = true) { // next, loop or end
     const priorPlayhead = this.queue.playhead;
     this.queue.playhead = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
-    await this.play();
+    if (play) {await this.play();}
     if (this.queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
