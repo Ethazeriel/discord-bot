@@ -194,13 +194,13 @@ export async function updateTrack(query:object, update:object) {
   }
 }
 
-export async function removeTrack(query:string) {
+export async function removeTrack(query:string) { // acquire2
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
   await connected();
   try {
     const tracks = db.collection(trackcol);
-    const track = await tracks.deleteOne({ 'youtube.id':query });
+    const track = await tracks.deleteOne({ 'youtube.0.id':query });
     if (track.deletedCount === 1) {
       log('database', [`Removed track ${chalk.red(query)} from DB.`]);
     } else {

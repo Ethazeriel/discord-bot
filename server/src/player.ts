@@ -351,6 +351,22 @@ export default class Player {
     return (removed);
   }
 
+  removeById(id:string) {
+    const idTest = (element:Track) => element.goose.id === id;
+    while (this.queue.tracks.findIndex(idTest) > 0) {
+      const index = this.queue.tracks.findIndex(idTest);
+      this.remove(index);
+      logDebug(`Removed item ${index} with matching id`);
+    }
+  }
+
+  static removeFromAll(id:string) {
+    for (const guild in Player.#players) {
+      logDebug(`Attempting to remove ${id} from ${guild}`);
+      Player.#players[guild].removeById(id);
+    }
+  }
+
   empty() {
     this.queue.playhead = 0;
     this.queue.tracks.length = 0;

@@ -6,6 +6,7 @@ import validator from 'validator';
 import fs from 'fs';
 import type { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 import { fileURLToPath } from 'url';
+import Player from '../../player.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -42,6 +43,8 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim() || '';
         if (youtubePattern.test(track)) {
           const match = track.match(youtubePattern);
+          const dbtrack = await database.getTrack({ 'youtube.0.id':match![2] });
+          if (dbtrack) { Player.removeFromAll(dbtrack.goose.id); }
           const result = await database.removeTrack(match![2]);
           interaction.followUp({ content:`Removed ${track} from the database; ${result} tracks.`, ephemeral: true });
         } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
