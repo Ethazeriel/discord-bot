@@ -1,9 +1,12 @@
-node_modules
+server/node_modules
 .env
 config.json
 testing
 setup/*
-logs/*
+server/logs/*
 cookies.txt
 .vscode
 config/*
+server/build/*
+compose/*
+*test*

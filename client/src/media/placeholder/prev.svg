@@ -1,0 +1,20 @@
+<svg
+   viewBox="0 0 128 128"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+	<circle
+		style="fill:#ffffff;fill-opacity:1"
+		cx="64"
+		cy="64"
+		r="64" />
+	<path
+		style="display:inline;fill:currentColor;fill-opacity:1"
+		transform="matrix(0.67348485,0,0,0.597142,-223.07292,-67.371241)"
+		d="m 385,220 82.5,-47.6314 0,95.2628 z" />
+	<rect
+		style="display:inline;fill:currentColor;fill-opacity:1"
+		width="9.2604504"
+		height="56.885414"
+		x="36.21875"
+		y="35.557293" />
+</svg>

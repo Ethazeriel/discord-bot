@@ -1,0 +1,8 @@
+server/node_modules
+server/build
+.vscode
+client/build
+client/node_modules
+compose
+server/logs
+templates
