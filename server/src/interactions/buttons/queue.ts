@@ -64,7 +64,7 @@ export async function execute(interaction:ButtonInteraction, which:string) {
           } else {
             player.shuffle();
             const mediaEmbed = await player.mediaEmbed(false);
-            const queueEmbed = await player.queueEmbed(undefined, page, false);
+            const queueEmbed = await player.queueEmbed(undefined, 1, false);
             await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
           }
           break;

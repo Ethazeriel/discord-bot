@@ -373,6 +373,8 @@ export default class Player {
     this.player.stop();
   }
 
+  // verbatim Fisher—Yates shuffle, but of the order elements will be visited rather than of the actual elements
+  // to enable visiting all elements in random order, without randomly ordering them. retain positioning control
   #randomizer(length:number) {
     const random:number[] = [];
     for (let i = 0; i < length; i++) { random[i] = i; }
@@ -385,11 +387,12 @@ export default class Player {
     return (random);
   }
 
-  shuffle({ albumAware = false } = {}, alternate:Track[] | undefined = undefined) { // if alternate, we shuffle and return that instead of shuffling the queue itself
+  // an implementation of the goals described here: https://engineering.atspotify.com/2014/02/how-to-shuffle-songs
+  shuffle({ albumAware = false } = {}, alternate:Track[] | undefined = undefined) { // if alternate, shuffle and return that instead of the queue
     const loop = this.getLoop() || !this.getNext(); // we're treating shuffling a queue that's over as a 1-action request to restart it, shuffled
     const queue = (alternate) ? null : this.getQueue();
     const current = (alternate) ? null : this.getCurrent();
-    const playhead = (alternate) ? null : (loop) ? 0 : this.getPlayhead(); // shuffle everything or just the remaining, presumably unheard queue
+    const playhead = (alternate) ? null : (loop || !current) ? 0 : this.getPlayhead(); // shuffle everything or just the remaining, unheard queue
     const tracks = alternate || queue!.slice(playhead!);
     if (!alternate) { queue!.length = playhead as number, this.queue.playhead = playhead as number; }
     // logDebug(`current: ${(current) ? current.spotify.name || current.youtube.name : 'none'} \n`);
@@ -397,7 +400,7 @@ export default class Player {
     if (albumAware) {
       tracks.sort((a, b) => (a.goose.album.trackNumber < b.goose.album.trackNumber) ? -1 : 1);
       tracks.sort((a, b) => (a.goose.album.name === b.goose.album.name) ? 0 : (a.goose.album.name < b.goose.album.name) ? -1 : 1);
-      tracks.map((track) => track.goose.album.name ||= String(crypto.randomInt(tracks.length))); // null album is not an album I want to group together
+      tracks.map((track) => track.goose.album.name ||= String(crypto.randomInt(tracks.length))); // above sort grouped null albums; this ungroups
     }
     tracks.sort((a, b) => (a.goose.artist.name === b.goose.artist.name) ? 0 : (a.goose.artist.name < b.goose.artist.name) ? -1 : 1);
     const groupBy = (albumAware) ? 'album' : 'artist';
@@ -428,32 +431,33 @@ export default class Player {
         const random = this.#randomizer(grouping.length);
         for (let i = 0; i < grouping.length; i++) {
           (!position) ? (position = offset) : (position = position + (sparse.length / grouping.length));
-          if (position > sparse.length) { position = Math.abs(position - sparse.length); }
+          if (position > sparse.length) { position = position - sparse.length; }
           sparse.splice(position, 0, grouping[random[i]]);
         }
       }
     }
-    let result = sparse.filter((element) => element);
+    let result:Track[] = sparse.filter((element) => element);
 
     if (alternate) {
       return (result);
     } else {
       if (current) {
         let start = 0;
-        while (result[start].start != current.status.start) {
+        while (result[start].status.start != current.status.start) {
           start++;
         }
         let end = start + 1;
         if (albumAware) {
-          while (end < result.length && result[start].album.name == result[end].album.name) { end++; }
+          while (end < result.length && result[start].goose.album.name == result[end].goose.album.name) { end++; }
         }
-        const rearranged = [];
+        const rearranged:Track[] = [];
         rearranged.push(...result.slice(start, end));
         rearranged.push(...result.slice(end));
         rearranged.push(...result.slice(0, start));
         result = rearranged;
       }
       queue!.push(...result);
+      if (!current) { this.play(); }
     }
 
     // // visual testing code from elsewhere, included here so as to not need to recreate it should it be needed in future
@@ -508,6 +512,7 @@ export default class Player {
       barafter: track?.bar?.barafter,
       head: track?.bar?.head,
     };
+    // const elapsedTime = (!track || !track.status?.start) ? 0 : (this.getPause()) ? (track.status.pause! - track.status.start) : ((Date.now() / 1000) - track.status.start);
     const elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
     if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
@@ -578,6 +583,7 @@ export default class Player {
     }
     let queueTime = 0;
     for (const item of queue) { queueTime = queueTime + Number(item.goose.track.duration); }
+    // let elapsedTime = (!track || !track.status?.start) ? 0 : (this.getPause()) ? (track.status.pause! - track.status.start) : ((Date.now() / 1000) - track.status.start);
     let elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
     for (const [i, item] of queue.entries()) {
       if (i < this.getPlayhead()) {

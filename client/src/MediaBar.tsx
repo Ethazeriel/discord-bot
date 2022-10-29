@@ -1,116 +1,126 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useEffect, useState } from 'react';
-// import type * as CSS from 'csstype';
+import React, { useEffect, useReducer, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { timeDisplay } from './utils';
 
 import { ReactComponent as Shuffle } from './media/placeholder/shuffle.svg';
 import { ReactComponent as Prev } from './media/placeholder/prev.svg';
 import { ReactComponent as Play } from './media/placeholder/play.svg';
-// import { ReactComponent as Pause } from './media/placeholder/pause.svg';
+import { ReactComponent as Pause } from './media/placeholder/pause.svg';
 import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
 
-
 import type { Track, PlayerStatus, PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek';
+type MediaState = {
+  seek:number,
+  start:number,
+  elapsed:number,
+  duration:number,
+  paused:boolean,
+  loop:boolean,
+  seeking:number,
+};
 
-// declare module 'csstype' {
-//   interface Properties {
-//     value?: undefined;
-//   }
-// }
-
-// import './Test.css';
+// I have no idea how to type this. will figure it out later
+function reducer(state:any, [type, value]:[any, any?]) {
+  switch (type) {
+    case 'interval': {
+      const elapsed = (state.seek) ? state.seek : (state.paused) ? state.elapsed : (state.elapsed + 1 <= state.duration) ? state.elapsed + 1 : state.elapsed;
+      return ({ ...state, elapsed: elapsed });
+    }
+    case 'duration': {
+      return ({ ...state, duration: value });
+    }
+    case 'slider': {
+      return ({ ...state, seeking: value });
+    }
+    case 'seek': {
+      return ({ ...state, seek: value, elapsed: value, seeking: 0 });
+    }
+    case 'start': {
+      const elapsed = (state.paused) ? state.elapsed : Math.floor((Date.now() / 1000) - value);
+      return ({ ...state, seek: 0, elapsed: elapsed });
+    }
+    case 'paused': {
+      return ({ ...state, paused: value });
+    }
+  }
+}
 
 export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void}) {
-  const seek = props.status?.tracks?.[props.status?.playhead]?.status?.seek;
-  const start = props.status?.tracks?.[props.status?.playhead]?.status?.start;
-  const duration = props.status?.tracks?.[props.status?.playhead]?.youtube[0]?.duration || 0;
-  const paused = props.status?.paused as boolean;
-  // eslint-disable-next-line prefer-const
-  const [wtf, setwtf] = useState(50);
-  const [now, setNow] = useState(Date.now() / 1000);
-  const [seeking, setSeeking] = useState(0);
-  const [timer, setTimer] = useState(0);
-  const [playhead, setPlayhead] = useState((start) ? (now - start) : (seek) ? (now - seek) : 0);
+  const player = props.status;
+  const track = player?.tracks?.[player?.playhead];
+
+  const now = Math.floor(Date.now() / 1000);
+  const seek = Math.floor(track?.status?.seek || 0);
+  const pause = Math.floor(track?.status?.pause || 0);
+  const start = Math.floor(track?.status?.start || now);
+
+  const paused = player?.paused as boolean;
+  const elapsed = (paused) ? pause - start : now - start;
+  const duration = track?.youtube[0]?.duration || 0;
+
+  const initialState:MediaState = {
+    seek: seek,
+    start: start,
+    elapsed: elapsed,
+    duration: duration,
+    paused: paused,
+    loop: player!.loop || false,
+    seeking: 0,
+  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+
   useEffect(() => {
-    console.log(`seek: ${Math.trunc(seek || 0)}, start: ${Math.trunc(start || 0)}, duration: ${duration}, paused: ${paused}`);
-    if (paused) {
-      // clearInterval(timer);
-    } else if (seek) {
-      // clearInterval(timer);
-      // setValue(seek);
-    } else if (start) {
-      setNow(oldValue => Date.now() / 1000);
-      setPlayhead(oldValue => now - start);
-      setTimer(oldTimer => {
-        clearInterval(oldTimer);
-        return (window.setInterval(() => {
-          if ((playhead + 1) < duration) {
-            setwtf(oldValue => oldValue + 1);
-            setPlayhead(oldValue => oldValue + 1);
-          } else {
-            setPlayhead(duration);
-          }
-        }, 1000));
-      });
-    } else { /* clearInterval(timer); */ }
+    const timer = window.setInterval(() => {
+      dispatch(['interval']);
+    }, 1000);
 
     return (() => clearInterval(timer));
-  }, [start, seek, paused]);
+  }, []);
 
-  const interaction = (action:string) => {
+  useEffect(() => {
+    dispatch(['start', start]);
+  }, [start]);
+
+  useEffect(() => {
+    dispatch(['paused', paused]);
+  }, [paused]);
+
+  useEffect(() => {
+    dispatch(['duration', duration]);
+  }, [duration]);
+
+  const button = (action:Action) => {
     props.playerClick({ action: action });
   };
-  const sliderChange = (event:any) => {
-    // clearInterval(timer);
-    setSeeking(event.target.value);
+
+  const slider = ([type, value]:any) => {
+    if (type == 'seek') { props.playerClick({ action: 'seek', parameter: state.seeking }); }
+    dispatch([type, Number(value || state.seeking)]); // onMouseUp doesn't seem to have a value
   };
-  const sliderTest = (event:any) => {
-    console.log(`mouseup pre: ${seeking}`);
-    setSeeking(oldValue => 0);
-    console.log(`mouseup post: ${seeking}`);
-    // props.playerClick({ action: 'seek', parameter: target });
-  };
+
   return (
     <MediaContainer>
       <ButtonRow>
-        <Button onClick={() => interaction('shuffle')}><Shuffle /></Button>
-        <Button onClick={() => interaction('prev')}><Prev /></Button>
-        <Button onClick={() => interaction('togglePause')}><Play /></Button>
-        <Button onClick={() => interaction('next')}><Next /></Button>
-        <Button onClick={() => interaction('toggleLoop')}><Loop /></Button>
+        <Button onClick={() => button('shuffle')}><Shuffle /></Button>
+        <Button onClick={() => button('prev')}><Prev /></Button>
+        <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
+        <Button onClick={() => button('next')}><Next /></Button>
+        <Button onClick={() => button('toggleLoop')}><Loop /></Button>
       </ButtonRow>
       <SliderRow>
-        <div>seeking= {seeking}</div>
-        <TimeStyle>{timeDisplay(seeking || wtf)}</TimeStyle>
-        <SliderStyle type="range" min="0" max={duration} step="1" value={seeking || wtf} onChange={sliderChange} onMouseUp={sliderTest} />
-        <TimeStyle>{timeDisplay(duration)}</TimeStyle>
+        <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
+        <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => slider(['slider', event.target.value])} onMouseUp={(event) => slider(['seek'])} />
+        <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
       </SliderRow>
     </MediaContainer>
   );
 }
 
-const getCircularReplacer = () => {
-  const seen = new WeakSet();
-  return (key: any, value: object | null) => {
-    if (typeof value === 'object' && value !== null) {
-      if (seen.has(value)) {
-        return;
-      }
-      seen.add(value);
-    }
-    return value;
-  };
-};
-
 const MediaContainer = styled.div`
-  position: relative;
   width: 100%;
-  height: calc(10vh + 2px);
-  min-height: 20x;
-  max-height: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -119,23 +129,17 @@ const MediaContainer = styled.div`
 `;
 
 const ButtonRow = styled.div`
-  height: 54px;
+  height: 36px;
   margin: 4px 0 0 0;
-  padding-top: 2px;
-  /* min-width: 320px;
-  max-width: 640px;
-  min-height: 64px;
-  max-height: 128px; */
-  position: relative;
-  display: block flex;
+  display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
 `;
 
 const Button = styled.svg`
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   margin: 0 2px 0 2px;
   color: #e736e7;
   &:hover {
@@ -144,11 +148,15 @@ const Button = styled.svg`
 `;
 
 const SliderRow = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
 `;
 
 const SliderStyle = styled.input`
   height: 100%;
-  width: 220px;
+  width: 200px;
   margin: 0;
   padding: 0;
   object-fit: contain;
@@ -161,5 +169,5 @@ const SliderStyle = styled.input`
 `;
 
 const TimeStyle = styled.span`
-  
+  font-family: 'Courier New', Courier, monospace;
 `;

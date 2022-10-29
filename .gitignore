@@ -9,3 +9,4 @@ cookies.txt
 config/*
 server/build/*
 compose/*
+*test*
