@@ -15,7 +15,6 @@ ENV NODE_ENV production
 RUN apk add dumb-init
 RUN apk --no-cache add python3
 RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN apk --no-cache add --virtual canvas-deps make g++ cairo-dev pango-dev
 WORKDIR /goose
 COPY --chown=node:node server/package.json server/package-lock.json ./
 RUN npm install
