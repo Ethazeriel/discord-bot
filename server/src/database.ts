@@ -213,22 +213,30 @@ export async function removeTrack(query:string) { // acquire2
 }
 // usage: await db.removeTrack('DjaE3w8j6vY');
 
-export async function switchAlternate(query:string, alternate:number) {
+export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource) { // acquire2
   // returns the first track object that matches the query
   await connected();
   try {
     const tracks = db.collection(trackcol);
-    const search = { 'youtube.id':query };
-    const track = await tracks.findOne(search);
+    const search = { 'youtube.0.id':query };
+    const track:Track = await tracks.findOne(search);
     if (track) {
-      const newmain = track.alternates.splice(alternate, 1, track.youtube);
+      const original = track.youtube[0].id;
+      if (typeof alternate === 'number') {
+        const newmain = track.youtube.splice(alternate, 1, track.youtube[0]);
+        track.youtube.shift();
+        track.youtube.unshift(newmain[0]);
+      } else {
+        track.youtube.unshift(alternate);
+        track.youtube.pop();
+      }
       const update = {
-        $set: { 'youtube':newmain[0], 'alternates':track.alternates },
+        $set: { 'youtube':track.youtube },
       };
       const result = await tracks.updateOne(search, update);
       if (result.modifiedCount == 1) {
-        log('database', [`Remapped track ${chalk.green(track.youtube.id)} to alternate ${chalk.green(alternate)}`]);
-      } else {log('database', [`Failed to remap ${chalk.red(track.youtube.id)} - is this a valid ID?`]);}
+        log('database', [`Remapped track ${chalk.green(original)} to ${chalk.green(track.youtube[0].id)}`]);
+      } else {log('database', [`Failed to remap ${chalk.red(original)} - is this a valid ID?`]);}
       return result.modifiedCount;
     } else {return 0;}
   } catch (error:any) {

@@ -7,7 +7,7 @@ export const name = 'remap';
 export async function execute(interaction:SelectMenuInteraction) { // dropdown selection function
   const choice = Number(interaction.values[0]);
   if (choice < 4) {
-    const track = await db.getTrack({ 'youtube.id.0': interaction.message.embeds[0].footer!.text }) as Track;
+    const track = await db.getTrack({ 'youtube.0.id': interaction.message.embeds[0].footer!.text }) as Track;
     const reply = {
       embeds: [
         {

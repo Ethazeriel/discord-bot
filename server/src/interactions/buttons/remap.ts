@@ -1,17 +1,17 @@
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
-import ytdl from 'ytdl-core';
-import { ButtonInteraction, InteractionUpdateOptions } from 'discord.js';
+import { ButtonInteraction, InteractionUpdateOptions, InteractionDeferUpdateOptions } from 'discord.js';
+import youtube from '../../workers/acquire/youtube.js';
 
 export const name = 'remap';
 
 export async function execute(interaction:ButtonInteraction, which:string): Promise<void> { // button selection function
-  throw new Error('REMAP IS BROKEN');
+  await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
   switch (which) {
 
     case 'db': {
       const match = interaction.message.embeds[0].footer!.text.match(/([\w-]{11})([0-3])/);
-      const result = await db.switchAlternate(match![1], Number(match![2]));
+      const result = await db.switchAlternate(match![1], Number(match![2]) + 1);
       if (result) {
         const reply = {
           embeds: [
@@ -24,7 +24,7 @@ export async function execute(interaction:ButtonInteraction, which:string): Prom
           ],
           components:[],
         };
-        await interaction.update(reply as InteractionUpdateOptions);
+        await interaction.editReply(reply as InteractionUpdateOptions);
       } else {
         const reply = {
           embeds: [
@@ -37,40 +37,32 @@ export async function execute(interaction:ButtonInteraction, which:string): Prom
           ],
           components:[],
         };
-        await interaction.update(reply as InteractionUpdateOptions);
+        await interaction.editReply(reply as InteractionUpdateOptions);
       }
       break;
     }
 
     case 'new': {
       const match = interaction.message.embeds[0].footer!.text.match(/([\w-]{11})([\w-]{11})/);
-      const track = await db.getTrack({ 'youtube.id': match![1] });
-      if (!Object.keys(track as object).length) {
-        await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
+      const track = await db.getTrack({ 'youtube.0.id': match![1] });
+      if (typeof track === 'undefined') {
+        await interaction.editReply({ content:'We don\'t appear to have that track.', ephemeral: true } as InteractionUpdateOptions);
         return;
       }
       // const newtrack = await fetch(`https://www.youtube.com/watch?v=${match[2]}`, interaction.id);
-      const newtrack = await db.getTrack({ 'youtube.id': match![2] });
-      let newtube;
-      if (Object.keys(newtrack as object).length) {
-        newtube = newtrack!.youtube;
+      const newtrack = await db.getTrack({ 'youtube.0.id': match![2] });
+      let newtube:TrackYoutubeSource;
+      if (typeof track === 'undefined') {
+        newtube = newtrack!.youtube[0];
       } else {
         try {
-          const ytdlResult = await ytdl.getBasicInfo(match![2], { requestOptions: { family:4 } });
-          newtube = {
-            id:match![2],
-            name:ytdlResult?.videoDetails.title,
-            art:`https://i.ytimg.com/vi/${match![2]}/hqdefault.jpg`,
-            duration:Number(ytdlResult?.videoDetails?.lengthSeconds),
-          };
+          newtube = await youtube.fromId(match![2]);
         } catch (error:any) {
-          await interaction.update({ content:`Error remapping: ${error.message}`, ephemeral: true } as InteractionUpdateOptions);
+          await interaction.editReply({ content:`Error remapping: ${error.message}`, ephemeral: true } as InteractionUpdateOptions);
           return;
         }
       }
-      const query = { 'goose.id':track!.goose.id };
-      const update = { $set: { youtube:newtube } };
-      await db.updateTrack(query, update);
+      await db.switchAlternate(match![1], newtube);
 
       const reply = {
         embeds: [
@@ -87,7 +79,7 @@ export async function execute(interaction:ButtonInteraction, which:string): Prom
         components:[],
         files: [],
       };
-      await interaction.update(reply as InteractionUpdateOptions);
+      await interaction.editReply(reply as InteractionUpdateOptions);
       break;
     }
 
@@ -102,7 +94,7 @@ export async function execute(interaction:ButtonInteraction, which:string): Prom
         ],
         components:[],
       };
-      await interaction.update(reply as InteractionUpdateOptions);
+      await interaction.editReply(reply as InteractionUpdateOptions);
       break;
     }
 
