@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 import { Document, MongoClient } from 'mongodb';
 import { log } from './logger.js';
 import chalk from 'chalk';

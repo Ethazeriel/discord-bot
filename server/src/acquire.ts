@@ -1,7 +1,7 @@
 import { Worker } from 'worker_threads';
 import crypto from 'crypto';
 import { log, logDebug } from './logger.js';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 
 let worker = new Worker(fileURLToPath(new URL('./workers/acquire.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
 worker.on('exit', code => {

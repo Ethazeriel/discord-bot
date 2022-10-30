@@ -2,7 +2,7 @@ import * as db from './database.js';
 import axios, { AxiosResponse } from 'axios';
 import { logDebug, log } from './logger.js';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { discord, spotify, mongo, napster } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const usercol = mongo.usercollection;
 import chalk from 'chalk';

@@ -9,7 +9,7 @@ import Workspace from '../../workspace.js';
 import validator from 'validator';
 import fs from 'fs';
 import type { ChatInputCommandInteraction, GuildMemberRoleManager, InteractionReplyOptions } from 'discord.js';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 

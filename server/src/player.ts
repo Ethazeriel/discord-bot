@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { ButtonInteraction, CommandInteraction, GuildMember, AttachmentBuilder, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, Message, APIEmbed } from 'discord.js';
 import * as db from './database.js';
 import { log, logDebug } from './logger.js';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
 import * as utils from './utils.js';

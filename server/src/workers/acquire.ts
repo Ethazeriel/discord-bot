@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 import crypto from 'crypto';
 import * as db from '../database.js';
 import { logDebug, log } from '../logger.js';

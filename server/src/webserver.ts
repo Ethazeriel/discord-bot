@@ -3,7 +3,7 @@ import { logDebug } from './logger.js';
 import Player from './player.js';
 import { seekTime as seekRegex } from './regexes.js';
 import validator from 'validator';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 
 let worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 worker.on('exit', code => {

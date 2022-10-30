@@ -2,7 +2,7 @@ import fs from 'fs';
 import { REST } from 'discord.js';
 import { Routes } from 'discord-api-types/v9';
 import { log } from './logger.js';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { client_id, guildId, token, scope } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).discord;
 const commands:object[] = [];
 const commandFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/commands', import.meta.url).toString()), 'utf-8').filter(file => file.endsWith('.js'));

@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
 import { log } from '../../logger.js';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 import { ChatInputCommandInteraction, GuildMemberRoleManager, Message, WebhookEditMessageOptions } from 'discord.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;

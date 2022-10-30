@@ -4,11 +4,10 @@ import { ChatInputCommandInteraction, AttachmentBuilder, GuildMemberRoleManager 
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
-import Canvas from 'canvas';
 import Player from '../../player.js';
 import ytdl from 'ytdl-core';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 

@@ -1,7 +1,8 @@
 /* eslint-disable no-fallthrough */
 import { AttachmentBuilder, ChatInputCommandInteraction, InteractionReplyOptions } from 'discord.js';
 import { log } from './logger.js';
-import Canvas from 'canvas';
+// import Canvas from 'canvas';
+import Jimp from 'jimp';
 import crypto from 'crypto';
 import axios, { AxiosResponse } from 'axios';
 import * as db from './database.js';
@@ -52,8 +53,6 @@ export async function prideSticker(interaction:ChatInputCommandInteraction, type
     fish:{ width:160, height:160 },
   };
   const prideChoice = interaction.options.getString('type');
-  const canvas = Canvas.createCanvas(size[type].width, size[type].height);
-  const context = canvas.getContext('2d');
   let result;
   if (prideChoice == 'random') {
     result = pickPride(type, true);
@@ -63,9 +62,9 @@ export async function prideSticker(interaction:ChatInputCommandInteraction, type
       name:prideChoice,
     };
   }
-  const prideimg = await Canvas.loadImage(result.url);
-  context.drawImage(prideimg, 0, 0, canvas.width, canvas.height);
-  const attachment = new AttachmentBuilder(canvas.toBuffer(), { name:`${type}_${result.name}.png`, description:`${result.name} ${type}` });
+  const prideimg = await Jimp.read(result.url);
+  prideimg.resize(size[type].width, size[type].height);
+  const attachment = new AttachmentBuilder(await prideimg.getBufferAsync(prideimg.getMIME()), { name:`${type}_${result.name}.png`, description:`${result.name} ${type}` });
   // console.log(attachment.description);
   await interaction.reply({ files: [attachment] });
 

@@ -4,7 +4,7 @@ import Translator from '../../translate.js';
 import * as db from '../../database.js';
 import validator from 'validator';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 import { ChatInputCommandInteraction, GuildMember, GuildMemberRoleManager } from 'discord.js';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;

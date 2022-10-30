@@ -1,7 +1,7 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { Client, Collection, GatewayIntentBits } from 'discord.js';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { discord, internal, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const token = discord.token;
 import { log, logCommand, logComponent, logDebug } from './logger.js';

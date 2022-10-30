@@ -2,7 +2,7 @@ import fs from 'fs';
 import { v2 } from '@google-cloud/translate';
 import { logDebug, log } from './logger.js';
 import * as utils from './utils.js';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 const { apiKey } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).translate;
 import validator from 'validator';
 import { ButtonInteraction, CommandInteraction, InteractionReplyOptions, Message, EmbedBuilder } from 'discord.js';
