@@ -67,7 +67,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     elapsed: elapsed,
     duration: duration,
     paused: paused,
-    loop: player!.loop || false,
+    loop: player?.loop || false,
     seeking: 0,
   };
   const [state, dispatch] = useReducer(reducer, initialState);
