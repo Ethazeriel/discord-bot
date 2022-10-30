@@ -1,5 +1,24 @@
-import { log } from '../../logger.js';
+import fs from 'fs';
+import { fileURLToPath, URL } from 'url';
+import { logDebug, log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
+const { spotify } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
+
+async function getCreds():Promise<ClientCredentialsResponse> {
+  logDebug('getting spotify token');
+  const spotifyCredentialsAxios:AxiosResponse<ClientCredentialsResponse> = await axios({
+    url: 'https://accounts.spotify.com/api/token',
+    method: 'post',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + (Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')),
+    },
+    data: 'grant_type=client_credentials',
+    timeout: 10000,
+  });
+  return spotifyCredentialsAxios.data;
+}
 
 async function fromTrack(auth:ClientCredentialsResponse, id:string):Promise<TrackSource> {
   log('fetch', [`spotifyFromTrack: ${id}`]);
@@ -140,4 +159,4 @@ async function fromPlaylist(auth:ClientCredentialsResponse, id:string):Promise<A
   return sources;
 }
 
-export default { fromTrack, fromText, fromAlbum, fromPlaylist };
+export default { getCreds, fromTrack, fromText, fromAlbum, fromPlaylist };

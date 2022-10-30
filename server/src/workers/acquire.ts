@@ -1,15 +1,11 @@
-import fs from 'fs';
-import { fileURLToPath, URL } from 'url';
 import crypto from 'crypto';
 import * as db from '../database.js';
 import { logDebug, log } from '../logger.js';
 import { youtubePattern, spotifyPattern, sanitize, youtubePlaylistPattern, napsterPattern } from '../regexes.js';
 import { parentPort } from 'worker_threads';
-import axios, { AxiosResponse } from 'axios';
 import youtube from './acquire/youtube.js';
-import spotify2 from './acquire/spotify.js';
+import spotify from './acquire/spotify.js';
 import napster from './acquire/napster.js';
-const { spotify } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 parentPort!.on('message', async data => {
   if (data.action === 'search') {
@@ -238,22 +234,6 @@ async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise
   } else {return null;}
 }
 
-async function getSpotifyCreds():Promise<ClientCredentialsResponse> {
-  logDebug('getting spotify token');
-  const spotifyCredentialsAxios:AxiosResponse<ClientCredentialsResponse> = await axios({
-    url: 'https://accounts.spotify.com/api/token',
-    method: 'post',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic ' + (Buffer.from(spotify.client_id + ':' + spotify.client_secret).toString('base64')),
-    },
-    data: 'grant_type=client_credentials',
-    timeout: 10000,
-  });
-  return spotifyCredentialsAxios.data;
-}
-
 async function genNewGooseId():Promise<string> {
   let id = crypto.randomBytes(5).toString('hex');
   while (await db.getTrack({ 'goose.id': id })) {
@@ -276,8 +256,8 @@ async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | T
   // let's see if spotify knows anything about this track
   // use ContentID info as search parameter, don't perform search if no ContentID match
   const find = source.contentID ? `${source.contentID.name} ${source.contentID.artist}` : null;
-  const auth = find ? await getSpotifyCreds() : null;
-  const newTrack = find ? await spotify2.fromText(auth!, find).catch(err => {logDebug(err.message);}) : null;
+  const auth = find ? await spotify.getCreds() : null;
+  const newTrack = find ? await spotify.fromText(auth!, find).catch(err => {logDebug(err.message);}) : null;
   if (newTrack) {
     const dbTrack = await checkTrack(newTrack, 'spotify');
     if (dbTrack) {
@@ -319,7 +299,7 @@ async function youtubePlaylistSource(search:string):Promise<Array<TrackYoutubeSo
   const match = search.match(youtubePlaylistPattern);
   const sources = await youtube.fromPlaylist(match![2]);
   const ytPromiseArray:Array<Promise<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}>> = [];
-  const auth = await getSpotifyCreds();
+  const auth = await spotify.getCreds();
   for (const source of sources) {
     ytPromiseArray.push((async () => {
       const track = await db.getTrack({ 'youtube.id': source.id });
@@ -332,7 +312,7 @@ async function youtubePlaylistSource(search:string):Promise<Array<TrackYoutubeSo
       // let's see if spotify knows anything about this track
       // use ContentID info as search parameter, don't perform search if no ContentID match
       const find = source.contentID ? `${source.contentID.name} ${source.contentID.artist}` : null;
-      const newTrack = find ? await spotify2.fromText(auth, find).catch(err => {logDebug(err.message);}) : null;
+      const newTrack = find ? await spotify.fromText(auth, find).catch(err => {logDebug(err.message);}) : null;
       if (newTrack) {
         const dbTrack = await checkTrack(newTrack, 'spotify');
         if (dbTrack) {
@@ -390,16 +370,16 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
         return (Array(track));
       }
       // this is a new id, so we need to go talk to spotify
-      const auth = await getSpotifyCreds();
-      const newTrack = await spotify2.fromTrack(auth, match![2]);
+      const auth = await spotify.getCreds();
+      const newTrack = await spotify.fromTrack(auth, match![2]);
       const dbTrack = await checkTrack(newTrack, 'spotify');
       if (dbTrack) {return Array(dbTrack);}
       return Array(newTrack);
     }
 
     case 'album':{
-      const auth = await getSpotifyCreds();
-      const newTracks = await spotify2.fromAlbum(auth, match![2]);
+      const auth = await spotify.getCreds();
+      const newTracks = await spotify.fromAlbum(auth, match![2]);
       const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {
         const dbTrack = await checkTrack(source, 'spotify');
@@ -415,8 +395,8 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
     }
 
     case 'playlist':{
-      const auth = await getSpotifyCreds();
-      const newTracks = await spotify2.fromPlaylist(auth, match![2]);
+      const auth = await spotify.getCreds();
+      const newTracks = await spotify.fromPlaylist(auth, match![2]);
       const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {
         const dbTrack = await checkTrack(source, 'spotify');
@@ -442,8 +422,8 @@ async function textSource(search:string):Promise<Array<TrackSource | Track | Tra
     return (Array(track));
   }
   // this is a new search
-  const auth = await getSpotifyCreds();
-  const newTrack = await spotify2.fromText(auth, search);
+  const auth = await spotify.getCreds();
+  const newTrack = await spotify.fromText(auth, search);
   if (newTrack) {
     const dbTrack = await checkTrack(newTrack, 'spotify');
     if (dbTrack) {
