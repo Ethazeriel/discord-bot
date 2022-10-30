@@ -35,61 +35,63 @@ async function stepone() {
 
   const track2s:Array<Track> = [];
   for (const track of tracks) {
-    const youtube:Array<TrackYoutubeSource> = [{
-      id: track.youtube.id,
-      name: track.youtube.name,
-      art: track.youtube.art,
-      duration: track.youtube.duration,
-      url: `https://youtu.be/${track.youtube.id}`,
-    }];
-    for (const youtube2 of track.alternates) {
-      youtube.push({
-        id: youtube2.id,
-        name: youtube2.name,
-        art: youtube2.art,
-        duration: youtube2.duration,
-        url: `https://youtu.be/${youtube2.id}`,
-      });
-    }
-    const spotify:TrackSource | undefined = (track.spotify.id && track.spotify.id.length) ? {
-      id: track.spotify.id,
-      name: track.spotify.name,
-      art: track.spotify.art,
-      duration: track.spotify.duration,
-      url: `https://open.spotify.com/track/${track.spotify.id[0]}`,
-      album: track.album as any,
-      artist: {
-        id:track.artist.id as string,
-        name:track.artist.name,
-      },
-    } : undefined;
-    const track2:Track = {
-      goose: {
-        id:track.goose.id,
-        plays: track.goose.plays || 0,
-        errors: track.goose.errors || 0,
-        album: {
-          name: track.album.name as string || 'Unknown Album',
-          trackNumber: track.album.trackNumber || 0,
-        },
+    if (track?.youtube?.id) {
+      const youtube:Array<TrackYoutubeSource> = [{
+        id: track.youtube.id,
+        name: track.youtube.name,
+        art: track.youtube.art,
+        duration: track.youtube.duration,
+        url: `https://youtu.be/${track.youtube.id}`,
+      }];
+      for (const youtube2 of track.alternates) {
+        youtube.push({
+          id: youtube2.id,
+          name: youtube2.name,
+          art: youtube2.art,
+          duration: youtube2.duration,
+          url: `https://youtu.be/${youtube2.id}`,
+        });
+      }
+      const spotify:TrackSource | undefined = (track.spotify.id && track.spotify.id.length) ? {
+        id: track.spotify.id,
+        name: track.spotify.name,
+        art: track.spotify.art,
+        duration: track.spotify.duration,
+        url: `https://open.spotify.com/track/${track.spotify.id[0]}`,
+        album: track.album as any,
         artist: {
-          name: track.artist.name || 'Unknown Artist',
-          official: track.artist.official || undefined,
+          id:track.artist.id as string,
+          name:track.artist.name,
         },
-        track: {
-          name: track.spotify.name || track.youtube.name,
-          duration: track.youtube.duration,
-          art: track.spotify.art || track.youtube.art,
+      } : undefined;
+      const track2:Track = {
+        goose: {
+          id:track.goose.id,
+          plays: track.goose.plays || 0,
+          errors: track.goose.errors || 0,
+          album: {
+            name: track.album.name as string || 'Unknown Album',
+            trackNumber: track.album.trackNumber || 0,
+          },
+          artist: {
+            name: track.artist.name || 'Unknown Artist',
+            official: track.artist.official || undefined,
+          },
+          track: {
+            name: track.spotify.name || track.youtube.name,
+            duration: track.youtube.duration,
+            art: track.spotify.art || track.youtube.art,
+          },
         },
-      },
-      keys: track.keys,
-      playlists: track.playlists,
-      youtube: youtube,
-      bar: track.goose.bar || undefined,
-      status:{},
-      spotify: spotify,
-    };
-    track2s.push(track2);
+        keys: track.keys,
+        playlists: track.playlists,
+        youtube: youtube,
+        bar: track.goose.bar || undefined,
+        status:{},
+        spotify: spotify,
+      };
+      track2s.push(track2);
+    }
   }
 
   MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
