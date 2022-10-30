@@ -7,7 +7,6 @@ import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { ChatInputCommandInteraction, GuildMemberRoleManager, Message } from 'discord.js';
-import type { APIMessage } from 'discord-api-types';
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -60,7 +59,7 @@ export const data = new SlashCommandBuilder()
     .setDescription('Reloads the previous session'));
 
 
-export async function execute(interaction:ChatInputCommandInteraction & { message?: APIMessage | Message<boolean> }) {
+export async function execute(interaction:ChatInputCommandInteraction & { message?: Message<boolean> }) {
 
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
