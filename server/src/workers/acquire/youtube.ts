@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'url';
 import { logDebug, log } from '../../logger.js';
 import ytdl from 'ytdl-core';
 import axios, { AxiosResponse } from 'axios';
-const { youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 async function fromId(id:string):Promise<TrackYoutubeSource> {
   log('fetch', [`youtubeFromId: ${id}`]);
