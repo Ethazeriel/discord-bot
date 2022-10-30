@@ -12,7 +12,6 @@ const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import { stream as seekable } from 'play-dl';
-import type { APIMessage } from 'discord-api-types';
 
 export default class Player {
 
@@ -24,14 +23,14 @@ export default class Player {
       userPage:number
       followPlayhead:boolean
       refreshCount:number
-      interaction?:CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction
+      interaction?:CommandInteraction & { message?: Message<boolean> } | ButtonInteraction
       idleTimer:NodeJS.Timeout
       refreshTimer:NodeJS.Timeout
       getPage:() => number
       update:(userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => void
     }
     media?: {
-      interaction?:CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction
+      interaction?:CommandInteraction & { message?: Message<boolean> } | ButtonInteraction
       idleTimer:NodeJS.Timeout
       refreshTimer:NodeJS.Timeout
       update:(userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => void
@@ -646,7 +645,7 @@ export default class Player {
     }
   }
 
-  async register(interaction: CommandInteraction & { message?: APIMessage | Message<boolean> } | ButtonInteraction, type: 'queue'|'media', embed:InteractionUpdateOptions | InteractionReplyOptions) {
+  async register(interaction: CommandInteraction & { message?: Message<boolean> } | ButtonInteraction, type: 'queue'|'media', embed:InteractionUpdateOptions | InteractionReplyOptions) {
     const id = interaction.member!.user.id;
     if (!this.embeds[id]) { this.embeds[id] = {}; }
 
