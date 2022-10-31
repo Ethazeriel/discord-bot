@@ -213,7 +213,7 @@ export async function removeTrack(query:string) { // acquire2
 }
 // usage: await db.removeTrack('DjaE3w8j6vY');
 
-export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource) { // acquire2
+export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource):Promise<number> { // acquire2
   // returns the first track object that matches the query
   await connected();
   try {
@@ -241,6 +241,7 @@ export async function switchAlternate(query:string, alternate:number | TrackYout
     } else {return 0;}
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
+    return 0;
   }
 }
 

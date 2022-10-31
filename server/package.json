@@ -38,7 +38,7 @@
     "validator": "^13.7.0",
     "ws": "^8.6.0",
     "youtube-dl-exec": "^2.0.8",
-    "ytdl-core": "^4.11.0"
+    "ytdl-core": "^4.11.2"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.27.1",
