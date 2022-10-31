@@ -231,7 +231,7 @@ export async function switchAlternate(query:string, alternate:number | TrackYout
         track.youtube.pop();
       }
       const update = {
-        $set: { 'youtube':track.youtube },
+        $set: { 'youtube':track.youtube, 'goose.track.duration':track.youtube[0].duration },
       };
       const result = await tracks.updateOne(search, update);
       if (result.modifiedCount == 1) {
