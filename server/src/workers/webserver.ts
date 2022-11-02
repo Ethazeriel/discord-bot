@@ -96,44 +96,22 @@ app.get('/oauth2', async (req, res) => {
     const idHash = crypto.createHash('sha256').update(webId).digest('hex'); // hash of the client's id to use for the oauth CSRF check
     const code = validator.escape(validator.stripLow((req.query?.code as string)?.replace(sanitize, '') || '')).trim(); // only exists after the client approves, so use this to know what stage we're at
     const state = validator.escape(validator.stripLow((req.query?.state as string)?.replace(sanitize, '') || '')).trim(); // only exists after client approval, use this to check for CSRF
-    switch (type) {
-      case 'discord': {
-        if (!code) {
-          res.redirect(303, `https://discord.com/oauth2/authorize?client_id=${discord.client_id}&redirect_uri=${discord.redirect_uri}&state=${idHash}&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read`);
-        } else if (state !== idHash) { // if these don't match, something is very wrong and we need to not attempt auth
-          res.status(409).end();
-        } else {
-          const auth = await oauth2.flow(type, code, webId);
-          auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
-        }
-        break;
+    if (!code) {
+      let target = 'https://localhost';
+      switch (type) {
+        case 'discord': { target = `https://discord.com/oauth2/authorize?client_id=${discord.client_id}&redirect_uri=${discord.redirect_uri}&state=${idHash}&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read`; break;}
+        case 'spotify': { target = `https://accounts.spotify.com/authorize?client_id=${spotify.client_id}&redirect_uri=${spotify.redirect_uri}&state=${idHash}&show_dialog=true&response_type=code&scope=playlist-modify-private%20user-read-private`; break;}
+        case 'napster': { target = `https://api.napster.com/oauth/authorize?client_id=${napster.client_id}&redirect_uri=${napster.redirect_uri}&state=${idHash}&response_type=code`; break;}
+        default: { res.status(400).end(); break; }
       }
-
-      case 'spotify': {
-        if (!code) {
-          res.redirect(303, `https://accounts.spotify.com/authorize?client_id=${spotify.client_id}&redirect_uri=${spotify.redirect_uri}&state=${idHash}&show_dialog=true&response_type=code&scope=playlist-modify-private%20user-read-private`);
-        } else if (state !== idHash) {
-          res.status(409).end();
-        } else {
-          const auth = await oauth2.flow(type, code, webId);
-          auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
-        }
-        break;
-      }
-
-      case 'napster': {
-        if (!code) {
-          res.redirect(303, `https://api.napster.com/oauth/authorize?client_id=${napster.client_id}&redirect_uri=${napster.redirect_uri}&state=${idHash}&response_type=code`);
-        } else if (state !== idHash) {
-          res.status(409).end();
-        } else {
-          const auth = await oauth2.flow(type, code, webId);
-          auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
-        }
-        break;
-      }
-
-      default: { res.status(400).end; break; }
+      res.redirect(303, target);
+    } else if (state !== idHash) { // if these don't match, something is very wrong and we need to not attempt auth
+      res.status(409).end();
+    } else if (type !== ('discord' || 'spotify' || 'napster')) { // we should never hit this but typescript demands it
+      return;
+    } else { // the client has approved, so let's go do our thing
+      const auth = await oauth2.flow(type, code, webId);
+      auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
     }
   }
 });
