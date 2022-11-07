@@ -2,7 +2,7 @@ import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { logDebug, log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
-const { spotify } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { spotify } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 async function getCreds():Promise<ClientCredentialsResponse> {
   logDebug('getting spotify token');
@@ -124,19 +124,28 @@ async function fromAlbum(auth:ClientCredentialsResponse, id:string):Promise<Arra
 
 async function fromPlaylist(auth:ClientCredentialsResponse, id:string):Promise<Array<TrackSource>> {
   log('fetch', [`spotifyFromPlaylist: ${id}`]);
-  const spotifyResultAxios:AxiosResponse<SpotifyApi.SinglePlaylistResponse> = await axios({
-    url: `https://api.spotify.com/v1/playlists/${id}?fields=tracks.items(track(album(id,name,images),artists(id,name),track_number,id,name,href,duration_ms))`,
-    method: 'get',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Bearer ' + auth.access_token,
-    },
-    timeout: 10000,
-  });
-  const spotifyResult = spotifyResultAxios!.data;
+  const spotifyTracks = [];
+  const limit = 100;
+  let offset = 0;
+  let total = 0;
+  do {
+    const spotifyResultAxios:AxiosResponse<SpotifyApi.PlaylistTrackResponse> = await axios({
+      url: `https://api.spotify.com/v1/playlists/${id}/tracks?fields=items(track(album(id,name,images),artists(id,name),track_number,id,name,href,duration_ms)),total,limit,offset&offset=${offset}&limit=${limit}`,
+      method: 'get',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Bearer ' + auth.access_token,
+      },
+      timeout: 10000,
+    });
+    const spotifyResult = spotifyResultAxios!.data;
+    total = spotifyResult.total;
+    spotifyTracks.push(...spotifyResult.items);
+    offset = offset + limit;
+  } while (offset < total);
   const sources:Array<TrackSource> = [];
-  for (const track of spotifyResult.tracks.items) {
+  for (const track of spotifyTracks) {
     if (track.track) {
       sources.push({
         id: Array(track.track.id),

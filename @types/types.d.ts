@@ -57,24 +57,9 @@ interface User {
 		tracks: string[] // our unique ids for each track in queue (history, current, enqueued) when user or bot ends their session
 	}
 	tokens: {
-    discord?:{
-      access:string,
-      renew:string,
-      expiry:number,
-      scope:string,
-    },
-    spotify?:{
-      access:string,
-      renew:string,
-      expiry:number,
-      scope:string,
-    }
-		napster?:{
-      access:string,
-      renew:string,
-      expiry:number,
-      scope:string,
-    }
+    discord?:Oauth2Token,
+    spotify?:Oauth2Token
+		napster?:Oauth2Token
   },
 	webClientId?:string[],
 	spotify?: {
@@ -82,6 +67,13 @@ interface User {
 		username:string,
 		locale:string
 	}
+}
+
+type Oauth2Token = {
+	access:string,
+	renew:string,
+	expiry:number,
+	scope:string,
 }
 
 type ProgressBarOptions = {
