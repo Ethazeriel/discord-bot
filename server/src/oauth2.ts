@@ -119,7 +119,7 @@ export async function getToken(user:object, type:'discord' | 'spotify' | 'napste
   } catch (error:any) { log('error', ['oauth error:', error.stack]); }
 }
 
-async function updateToken(user:User, type:'discord' | 'spotify' | 'napster') {
+async function updateToken(user:User, type:'discord' | 'spotify' | 'napster'):Promise<string | undefined> {
   let timeout;
 
   switch (type) {
