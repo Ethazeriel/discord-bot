@@ -106,7 +106,7 @@ export function StatusBar(props: { status: Status }) {
     return (
       <Bar>
         <div><Clock /></div>
-        <div>Current track: {props.status.player?.tracks[props.status.player?.playhead].goose.track.name}</div>
+        <div>Current track: {props.status.player?.tracks[props.status.player?.playhead]?.goose?.track?.name || 'None'}</div>
         <div>
           <ConBlock />
           <AlwaysVisible>
