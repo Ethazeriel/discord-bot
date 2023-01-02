@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ~/.bashrc
+
 cd client
 nvm use
 npm i
