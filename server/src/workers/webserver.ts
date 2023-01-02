@@ -15,6 +15,7 @@ import * as oauth2 from '../oauth2.js';
 import { fileURLToPath, URL } from 'url';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
+import * as spotifyactions from './webserver/spotify.js';
 
 
 parentPort!.on('message', async data => {
@@ -37,7 +38,7 @@ app.use(helmet({
     },
   },
 }));
-// app.use(express.static('./react/build'));
+app.use(express.static('../client/build'));
 app.use(express.json());
 app.use(cookieParser(discord.secret));
 
@@ -100,14 +101,15 @@ app.get('/oauth2', async (req, res) => {
       let target = 'https://localhost';
       switch (type) {
         case 'discord': { target = `https://discord.com/oauth2/authorize?client_id=${discord.client_id}&redirect_uri=${discord.redirect_uri}&state=${idHash}&response_type=code&scope=identify%20email%20connections%20guilds%20guilds.members.read`; break;}
-        case 'spotify': { target = `https://accounts.spotify.com/authorize?client_id=${spotify.client_id}&redirect_uri=${spotify.redirect_uri}&state=${idHash}&show_dialog=true&response_type=code&scope=playlist-modify-private%20user-read-private`; break;}
+        case 'spotify': { target = `https://accounts.spotify.com/authorize?client_id=${spotify.client_id}&redirect_uri=${spotify.redirect_uri}&state=${idHash}&show_dialog=true&response_type=code&scope=playlist-modify-private%20user-read-private%20playlist-read-private%20playlist-read-collaborative`; break;}
         case 'napster': { target = `https://api.napster.com/oauth/authorize?client_id=${napster.client_id}&redirect_uri=${napster.redirect_uri}&state=${idHash}&response_type=code`; break;}
         default: { res.status(400).end(); break; }
       }
       res.redirect(303, target);
     } else if (state !== idHash) { // if these don't match, something is very wrong and we need to not attempt auth
       res.status(409).end();
-    } else if (type !== ('discord' || 'spotify' || 'napster')) { // we should never hit this but typescript demands it
+    } else if (type !== 'discord' && type !== 'spotify' && type !== 'napster') { // we should never hit this but typescript demands it
+      logDebug(type);
       return;
     } else { // the client has approved, so let's go do our thing
       const auth = await oauth2.flow(type, code, webId);
@@ -115,6 +117,7 @@ app.get('/oauth2', async (req, res) => {
     }
   }
 });
+
 
 // returns a track for the given id
 app.get('/tracks/:type(youtube|goose|spotify)-:id([\\w-]{11}|[a-zA-Z0-9]{22}|[0-9a-f]{10})', async (req, res) => {
@@ -203,6 +206,42 @@ app.post('/player', async (req, res) => {
   } else { res.status(400).json({ error: 'ID Cookie not set or invalid.' }); }
 });
 
+// get a user's spotify playlists
+app.get('/spotify-playlists', async (req, res) => {
+  log(req.method, [req.originalUrl]);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) {
+      res.status(401).send('User not authenticated');
+    } else if (!user.spotify) {
+      res.status(401).send('Spotify not linked');
+    } else {
+      const token = await oauth2.getToken({ 'discord.id': user.discord.id }, 'spotify');
+      if (!token) {
+        res.status(500).send('unable to refresh token');
+      } else {
+        const playlists = await spotifyactions.userPlaylists(token, user.discord.id);
+        res.json(playlists);
+      }
+    }
+  }
+});
+
+// get a spotify playlist by id, returns trackSource array
+app.get('/spotify-playlist/:id([a-zA-Z0-9]{22})', async (req, res) => {
+  log(req.method, [req.originalUrl]);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
+    const user = await db.getUserWeb(webId);
+    if (!user) { res.status(401).send('User not authenticated'); } else {
+      // now we know the user has authed, we can do things
+      logDebug('getting playlist');
+      const playlist = await spotifyactions.getPlaylist(req.params.id);
+      res.json(playlist);
+    }
+  }
+});
 
 // Websocket
 

@@ -4,7 +4,7 @@ import { timeDisplay } from './utils';
 import type { Track } from './types';
 
 
-export default function BasicTrack(props:{track:Track, id:number}) {
+export function BasicTrack(props:{track:Track, id:number}) {
   if (Object.keys(props.track).length) {
     return (
       <TrackStyle>
@@ -17,6 +17,24 @@ export default function BasicTrack(props:{track:Track, id:number}) {
           <AlbumInfo>{props.track?.goose?.artist?.name} - <em>{props.track?.goose?.album?.name}</em></AlbumInfo>
         </Details>
         <Duration>{timeDisplay(props.track?.goose?.track?.duration)}</Duration>
+      </TrackStyle>
+    );
+  } else {return null;}
+}
+
+export function SourceAsTrack(props:{source:TrackSource, id:number}) {
+  if (Object.keys(props.source).length) {
+    return (
+      <TrackStyle>
+        <Art src={props.source.art} alt="album art" crossOrigin='anonymous'/>
+        <ButtonContainer>
+          <Number>{(props.id + 1)}</Number>
+        </ButtonContainer>
+        <Details>
+          <Title>{props.source.name}</Title>
+          <AlbumInfo>{props.source.artist.name} - <em>{props.source.album.name}</em></AlbumInfo>
+        </Details>
+        <Duration>{timeDisplay(props.source.duration)}</Duration>
       </TrackStyle>
     );
   } else {return null;}
