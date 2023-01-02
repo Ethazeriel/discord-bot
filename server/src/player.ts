@@ -399,15 +399,17 @@ export default class Player {
     if (albumAware) {
       tracks.sort((a, b) => (a.goose.album.trackNumber < b.goose.album.trackNumber) ? -1 : 1);
       tracks.sort((a, b) => (a.goose.album.name === b.goose.album.name) ? 0 : (a.goose.album.name < b.goose.album.name) ? -1 : 1);
-      tracks.map((track) => track.goose.album.name ||= String(crypto.randomInt(tracks.length))); // above sort grouped null albums; this ungroups
     }
     tracks.sort((a, b) => (a.goose.artist.name === b.goose.artist.name) ? 0 : (a.goose.artist.name < b.goose.artist.name) ? -1 : 1);
-    const groupBy = (albumAware) ? 'album' : 'artist';
 
     const groups:Track[][] = [];
     for (let grouping = 0, index = 0; index < tracks.length; index++) {
-      if (groups[grouping] && groups[grouping][0].goose[groupBy].name !== tracks[index].goose[groupBy].name) { grouping++; }
-      if (!groups[grouping]) { (groups[grouping] = []); }
+      if (groups[grouping]) {
+        if (albumAware) {
+          if (tracks[index].goose.album.name === 'Unknown Album' || groups[grouping][0].goose.album.name !== tracks[index].goose.album.name) { grouping++; }
+        } else if (groups[grouping][0].goose.artist.name !== tracks[index].goose.artist.name) { grouping++; }
+      }
+      if (!groups[grouping]) { groups[grouping] = []; }
       groups[grouping].push(tracks[index]);
     }
 
