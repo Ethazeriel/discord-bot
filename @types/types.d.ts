@@ -154,3 +154,10 @@ interface TrackYoutubeSource {
 		artist: string
 	}
 }
+
+interface SpotifyPlaylist {
+	id: string
+	name: string
+	owner: string
+	description: string
+}

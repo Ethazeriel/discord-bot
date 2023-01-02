@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { Track } from './types';
-import BasicTrack from './BasicTrack';
+import { BasicTrack, SourceAsTrack } from './BasicTrack';
 import TrackEditor from './TrackEditor';
 
 export default function DisplaySelect() {
@@ -78,7 +78,38 @@ function PlaylistDisplay() {
 }
 
 function SpotifyDisplay() {
-  return (<p>spotify stuff here</p>);
+  const [playlists, setPlaylists] = React.useState<SpotifyPlaylist[]>([]);
+  const [selValue, setSelValue] = React.useState<string>('');
+  const [tracks, setTracks] = React.useState<TrackSource[]>([]);
+  React.useEffect(() => {
+    fetch(`${window.location.origin}/spotify-playlists`).then(res => res.json()).then((json: SpotifyPlaylist[]) => {
+      setPlaylists(json);
+    });
+  }, []);
+
+  const onChange = (event:React.ChangeEvent<any>) => {
+    setSelValue(event.target.value);
+  };
+
+  const goClick = () => {
+    fetch(`${window.location.origin}/spotify-playlist/${selValue}`).then(res => res.json()).then((json: TrackSource[]) => {
+      setTracks(json);
+    });
+  };
+
+  const listplaylists = [<option value='' disabled key='' >Pick a playlist...</option>];
+  for (const list of playlists) {
+    listplaylists.push(<option value={list.id} key={list.id}>{list.name}</option>);
+  }
+  return (
+    <>
+      <select name="playlists" value={selValue} onChange={onChange}>
+        {listplaylists}
+      </select>
+      <button type="button" onClick={goClick}>Go</button>
+      <SourceTrackList tracks={tracks} />
+    </>
+  );
 }
 
 function BasicTrackList(props: {tracks:Track[]}) {
@@ -86,6 +117,20 @@ function BasicTrackList(props: {tracks:Track[]}) {
   if (props?.tracks) {
     for (const [i, track] of props.tracks.entries()) {
       queue.push(<BasicTrack track={track} key={i} id={i} />);
+    }
+  }
+  return (
+    <div>
+      {queue}
+    </div>
+  );
+}
+
+function SourceTrackList(props: {tracks:TrackSource[]}) {
+  const queue = [];
+  if (props?.tracks) {
+    for (const [i, track] of props.tracks.entries()) {
+      queue.push(<SourceAsTrack source={track} key={i} id={i} />);
     }
   }
   return (
