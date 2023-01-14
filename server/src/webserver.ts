@@ -25,6 +25,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
         switch (message.action) {
           case 'get': {
             const status = player.getStatus();
+            if (!status) { logDebug('webserver parent and status nullish'); }
             worker.postMessage({ id:message.id, status:status });
             break;
           }
@@ -150,7 +151,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             worker.postMessage({ id:message.id, error:'Invalid player action' });
             break;
         }
-      } else { worker.postMessage({ id:message.id, error:'Invalid player id' }); }
+      } else { logDebug('webserver parent and player nullish'); worker.postMessage({ id:message.id, error:'Invalid player id' }); }
       break;
     }
 

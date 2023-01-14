@@ -18,7 +18,7 @@ type AppState = {
 type LoadResponse = {
   player?: PlayerStatus,
   user: User,
-  error: undefined | string,
+  error: null | string,
 }
 
 const MainContent = styled.div`
@@ -66,8 +66,7 @@ export default class App extends React.Component<Record<string, never>, AppState
       },
     }).then((response) => response.json()).then((json: LoadResponse) => {
       if (json?.user?.status === 'known') {
-        this.setState({ user: json.user });
-        this.setState({ playerStatus: json.player });
+        this.setState({ user: json.user, playerStatus: json.player, error: json.error });
       } else if (json.user.status === 'new') {
         // could do a new user welcome message?
       } else { this.setState({ error:'unexpected loaduser response' }); }
@@ -135,7 +134,7 @@ class PlayerQueue extends React.Component<{playerClick:(a: PlayerClick) => void,
     const queue = [];
     if (this.props?.queue?.tracks) {
       for (const [i, track] of this.props.queue.tracks.entries()) {
-        queue.push(<TrackSmall playerClick={this.props.playerClick} track={track} key={i} id={i} />);
+        queue.push(<TrackSmall playerClick={this.props.playerClick} track={track} key={track.goose.UUID!} id={i} />);
       }
     }
     return (

@@ -67,20 +67,22 @@ app.get('/load', async (req, res) => {
   const webId = req.signedCookies.id;
   logDebug(`Client load event with id ${webId}`);
   if (webId && webIdRegex.test(webId)) {
-    const user:WebUser & {player?:PlayerStatus} | undefined = await db.getUserWeb(webId);
+    const user:WebUser | undefined = await db.getUserWeb(webId);
     if (user) {
+      logDebug(`webserver worker—recognizes user ${user.discord.username}`);
       const id = crypto.randomBytes(5).toString('hex');
       parentPort!.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id });
       const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
-          if (!result.error) { user.player = result.status; }
-          res.json({ user: user, player:result.status });
+          if (!result.status) { logDebug(`worker responding to ${user.discord.username}, status nullish`); }
+          res.json({ user: user, player:result.status, error:result.error });
           parentPort!.removeListener('message', messageAction);
         }
       };
       parentPort!.on('message', messageAction);
-    } else { res.json({ user: { status: 'new' } }); }
+    } else { logDebug('webserver worker—user has cookie but is not in db'); res.json({ user: { status: 'new' } }); }
   } else {
+    logDebug('webserver worker—cookie nullish/ failed regex, assigning new');
     // this user doesn't have a cookie or their cookie isn't valid
     const webClientId = crypto.randomBytes(64).toString('hex');
     res.cookie('id', webClientId, { maxAge:525600000000, httpOnly:true, secure:true, signed:true });
