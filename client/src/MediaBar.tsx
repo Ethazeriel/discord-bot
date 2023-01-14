@@ -20,6 +20,7 @@ type MediaState = {
   paused:boolean,
   loop:boolean,
   seeking:number,
+  cancel:boolean,
 };
 
 // I have no idea how to type this. will figure it out later
@@ -27,6 +28,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
   switch (type) {
     case 'interval': {
       const elapsed = (state.seek) ? state.seek : (state.paused) ? state.elapsed : (state.elapsed + 1 <= state.duration) ? state.elapsed + 1 : state.elapsed;
+      // console.log(timeDisplay(elapsed));
       return ({ ...state, elapsed: elapsed });
     }
     case 'duration': {
@@ -44,6 +46,48 @@ function reducer(state:any, [type, value]:[any, any?]) {
     }
     case 'paused': {
       return ({ ...state, paused: value });
+    }
+    case 'cancel': {
+      if (value && state.seeking) {
+        console.log('accepting cancel');
+        return ({ ...state, cancel: true, seeking: 0 });
+      } else if (value) {
+        console.log('ignoring cancel');
+        return ({ ...state });
+      } else {
+        console.log('slider released—cancel reset');
+        return ({ ...state, cancel: false });
+      }
+      /*
+      probably changes could/should be made so that this could just be
+        if (state.seeking) { ... } else { ...state, cancel: false }
+
+      the issue I'm resolving is needing to ignore multiple cancel:true's independent of the
+      value in state.seeking. with only mouseUp's cancel:false changing the value. longer form:
+
+      nothing I'm doing nor preventDefault (can?) emit a mouseUp, and probably they shouldn't.
+
+      whether seeking is falsy controls the value in the elapsed timeDisplay, which value the
+      slider uses, /and/ at the same time determines if there is a seek in progress
+      (and if cancel:false, the seek target on release)
+
+      zeroing seeking communicates the cancel by reverting the display elements, but also means
+      that a seek is not in progress. cancel:true is retained to enforce the event handling
+
+      because cancel may be pressed multiple times, and includes multiple presses registering
+      if it's held too long. and bcause seeking will be 0 after the first cancel, if repeated
+      calls set cancel to false, the slider event handling breaks, often(?) seeking to 0
+
+      the else also can't be cancel:value, becaused pressing to cancel when not seeking blocks
+      the slider from working until attempted, failed, released and reattempted. ORing these
+      values fails as in the previous sentence, ANDing them fails as above.
+
+      while I could resolve some of this by having input/release set another variable, which
+      could be checked here, it still wouldn't help that I'm unsure how to better interlink/
+      cancel multiple, separate events.
+
+      [also TODO: make cancel:true effect css styling]
+      */
     }
   }
 }
@@ -69,6 +113,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     paused: paused,
     loop: player?.loop || false,
     seeking: 0,
+    cancel: false,
   };
   const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -76,8 +121,16 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     const timer = window.setInterval(() => {
       dispatch(['interval']);
     }, 1000);
+    const keyDown = (key:KeyboardEvent): void => {
+      // console.log(key.key === 'Escape');
+      if (key.key === 'Escape') { dispatch(['cancel', true]); }
+    };
+    window.addEventListener('keydown', keyDown);
 
-    return (() => clearInterval(timer));
+    return (() => {
+      clearInterval(timer);
+      window.removeEventListener('keydown', keyDown);
+    });
   }, []);
 
   useEffect(() => {
@@ -101,6 +154,22 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     dispatch([type, Number(value || state.seeking)]); // onMouseUp doesn't seem to have a value
   };
 
+  const sliderSlide = (event:React.ChangeEvent<HTMLInputElement>) => {
+    if (!state.cancel) {
+      dispatch(['slider', event.target.value]);
+    } else { event.preventDefault(); }
+  };
+
+  const sliderRelease = (event:React.MouseEvent<HTMLInputElement, MouseEvent>) => {
+    if (!state.cancel) {
+      props.playerClick({ action: 'seek', parameter: state.seeking });
+      dispatch(['seek', state.seeking]);
+    } else {
+      event.preventDefault();
+      dispatch(['cancel', false]);
+    }
+  };
+  // <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => slider(['slider', event.target.value])} onMouseUp={(event) => slider(['seek'])} />
   return (
     <MediaContainer>
       <ButtonRow>
@@ -112,7 +181,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
       </ButtonRow>
       <SliderRow>
         <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
-        <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => slider(['slider', event.target.value])} onMouseUp={(event) => slider(['seek'])} />
+        <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => sliderSlide(event)} onMouseUp={(event) => sliderRelease(event)} />
         <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
       </SliderRow>
     </MediaContainer>
