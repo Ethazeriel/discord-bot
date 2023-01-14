@@ -1,6 +1,5 @@
 import fs from 'fs';
 import youtubedl from 'youtube-dl-exec';
-import type { YtFlags } from 'youtube-dl-exec';
 import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayer, DiscordGatewayAdapterCreator } from '@discordjs/voice';
 import crypto from 'crypto';
 import { ButtonInteraction, CommandInteraction, GuildMember, AttachmentBuilder, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, ClientUser, InteractionReplyOptions, Message, APIEmbed } from 'discord.js';
@@ -16,6 +15,7 @@ import { stream as seekable } from 'play-dl';
 export default class Player {
 
   // type definitions
+  UUID:number;
   queue:PlayerStatus;
   guildID:string;
   embeds:Record<string, {
@@ -41,6 +41,7 @@ export default class Player {
   // acquisition
   static #players:Record<string, Player> = {};
   constructor(interaction:CommandInteraction | ButtonInteraction) {
+    this.UUID = 0;
     this.queue = {
       tracks: [],
       playhead: 0,
@@ -237,23 +238,24 @@ export default class Player {
   // playback
   async play() {
     let ephemeral;
+    let UUID;
     let track = this.queue.tracks[this.queue.playhead];
-    if (track) { ephemeral = track.status.ephemeral; }
+    if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
     track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-    if (track) { track.status.ephemeral = ephemeral; }
+    if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
     this.queue.tracks[this.queue.playhead] &&= track;
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const resource = createAudioResource((youtubedl as any).exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
-          o: '-', // I know the any in the above line is bad, but TS doesn't properly recognise the named exports after the default export
-          q: '', // I think this is because youtube-dl-exec does things poorly, but this is better than having to patch their package
-          'force-ipv4': '',
-          f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
-          r: '100K',
-          cookies: '../cookies.txt',
-          'user-agent': useragent,
-        } as YtFlags, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
+        const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+          output: '-',
+          quiet: true,
+          forceIpv4: true,
+          format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+          limitRate: '100K',
+          cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+          userAgent: useragent,
+        }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
         this.player.play(resource);
         log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
       } catch (error:any) {
@@ -321,22 +323,38 @@ export default class Player {
   }
 
   // modification
+  assignUUID(tracks:Track[]) {
+    tracks.map(track => track.goose.UUID = this.UUID++);
+  }
+
   async queueNow(tracks:Track[]) {
     // not constrained to length because splice does that automatically
+    this.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
     (this.player.state.status == 'idle') ? await this.play() : await this.next();
   }
 
   async queueNext(tracks:Track[]) {
     // not constrained to length because splice does that automatically
+    this.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
   async queueLast(tracks:Track[]) {
+    this.assignUUID(tracks);
     this.queue.tracks.push(...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
     return (this.queue.tracks.length);
+  }
+
+  move(from:number, to:number) {
+    const length = this.queue.tracks.length;
+    if (from < length && to < length && from != to) {
+      const removed = this.queue.tracks.splice(from, 1);
+      this.queue.tracks.splice(to, 0, removed[0]);
+      return ({ success: true, message: `moved ${removed[0].goose.track.name} from position ${from + 1} to position ${to + 1}` });
+    } else { return ({ success: false, message: `could not move track from position ${from} to position ${to}. ${(from >= length) ? '\tfrom > length' : ''} ${(to >= length) ? '\tto > length' : ''} ${(from == to) ? '\tfrom == to' : ''}` }); }
   }
 
   async remove(position = this.queue.playhead) { // will make this take a range later
@@ -499,6 +517,7 @@ export default class Player {
   }
 
   getStatus():PlayerStatus {
+    if (!this.queue) { logDebug('player—getStatus and queue nullish'); }
     return this.queue;
   }
 

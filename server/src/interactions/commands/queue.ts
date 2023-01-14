@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
-import { log } from '../../logger.js';
+import { log, logDebug } from '../../logger.js';
 import * as db from '../../database.js';
 import { seekTime as seekRegex } from '../../regexes.js';
 import validator from 'validator';
@@ -46,6 +46,13 @@ export const data = new SlashCommandBuilder()
     .addIntegerOption(option => option
       .setName('album-aware').setDescription('Should shuffle keep albums in order?')
       .addChoices({ name:'No', value:0 }, { name:'Yes', value:1 })))
+  .addSubcommand(subcommand => subcommand
+    .setName('move') // TODO: probably remove this when done testing
+    .setDescription('for testing. move track from position to position (1 indexed)')
+    .addIntegerOption(option => option
+      .setName('from').setDescription('move from position #').setRequired(true))
+    .addIntegerOption(option => option
+      .setName('to').setDescription('move to position #').setRequired(true)))
   .addSubcommand(subcommand => subcommand
     .setName('remove')
     .setDescription('Remove current or specified track from the queue')
@@ -173,6 +180,25 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
               await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
             }
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
+          break;
+        }
+
+        case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
+          if (player.getQueue().length > 1) {
+            const from = Math.abs((interaction.options.getInteger('from') || 1) - 1);
+            const to = Math.abs((interaction.options.getInteger('to') || 1) - 1);
+
+            const { success, message } = player.move(from, to);
+            if (success) {
+              const playhead = player.getPlayhead();
+              const replace = (playhead == to || playhead == from);
+              if (replace) { await player.play(); }
+              const queueEmbed = await player.queueEmbed();
+              const mediaEmbed = (replace) ? await player.mediaEmbed() : undefined;
+              player.sync(interaction, (replace) ? 'media' : 'queue', queueEmbed, mediaEmbed);
+              interaction.editReply({ content: message });
+            } else { interaction.editReply({ content: message }); }
+          } else { interaction.editReply({ content: 'need 2+ things in queue to move one from one position to another' }); }
           break;
         }
 
