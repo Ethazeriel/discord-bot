@@ -126,10 +126,21 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
       if (key.key === 'Escape') { dispatch(['cancel', true]); }
     };
     window.addEventListener('keydown', keyDown);
+    // const windowDrop = (event:DragEvent): void => {
+    //   console.log('why hello');
+    // };
+    // window.addEventListener('dragend', windowDrop);
+
+    // const windowBefore = (event:InputEvent): void => {
+    //   console.log('before');
+    // };
+    // window.addEventListener('beforeinput', windowBefore);
 
     return (() => {
       clearInterval(timer);
       window.removeEventListener('keydown', keyDown);
+      // window.removeEventListener('dragend', windowDrop);
+      // window.removeEventListener('beforeinput', windowBefore);
     });
   }, []);
 
@@ -149,15 +160,10 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     props.playerClick({ action: action });
   };
 
-  const slider = ([type, value]:any) => {
-    if (type == 'seek') { props.playerClick({ action: 'seek', parameter: state.seeking }); }
-    dispatch([type, Number(value || state.seeking)]); // onMouseUp doesn't seem to have a value
-  };
-
   const sliderSlide = (event:React.ChangeEvent<HTMLInputElement>) => {
     if (!state.cancel) {
       dispatch(['slider', event.target.value]);
-    } else { event.preventDefault(); }
+    } else { /* event.preventDefault(); */ }
   };
 
   const sliderRelease = (event:React.MouseEvent<HTMLInputElement, MouseEvent>) => {
@@ -165,10 +171,34 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
       props.playerClick({ action: 'seek', parameter: state.seeking });
       dispatch(['seek', state.seeking]);
     } else {
-      event.preventDefault();
+      // event.preventDefault();
       dispatch(['cancel', false]);
     }
   };
+
+  // const before = (event:any) => {
+  //   console.log('slider before');
+  // };
+
+  // const drop = (event:any) => {
+  //   console.log('successful drop');
+  //   console.log(event);
+  // };
+
+  // const end = (event:any) => {
+  //   console.log('drag end');
+  //   console.log(event);
+  // };
+
+  // const enter = (event:any) => {
+  //   // console.log('enter');
+  //   // console.log(event);
+  // };
+
+  // const over = (event:any) => {
+  //   // console.log('over');
+  //   console.log(event);
+  // };
   // <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => slider(['slider', event.target.value])} onMouseUp={(event) => slider(['seek'])} />
   return (
     <MediaContainer>
@@ -185,7 +215,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
       </SliderRow>
     </MediaContainer>
-  );
+  ); // onDrop={(event) => drop(event)} onDragEnter={(event) => enter(event)} onDragOver={(event) => over(event)} onDragEnd={(event) => end(event)} onBeforeInput={before}
 }
 
 const MediaContainer = styled.div`
