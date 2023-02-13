@@ -76,7 +76,13 @@ export default class App extends React.Component<Record<string, never>, AppState
       const socket = new WebSocket(`${protocol}://${window.location.hostname}/websocket`); // this is not a problem
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       socket.addEventListener('open', (event: any) => {
-        //
+        console.log(`WebSocket open: ${JSON.stringify(event, null, 2)}`);
+      });
+      socket.addEventListener('error', (event: any) => {
+        console.log(`WebSocket error: ${JSON.stringify(event, null, 2)}`);
+      });
+      socket.addEventListener('close', (event: any) => {
+        console.log(`WebSocket close: ${JSON.stringify(event, null, 2)}`);
       });
       socket.addEventListener('message', (event: any) => {
         const data = JSON.parse(event.data);
@@ -114,7 +120,7 @@ export default class App extends React.Component<Record<string, never>, AppState
           <MediaBar status={this.state.playerStatus} playerClick={this.playerClick}/>
           <ErrorDisplay error={this.state.error} />
           <MainContent>
-            <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
+            <PlayerQueue playerClick={this.playerClick} status={this.state.playerStatus} />
             <DisplaySelect />
           </MainContent>
         </div>
@@ -125,24 +131,23 @@ export default class App extends React.Component<Record<string, never>, AppState
   // <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
 }
 
-class PlayerQueue extends React.Component<{playerClick:(a: PlayerClick) => void, queue?: PlayerStatus}, never> {
-  constructor(props: {playerClick:(a: PlayerClick) => void, queue: PlayerStatus}) {
-    super(props);
-  }
-
-  render() {
+function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:PlayerStatus }) {
+  const serverQueue = props.status?.tracks;
+  const localQueue:JSX.Element[] = React.useMemo(() => {
     const queue = [];
-    if (this.props?.queue?.tracks) {
-      for (const [i, track] of this.props.queue.tracks.entries()) {
-        queue.push(<TrackSmall playerClick={this.props.playerClick} track={track} key={track.goose.UUID!} id={i} />);
+    if (serverQueue) {
+      for (const [i, track] of serverQueue.entries()) {
+        queue.push(<TrackSmall key={track.goose.UUID!} track={track} id={i} playerClick={props.playerClick} />);
       }
     }
-    return (
-      <div>
-        {queue}
-      </div>
-    );
-  }
+    return (queue);
+  }, [serverQueue, props.playerClick]);
+
+  return (
+    <div>
+      {localQueue}
+    </div>
+  );
 }
 
 function ErrorDisplay(props: { error: null | string }) {
