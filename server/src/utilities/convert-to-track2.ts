@@ -16,7 +16,7 @@ let con:any;
 const sleep = (delay:number) => new Promise((resolve) => setTimeout(resolve, delay));
 
 async function stepone() {
-  MongoClient.connect(url, function(err, client) {
+  MongoClient.connect(url, function(err:any, client:any) {
     if (err) throw err;
     con = client;
     db = client!.db(proddb);
