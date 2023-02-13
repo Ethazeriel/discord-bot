@@ -10,11 +10,9 @@ import './App.css';
 import type { Track, PlayerClick } from './types';
 type Action = 'jump' | 'remove';
 
+// yep, still haven't learned how to type this
 function reducer(state:any, [type, value]:[any, any?]) {
   switch (type) {
-    case 'topY': {
-      return ({ ...state, topY: value });
-    }
     case 'drag': {
       return ({ ...state, dragging: value });
     }
