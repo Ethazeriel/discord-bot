@@ -26,7 +26,6 @@ function reducer(state:any, [type, value]:[any, any?]) {
 }
 
 type DragState = {
-  topY: number,
   dragging: boolean,
   nearerTop: boolean,
   nearerBottom: boolean,
@@ -34,7 +33,6 @@ type DragState = {
 
 export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, track:Track, id:number }) {
   const initialState:DragState = {
-    topY: 0,
     dragging: false,
     nearerTop: false,
     nearerBottom: false,
