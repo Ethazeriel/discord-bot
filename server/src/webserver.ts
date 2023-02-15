@@ -114,6 +114,39 @@ worker.on('message', async (message:WebWorkerMessage) => {
             // yeah I have no idea what the fuck I want to do here
             break;
 
+          case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
+            if (player.getQueue().length > 1) {
+              if (message.parameter && typeof message.parameter == 'string') {
+                const [stringFrom, stringTo, stringUUID] = (message.parameter as string).split(' ');
+                if (stringFrom && stringTo && stringUUID) {
+                  const from = Number(stringFrom); const to = Number(stringTo);
+                  const UUID = Number(stringUUID);
+                  if (!(isNaN(from) || isNaN(to) || isNaN(UUID))) {
+                    const { success, message: failure } = player.move(from, to, UUID);
+                    if (success) {
+                      player.webSync('queue');
+                      const status = player.getStatus();
+                      worker.postMessage({ id:message.id, status:status });
+                    } else { logDebug(`move—probable user error ${failure}`); worker.postMessage({ id:message.id, error:`sorry this isn't formatted: ${failure}` }); }
+                  } else {
+                    logDebug(`move—${isNaN(from) ? `from is NaN, contains [${from}]` : isNaN(to) ? `to is NaN, contains [${to}]` : `UUID is NaN, contains [${UUID}]`}`);
+                    worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
+                  }
+                } else {
+                  logDebug(`move—${!stringFrom ? `from is nullish, contains [${stringFrom}]` : !stringTo ? `to is nullish, contains [${stringTo}]` : `UUID is nullish, contains [${stringUUID}]`}`);
+                  worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
+                }
+              } else {
+                logDebug(`move—${!message.parameter ? `parameter is nullish, contains [${message.parameter}]` : `parameter is not a string, typeof [${typeof message.parameter}]`}`);
+                worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
+              }
+            } else {
+              logDebug('move—web client, length <= 1');
+              worker.postMessage({ id:message.id, error:'probably your auto-updates broke; queue is ~empty. try refreshing' });
+            }
+            break;
+          }
+
           case 'remove': {
             if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
               const position = Math.abs((Number(message.parameter)));
