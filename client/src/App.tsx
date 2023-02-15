@@ -132,16 +132,30 @@ export default class App extends React.Component<Record<string, never>, AppState
 }
 
 function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:PlayerStatus }) {
+  const [dragID, setDragID] = React.useState<number | undefined>(undefined);
+
+  React.useEffect(() => {
+    const dragSet = (event:any):void => {
+      console.log(`setting dragID to: ${event.detail}`);
+      setDragID(event.detail);
+    };
+    addEventListener('dragset', dragSet);
+
+    return (() => {
+      removeEventListener('dragset', dragSet);
+    });
+  }, []);
+
   const serverQueue = props.status?.tracks;
   const localQueue:JSX.Element[] = React.useMemo(() => {
     const queue = [];
     if (serverQueue) {
       for (const [i, track] of serverQueue.entries()) {
-        queue.push(<TrackSmall key={track.goose.UUID!} track={track} id={i} playerClick={props.playerClick} />);
+        queue.push(<TrackSmall key={track.goose.UUID!} id={i} track={track} playerClick={props.playerClick} dragID={dragID} />);
       }
     }
     return (queue);
-  }, [serverQueue, props.playerClick]);
+  }, [serverQueue, props.playerClick, dragID]);
 
   return (
     <div>

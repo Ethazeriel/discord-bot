@@ -13,15 +13,26 @@ type Action = 'jump' | 'remove' | 'move';
 // yep, still haven't learned how to type this
 function reducer(state:any, [type, value]:[any, any?]) {
   switch (type) {
-    case 'origin': {
+    case 'origin': { // unset on bad drop, bad end. should otherwise stay set until state.origin && !state.dragging in cleanup
       return ({ ...state, origin: value });
     }
+    case 'dragging': { // set in start, unset on end. unnecessarily unset on bad drop, I think. check later
+      return ({ ...state, dragging: value });
+    }
     case 'cleanup': {
-      if (state.origin) {
-        // console.log('in origin, dispatching');
+      if (state.origin && !state.dragging) {
+        console.log('dispatching cleanup');
         dispatchEvent(new CustomEvent('cleanup'));
+        return ({ ...state, origin: false });
       }
-      return ({ ... state, origin: false });
+      return ({ ...state });
+    }
+    case 'id': {
+      if (state.origin && state.dragging) {
+        console.log('dispatching id');
+        dispatchEvent(new CustomEvent('dragset', { detail: value }));
+      }
+      return ({ ...state }); // too tired, but I think this has been working without a return. thought that gave me an error before? check later
     }
     case 'adjacent': {
       return ({ ...state, adjacent: value });
@@ -38,6 +49,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
 type DragState = {
   origin: boolean,
   adjacent: boolean,
+  dragging: boolean,
   nearerTop: boolean,
   nearerBottom: boolean,
 }
@@ -48,9 +60,10 @@ type DraggedTrack = {
   name: string,
 }
 
-export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, track:Track, id:number }) {
+export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerClick) => void, dragID: number | undefined }) {
   const initialState:DragState = {
     origin: false,
+    dragging: false,
     adjacent: false,
     nearerTop: false,
     nearerBottom: false,
@@ -59,6 +72,7 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
   React.useEffect(() => {
+    dispatch(['id', props.id]);
     dispatch(['cleanup']);
     dispatch(['clear']);
   }, [props.id]);
@@ -66,6 +80,13 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
   // this is terrible. I'm sorry
   const trackClick = (action:Action, parameter:string | number = props.id) => {
     props.playerClick({ action:action, parameter: parameter });
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const cleanUp = ():void => {
+    console.log('cleanup callback');
+    dispatch(['clear']);
+    removeEventListener('cleanup', cleanUp);
   };
 
   // can't style this on callback because it's null; commented out until I figure out refs/ etc
@@ -77,6 +98,8 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
     // document.addEventListener('cleanup', cleanUp);
     // event.currentTarget.style.color = '#f800e3';
     dispatch(['origin', true]);
+    dispatch(['dragging', true]);
+    dispatchEvent(new CustomEvent('dragset', { detail: props.id }));
     event.currentTarget.style.opacity = '0.4';
     event.dataTransfer.effectAllowed = 'copyMove';
     event.dataTransfer.clearData();
@@ -93,7 +116,12 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
     if (event.dataTransfer.dropEffect === 'none') {
       // console.log(`drag canceled for track: ${props.id + 1}`);
       dispatch(['clear']);
+      if (state.origin) { dispatch(['origin', false]); }
+      if (state.dragging) { dispatch(['dragging', false]); }
+      dispatchEvent(new CustomEvent('cleanup'));
+      dispatchEvent(new CustomEvent('dragset', { detail: undefined }));
     } else {
+      dispatch(['dragging', false]);
       // console.log(`drag accepted for track: ${props.id + 1}`);
       // event.currentTarget.style.color = '#f800e3';
     }
@@ -103,6 +131,7 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
     if (event.dataTransfer.types.includes('application/x-goose.track')) {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
+      addEventListener('cleanup', cleanUp);
       // console.log(`drag entered track: ${props.id + 1}`);
     }
   };
@@ -121,9 +150,11 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
       if ((!state.nearerTop && topIsNearer) || (!state.nearerBottom && !topIsNearer)) {
         dispatch(['set', topIsNearer]);
       }
-
       const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
-      const adjacent = (state.nearerBottom && props.id == (from.id - 1)) || (state.nearerTop && props.id == (from.id + 1));
+      if (props.dragID) {
+        from.id = props.dragID;
+      }
+      const adjacent = (state.nearerTop && props.id == (from.id + 1)) || (state.nearerBottom && props.id == (from.id - 1));
 
       // if not adjacent but should be  or adjacent but should not be—toggle
       if ((!state.adjacent && adjacent) || state.adjacent && !adjacent) {
@@ -135,6 +166,7 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dragLeave = (event:React.DragEvent<HTMLElement>):void => {
     if (event.dataTransfer.types.includes('application/x-goose.track')) {
+      removeEventListener('cleanup', cleanUp);
       // console.log(`drag left track: ${props.id + 1}`);
 
       // in my defense, even with capturing events (phase 1), preventDefault, stopPropagation, stopPropagationImmediate, and bubbling: false,
@@ -151,29 +183,23 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
   const drop = (event:React.DragEvent<HTMLElement>):void => {
     event.preventDefault();
     // event.stopPropagation(); // unsure if this is needed or what it would contribute
+
+    addEventListener('cleanup', cleanUp);
     const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
-    if (state.adjacent || props.id == from.id) {
+    if (state.adjacent || props.track.goose.UUID == from.UUID) {
       // console.log('invalid; ignoring drop');
-      if (state.origin) { dispatch(['origin', false]); }
       dispatch(['clear']);
+      if (state.origin) { dispatch(['origin', false]); }
+      if (state.dragging) { dispatch(['dragging', false]); }
+      dispatchEvent(new CustomEvent('cleanup'));
+      dispatchEvent(new CustomEvent('dragset', { detail: undefined }));
     } else {
-      // moving this out of a [state.nearerTop] check to handle concurrent modification. I think the UUID stuff
-      // I've done should handle the list rearranging mid-drag, but depending on what gets moved where, I can't
-      // rely on [props.id] changes to clear all but when this one case; so just do a redundant clear sometimes
-      // also check that the list rearranging doesn't fail to do any dispatch(['clear]) cleanup mid-drag
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const cleanUp = ():void => {
-        // console.log('in cleanup callback');
-        dispatch(['clear']);
-        removeEventListener('cleanup', cleanUp);
-      };
-      addEventListener('cleanup', cleanUp);
 
       // basically how it reads; insert before else after
       const to = (state.nearerTop) ? props.id : props.id + 1;
-      // if (to < 0) { to = 0; }
-      trackClick('move', `${from.id} ${to} ${from.UUID}`); // I'm sorry
-      // console.log(`move track: [${from.id }] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
+
+      trackClick('move', `${props.dragID || from.id} ${to} ${from.UUID}`); // I'm sorry
+      console.log(`move track: [${props.dragID || from.id }] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
     }
   };
 
