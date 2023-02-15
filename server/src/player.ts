@@ -15,7 +15,6 @@ import { stream as seekable } from 'play-dl';
 export default class Player {
 
   // type definitions
-  UUID:number;
   queue:PlayerStatus;
   guildID:string;
   embeds:Record<string, {
@@ -41,7 +40,6 @@ export default class Player {
   // acquisition
   static #players:Record<string, Player> = {};
   constructor(interaction:CommandInteraction | ButtonInteraction) {
-    this.UUID = 0;
     this.queue = {
       tracks: [],
       playhead: 0,
@@ -323,26 +321,26 @@ export default class Player {
   }
 
   // modification
-  assignUUID(tracks:Track[]) {
-    tracks.map(track => track.goose.UUID = this.UUID++);
+  async assignUUID(tracks:Track[]) {
+    tracks.map(track => track.goose.UUID = crypto.randomUUID());
   }
 
   async queueNow(tracks:Track[]) {
     // not constrained to length because splice does that automatically
-    this.assignUUID(tracks);
+    await this.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
     (this.player.state.status == 'idle') ? await this.play() : await this.next();
   }
 
   async queueNext(tracks:Track[]) {
     // not constrained to length because splice does that automatically
-    this.assignUUID(tracks);
+    await this.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
   async queueLast(tracks:Track[]) {
-    this.assignUUID(tracks);
+    await this.assignUUID(tracks);
     this.queue.tracks.push(...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
     return (this.queue.tracks.length);
@@ -350,21 +348,27 @@ export default class Player {
 
   // browser client will always supply UUID; is optional to support commands.
   // is here in attempt to improve UX of concurrent modification while dragging
-  move(from:number, to:number, UUID?:number) {
+  move(from:number, to:number, UUID?:string) {
     const length = this.queue.tracks.length;
     logDebug(`move—initial from: ${from}, to: ${to}, length: ${length}`);
-    if (from < to) { to--; } // splice-removing [from] decrements all indexes > from
-    if (from < length && to < length && from !== to) {
-      if (UUID && this.queue.tracks[from].goose.UUID !== UUID) {
-        logDebug(`move—UUID mismatch; attempting find for UUID [${UUID}]`);
-        from = this.queue.tracks.findIndex(track => track.goose.UUID === UUID);
-        if (!from) {
-          logDebug(`move—could not find UUID [${UUID}]`);
-          return ({ success: false, message: 'either someone else removed that track while you were moving it or we\'ve fucked up' });
-        }
-        logDebug(`move—UUID [${UUID}] matched to queue[${from}]`);
-      }
 
+    // seems to work well, but moved because it has to be the first check; for wrong values of from
+    // there's a chance from == to would fail, when checking by UUID and getting the correct from
+    // would work, and should be made to. for the same reason, since from might be wrong and changed
+    // it has to go before the (from < to) check, else to may not change when it should—redundantly
+    // checking length to safely handle checking UUID, while accommodating commands/tampered clients
+    if (UUID && from < length && this.queue.tracks[from].goose.UUID !== UUID) {
+      logDebug(`move—UUID mismatch; attempting find for UUID [${UUID}]`);
+      from = this.queue.tracks.findIndex(track => track.goose.UUID === UUID);
+      if (from == -1) {
+        logDebug(`move—could not find UUID [${UUID}]`);
+        return ({ success: false, message: 'either someone else removed that track while you were moving it or we\'ve fucked up' });
+      }
+      logDebug(`move—UUID [${UUID}] matched to queue[${from}]`);
+    }
+    if (from < to) { to--; } // splice-removing [from] decrements all indexes > from
+
+    if (from < length && to < length && from !== to) {
       let playhead = this.queue.playhead;
       logDebug(`move—playhead is ${playhead}, track is ${(playhead < length) ? this.queue.tracks[playhead].goose.track.name : 'undefined because playhead == length'}`);
 
