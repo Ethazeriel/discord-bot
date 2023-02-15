@@ -9,21 +9,16 @@ import './App.css';
 
 import type { Track, PlayerClick } from './types';
 type Action = 'jump' | 'remove' | 'move';
-// type TrackMove = { from: DraggedTrack, to: DraggedTrack, target: -1 | 1 };
 
 // yep, still haven't learned how to type this
 function reducer(state:any, [type, value]:[any, any?]) {
   switch (type) {
-    // case 'accepting': {
-    //   console.log(`accepting to ${value}`);
-    //   return ({ ...state, accepting: value });
-    // }
     case 'origin': {
       return ({ ...state, origin: value });
     }
     case 'cleanup': {
       if (state.origin) {
-        console.log('in origin, dispatching');
+        // console.log('in origin, dispatching');
         dispatchEvent(new CustomEvent('cleanup'));
       }
       return ({ ... state, origin: false });
@@ -49,7 +44,7 @@ type DragState = {
 
 type DraggedTrack = {
   id: number,
-  UUID: number,
+  UUID: string,
   name: string,
 }
 
@@ -60,29 +55,20 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
     nearerTop: false,
     nearerBottom: false,
   };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [state, dispatch] = React.useReducer(reducer, initialState);
 
-  React.useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // const windowDrop = (event:DragEvent): void => {
-    //   console.log('why hello');
-    // };
-    // window.addEventListener('dragend', windowDrop);
-    return (() => {
-      // window.removeEventListener('dragend', windowDrop);
-    });
-  }, []);
+  const [state, dispatch] = React.useReducer(reducer, initialState);
 
   React.useEffect(() => {
     dispatch(['cleanup']);
     dispatch(['clear']);
   }, [props.id]);
 
-  const trackClick = (action:Action, parameter:string | number = props.id) => { // I'm sorry
+  // this is terrible. I'm sorry
+  const trackClick = (action:Action, parameter:string | number = props.id) => {
     props.playerClick({ action:action, parameter: parameter });
   };
 
+  // can't style this on callback because it's null; commented out until I figure out refs/ etc
   const dragStart = (event:React.DragEvent<HTMLDivElement>):void => {
     // console.log(`drag start for track: ${props.id + 1}`);
     // const cleanUp = ():void => {
@@ -96,67 +82,50 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
     event.dataTransfer.clearData();
     const data:DraggedTrack = { id: props.id, UUID: props.track.goose.UUID!, name: props.track.goose.track.name };
     event.dataTransfer.setData('application/x-goose.track', `${JSON.stringify(data)}`);
+
+    // can't "successfully" drag out of the window if nothing accepts your custom and only type
     // event.dataTransfer.setData('text/plain', `${props.track.goose.artist.name} ${props.track.goose.track.name}`);
-    // console.log(event);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // styling commented out until I figure out how to undo it; see above
   const dragEnd = (event:React.DragEvent<HTMLElement>):void => {
-    console.log(event);
-    // console.log(state.accepting);
     event.currentTarget.style.opacity = 'initial';
     if (event.dataTransfer.dropEffect === 'none') {
-      console.log(`drag canceled for track: ${props.id + 1}`);
+      // console.log(`drag canceled for track: ${props.id + 1}`);
       dispatch(['clear']);
     } else {
       // console.log(`drag accepted for track: ${props.id + 1}`);
-      // event.currentTarget.style.color = '#00b400';
+      // event.currentTarget.style.color = '#f800e3';
     }
-    // if (state.accepting) {
-    //   dispatch(['accepting', false]);
-    // }
-
-    // } else if (state.accepting) {
-    //   console.log(`drag accepted for track: ${props.id + 1}`);
-    //   event.currentTarget.style.backgroundColor = 'green';
-    // } else {
-    //   console.log(`drag for track: ${props.id + 1} accepted outside app`);
-    //   event.currentTarget.style.opacity = 'initial';
-    //   dispatch(['clear']);
-    // }
   };
 
   const dragEnter = (event:React.DragEvent<HTMLElement>):void => {
     if (event.dataTransfer.types.includes('application/x-goose.track')) {
-      // console.log(`drag entered track: ${props.id + 1}`);
       event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      // console.log(`drag entered track: ${props.id + 1}`);
     }
   };
 
   const dragOver = (event:React.DragEvent<HTMLElement>):void => {
     if (event.dataTransfer.types.includes('application/x-goose.track')) {
       event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      // console.log(`drag over track: ${props.id + 1}`);
 
       const halfway = event.currentTarget.clientHeight / 2;
       const distanceFromTop = event.pageY - event.currentTarget.offsetTop;
       const topIsNearer = distanceFromTop <= halfway;
-      // console.log(`Y: ${event.pageY}, eventTop: ${event.currentTarget.offsetTop}, height: ${event.currentTarget.clientHeight} topIsNearer: ${topIsNearer}, track: ${props.id + 1}`);
-      // console.log(`top: ${state.nearerTop}, isNearer: ${topIsNearer} -- bottom: ${state.nearerBottom}, not isNearer ${!topIsNearer}`);
 
-      // if already in either position do nothing; I don't trust the reducer not to cause a rerender—yes I should maybe test that
+      // if not nearerTop but should be     or not nearerBottom but should be—set
       if ((!state.nearerTop && topIsNearer) || (!state.nearerBottom && !topIsNearer)) {
         dispatch(['set', topIsNearer]);
       }
 
       const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
-      // not the dragged item, not adjacent to it such that the insertion point is on the same side as it
-      // if (!(props.id == from.id || state.nearerTop && props.id == (from.id + 1) || state.nearerBottom && props.id == (from.id - 1))) {
-      //   event.preventDefault();
-      //   console.log(`prop.id ${props.id} from.id ${from.id} nearerTop: ${state.nearerTop} nearerBottom: ${state.nearerBottom}`);
-      //   console.log(`over :/ same: ${(props.id == from.id)} adj.below: ${(state.nearerTop && props.id == (from.id + 1))} adj.above: ${(state.nearerBottom && props.id == (from.id - 1))}`);
-      // }
       const adjacent = (state.nearerBottom && props.id == (from.id - 1)) || (state.nearerTop && props.id == (from.id + 1));
 
+      // if not adjacent but should be  or adjacent but should not be—toggle
       if ((!state.adjacent && adjacent) || state.adjacent && !adjacent) {
         dispatch(['adjacent', adjacent]);
       }
@@ -165,21 +134,23 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dragLeave = (event:React.DragEvent<HTMLElement>):void => {
-    // console.log(`drag left track: ${props.id + 1}`);
     if (event.dataTransfer.types.includes('application/x-goose.track')) {
-      if (event.pageY <= event.currentTarget.offsetTop || event.pageY >= event.currentTarget.offsetTop + event.currentTarget.clientHeight) {
+      // console.log(`drag left track: ${props.id + 1}`);
+
+      // in my defense, even with capturing events (phase 1), preventDefault, stopPropagation, stopPropagationImmediate, and bubbling: false,
+      // I'm still seeing, for example "target: p ..." with "currentTarget: /* actual parent */", the component registering those handlers—
+      // not sure what I'm missing, but sub-components that aren't even listening inheriting a parent's capture seems to defeat the purpose?
+      // so this is bad but it seems reliable enough. will intend to do this more properly once I know how
+      if (event.pageY <= event.currentTarget.offsetTop || event.pageY >= event.currentTarget.offsetTop + event.currentTarget.clientHeight ||
+          event.pageX >= event.currentTarget.clientWidth) {
         dispatch(['clear']);
-        // if (state.accepting) {
-        //   dispatch(['accepting', false]);
-        // } else { console.log('murmle leave'); }
       }
     }
   };
 
   const drop = (event:React.DragEvent<HTMLElement>):void => {
-    console.log(event);
     event.preventDefault();
-    // event.stopPropagation(); // unsure if this is needed
+    // event.stopPropagation(); // unsure if this is needed or what it would contribute
     const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
     if (state.adjacent || props.id == from.id) {
       // console.log('invalid; ignoring drop');
@@ -188,11 +159,11 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
     } else {
       // moving this out of a [state.nearerTop] check to handle concurrent modification. I think the UUID stuff
       // I've done should handle the list rearranging mid-drag, but depending on what gets moved where, I can't
-      // rely on [props.id] changes to catch all but when [state.nearerTop]
+      // rely on [props.id] changes to clear all but when this one case; so just do a redundant clear sometimes
       // also check that the list rearranging doesn't fail to do any dispatch(['clear]) cleanup mid-drag
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const cleanUp = ():void => {
-        console.log('in cleanup callback');
+        // console.log('in cleanup callback');
         dispatch(['clear']);
         removeEventListener('cleanup', cleanUp);
       };
@@ -202,7 +173,7 @@ export function TrackSmall(props: { playerClick:(action:PlayerClick) => void, tr
       const to = (state.nearerTop) ? props.id : props.id + 1;
       // if (to < 0) { to = 0; }
       trackClick('move', `${from.id} ${to} ${from.UUID}`); // I'm sorry
-      console.log(`move track: [${from.id }] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
+      // console.log(`move track: [${from.id }] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
     }
   };
 
@@ -364,3 +335,56 @@ const Duration = styled.p`
   font-style: italic;
   user-select: none;
 `;
+
+// for future me and anyone else,
+// there doesn't seem to be any obvious, built-in way for dragEnd and drop to talk to each other. which seems odd,
+// especially since dragEnd can't tell if the drop was in or out of app, and that's extremely important for styling.
+// event order is inconsistent too; like enter firing before leave—and all in the same update cycle (or whatever)—
+// even if drop fires first, anything it dispatches to the reducer still won't have updated when dragEnd fires, and
+// the event is undefined the moment it's out of scope; takes more work than a lazy/ bad sleep callback, anyway
+//
+// a related annoyance is that whether a drop is accepted depends on calling preventDefault in both enter and over.
+// that might be for cross-browser compatibility or other reasons—drops can be accepted by calling it only in over.
+// it is also possible to (very carefully) trigger enter without over, and so should do both.
+//
+// as far as drag and drop is concerned, a drop is only formally canceled if preventDefault hasn't been called and a
+// drop happens; that's when dropEffect == 'none'. if preventDefault is called, that's a valid drop. so it's unideal
+// that these don't work well with a reducer either; both leak 1 invalid on their first firing. this is almost easily
+// solved—move the adjacency logic into a function they can share, still use the reducer for future firings of over,
+// and return the value for immediate use to not leak invalids. the real problem though is enter is only called once
+// and you're at least /supposed/ to accept or reject the drop (even if only doing it on over seems to work). either
+// the entire element is valid or nah; splitting it like I've done with "above" and "below" is apparently wrong
+//
+// I wish I remembered—there was some reason I didn't go that route, some problem that was more than knowing I was
+// supposed to preventDefault in both events. maybe I'm wrong now about whether it works when done in only over
+//
+// partly it was a holdover from forgetting to test components/ css behavior during the mouseEvent pass; I assumed the
+// WebQueue updating and potentially literally moving every track would reset its styling. using the reducer to clear
+// styling was a bandaid when it all stuck around.
+//
+// somehow this collided with dragEnd not being able to tell the difference between a "success" and an actual success,
+// various attempts at canceling properly, improperly and differently, and not knowing how to connect these better, an
+// easy choice between starting over with a guess at a redesign that might do drops "properly"—and making this work.
+//
+// I forget the details, but the choices were all basically between favoring dragEnd or drop, with no easy way to
+// do both. I could persist the style on the origin for the fraction of a second the server needed to respond, leaving
+// styling in place on "success" that was an offscreen drop, canceling styling that was actually successful, being less
+// able to clean up styling elsewhere, not having insertion marks on adjacency as a consequence of my not knowing this
+// sooner——or I could just have consistent insertion marks, clean up all almost all styling (see custom cleanup event),
+// and just ignore drops that I didn't want to be drops. the only loss was the "moving" styling on the origin, which
+// I'll figure out with refs or something later
+//
+// there might be more, but I'm half asleep and this is at least enough before it's gone to help me remember in future.
+// hopefully. —have been removing the discarded/ set aside portions of this below from my editing process, and having
+// arrived back at this event.dataTransfer line I started this comment to explain a good while ago.. right so
+//
+// again I forget exactly, but that's gone because you can't "successfully" do a drop outside of the window when the
+// only mime type is a custom one that nothing supports. which reminds me also, here toward the very last I had another
+// read of the MDN page. I'm not sure if I forgot dropEffects or removed them somewhere along the way, but re-reading:
+//
+//  > use the value none to indicate that no drop is allowed at this location [...] within the drop and dragend events,
+//  > check the dropEffect property to determine which effect was ultimately chosen
+//
+// extremely funny that one of my problems was trying to gatekeep preventDefault, when just setting dropEffect to none
+// depending on adjacency might have worked——have checked, it cancels despite preventDefault, but drop isn't called..
+// not sure what I'm missing there. anyway, something to experiment with when I get back around to redoing this
