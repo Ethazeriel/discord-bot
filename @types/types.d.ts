@@ -93,7 +93,7 @@ type PlayerStatus = {
 
 interface Track {
 	goose: {
-		UUID?:number
+		UUID?:string
 		id: string
 		plays: number
 		errors: number
