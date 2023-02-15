@@ -117,11 +117,10 @@ worker.on('message', async (message:WebWorkerMessage) => {
           case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
             if (player.getQueue().length > 1) {
               if (message.parameter && typeof message.parameter == 'string') {
-                const [stringFrom, stringTo, stringUUID] = (message.parameter as string).split(' ');
-                if (stringFrom && stringTo && stringUUID) {
+                const [stringFrom, stringTo, UUID] = (message.parameter as string).split(' ');
+                if (stringFrom && stringTo && UUID) {
                   const from = Number(stringFrom); const to = Number(stringTo);
-                  const UUID = Number(stringUUID);
-                  if (!(isNaN(from) || isNaN(to) || isNaN(UUID))) {
+                  if (!(isNaN(from) || isNaN(to) || typeof UUID !== 'string')) {
                     const { success, message: failure } = player.move(from, to, UUID);
                     if (success) {
                       player.webSync('queue');
@@ -129,11 +128,11 @@ worker.on('message', async (message:WebWorkerMessage) => {
                       worker.postMessage({ id:message.id, status:status });
                     } else { logDebug(`move—probable user error ${failure}`); worker.postMessage({ id:message.id, error:`sorry this isn't formatted: ${failure}` }); }
                   } else {
-                    logDebug(`move—${isNaN(from) ? `from is NaN, contains [${from}]` : isNaN(to) ? `to is NaN, contains [${to}]` : `UUID is NaN, contains [${UUID}]`}`);
+                    logDebug(`move—${isNaN(from) ? `from is NaN, contains [${from}]` : isNaN(to) ? `to is NaN, contains [${to}]` : `UUID is not a string, contains [${UUID}]`}`);
                     worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
                   }
                 } else {
-                  logDebug(`move—${!stringFrom ? `from is nullish, contains [${stringFrom}]` : !stringTo ? `to is nullish, contains [${stringTo}]` : `UUID is nullish, contains [${stringUUID}]`}`);
+                  logDebug(`move—${!stringFrom ? `from is nullish, contains [${stringFrom}]` : !stringTo ? `to is nullish, contains [${stringTo}]` : `UUID is nullish, contains [${UUID}]`}`);
                   worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
                 }
               } else {
