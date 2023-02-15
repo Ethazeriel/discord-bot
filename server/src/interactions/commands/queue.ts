@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { log, logDebug } from '../../logger.js';
 import * as db from '../../database.js';
 import { seekTime as seekRegex } from '../../regexes.js';
@@ -184,18 +185,22 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
-          if (player.getQueue().length > 1) {
+          const length = player.getQueue().length;
+          if (length > 1) {
             const from = Math.abs((interaction.options.getInteger('from') || 1) - 1);
-            const to = Math.abs((interaction.options.getInteger('to') || 1) - 1);
+            let to = Math.abs((interaction.options.getInteger('to') || 1) - 1);
+            // per below have decided destination values > length might be intended to be length, while not making any
+            // assumptions about what was meant to be moved. but unless this is about to be rejected because from == to
+            // (from < to) is true, so +1 below. so -1 here or this attempt to not reject for length rejects for length
+            if (to > length) { to = length - 1; }
 
+            // compatibility for browser using +1 to signal dragging below tracks; damps -1 in move with same condition;
+            // allows command to also move to length, which is neat, but is mostly here just so the values aren't wrong
+            if (from < to) { to++; }
             const { success, message } = player.move(from, to);
             if (success) {
-              const playhead = player.getPlayhead();
-              const replace = (playhead == to || playhead == from);
-              if (replace) { await player.play(); }
               const queueEmbed = await player.queueEmbed();
-              const mediaEmbed = (replace) ? await player.mediaEmbed() : undefined;
-              player.sync(interaction, (replace) ? 'media' : 'queue', queueEmbed, mediaEmbed);
+              player.sync(interaction, 'queue', queueEmbed);
               interaction.editReply({ content: message });
             } else { interaction.editReply({ content: message }); }
           } else { interaction.editReply({ content: 'need 2+ things in queue to move one from one position to another' }); }

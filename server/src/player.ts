@@ -348,13 +348,41 @@ export default class Player {
     return (this.queue.tracks.length);
   }
 
-  move(from:number, to:number) {
+  // browser client will always supply UUID; is optional to support commands.
+  // is here in attempt to improve UX of concurrent modification while dragging
+  move(from:number, to:number, UUID?:number) {
     const length = this.queue.tracks.length;
-    if (from < length && to < length && from != to) {
+    logDebug(`move—initial from: ${from}, to: ${to}, length: ${length}`);
+    if (from < to) { to--; } // splice-removing [from] decrements all indexes > from
+    if (from < length && to < length && from !== to) {
+      if (UUID && this.queue.tracks[from].goose.UUID !== UUID) {
+        logDebug(`move—UUID mismatch; attempting find for UUID [${UUID}]`);
+        from = this.queue.tracks.findIndex(track => track.goose.UUID === UUID);
+        if (!from) {
+          logDebug(`move—could not find UUID [${UUID}]`);
+          return ({ success: false, message: 'either someone else removed that track while you were moving it or we\'ve fucked up' });
+        }
+        logDebug(`move—UUID [${UUID}] matched to queue[${from}]`);
+      }
+
+      let playhead = this.queue.playhead;
+      logDebug(`move—playhead is ${playhead}, track is ${(playhead < length) ? this.queue.tracks[playhead].goose.track.name : 'undefined because playhead == length'}`);
+
       const removed = this.queue.tracks.splice(from, 1);
       this.queue.tracks.splice(to, 0, removed[0]);
+
+      if ((from < playhead) && (playhead <= to)) { // handle negative crossing
+        playhead--;
+      } else if ((to <= playhead) && (playhead < from)) { // handle positive crossing; also to
+        playhead++;
+      } else if (from === playhead) { // handle from
+        playhead = to;
+      } else { /* do nothing */ }
+      this.queue.playhead = playhead;
+      logDebug(`move—playhead is ${playhead}, track is ${(playhead < length) ? this.queue.tracks[playhead].goose.track.name : 'undefined because playhead == length'}`);
+
       return ({ success: true, message: `moved ${removed[0].goose.track.name} from position ${from + 1} to position ${to + 1}` });
-    } else { return ({ success: false, message: `could not move track from position ${from} to position ${to}. ${(from >= length) ? '\tfrom > length' : ''} ${(to >= length) ? '\tto > length' : ''} ${(from == to) ? '\tfrom == to' : ''}` }); }
+    } else { return ({ success: false, message: `could not move track from position ${from} to position ${to}. ${(from >= length) ? '\tfrom > length' : ''} ${(to > length) ? '\tto > length' : ''} ${(from == to) ? '\tfrom == to' : ''}` }); }
   }
 
   async remove(position = this.queue.playhead) { // will make this take a range later
