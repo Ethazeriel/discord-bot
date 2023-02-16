@@ -5,8 +5,15 @@
   width: 100%;
   font-size: calc(10px + 2vmin);
   color: white;
+
+  font-family: 'Verdana', 'Helvetica', 'Arial', sans-serif;
+  box-sizing: border-box;
+  text-rendering: optimizeLegibility;
 }
 
+*, *:before, *:after {
+  box-sizing: inherit;
+}
 
 .App-link {
   color: #61dafb;

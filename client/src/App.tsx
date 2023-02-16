@@ -4,7 +4,8 @@ import { TrackSmall } from './TrackSmall';
 import type { PlayerClick, PlayerStatus, User } from './types';
 import { StatusBar } from './StatusBar';
 import { MediaBar } from './MediaBar';
-import styled from 'styled-components';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import styled, { css } from 'styled-components';
 import DisplaySelect from './DisplaySelect';
 
 
@@ -57,17 +58,11 @@ export default class App extends React.Component<Record<string, never>, AppState
       Object.keys(json).map((key:string) => {
         switch (key) {
           case 'error': {
-            console.log('setting error state');
             this.setState({ error: json.error });
             break;
           }
           case 'status': {
-            console.log('setting status');
-            this.setState({ playerStatus: json.player });
-            break;
-          }
-          default: {
-            console.log(key);
+            this.setState({ playerStatus: json.status });
             break;
           }
         }
@@ -148,19 +143,77 @@ export default class App extends React.Component<Record<string, never>, AppState
   // <MediaBar playerClick={this.playerClick} />
   // <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
 }
+const DragBackground = styled.div<{visible: boolean, x:number, y:number}>`
+  left: ${props => props.x}px;
+  top: ${props => props.y}px;
+  position: absolute;
+  display: flex;
+  flex-wrap: nowrap;
+  background-color: #c9b9b9;
+  opacity: 0.8;
+  visibility: hidden;
+  user-select: none;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 0.25rem;
+  ${(props) => {
+    if (props.visible) {
+      return css`
+        visibility: visible;
+      `;
+    }
+  }}
+`;
 
+const DragText = styled.span<{offset:number}>`
+  left: ${props => props.offset}px;
+  position: relative;
+  background-color: #5e585e;
+  visibility: inherit;
+  user-select: none;
+  pointer-events: none;
+  border-radius: 0.25rem;
+`;
+
+function dragText(state: any, [type, value]:[any, any?]) {
+  switch (type) {
+    case 'visible': {
+      return ({ ...state, visible: value });
+    }
+    case 'position': {
+      return ({ ...state, dragY: value.Y - 15, dragX:value.X - 9, offsetX:18 });
+    }
+    case 'label': {
+      return ({ ...state, label: value });
+    }
+  }
+}
 function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:PlayerStatus }) {
+  const initialState: { visible:boolean, label:string, dragY:number, dragX:number, offsetX:number } = {
+    visible: false,
+    label: '',
+    dragY: 0,
+    dragX: 0,
+    offsetX: 0,
+  };
+  const [state, cursorText] = React.useReducer(dragText, initialState);
   const [dragID, setDragID] = React.useState<number | undefined>(undefined);
 
   React.useEffect(() => {
     const dragSet = (event:any):void => {
-      console.log(`setting dragID to: ${event.detail}`);
+      // console.log(`setting dragID to: ${event.detail}`);
       setDragID(event.detail);
     };
     addEventListener('dragset', dragSet);
 
+    const dragOver = (event:DragEvent):void => {
+      cursorText(['position', { X: event.pageX, Y: event.pageY }]);
+    };
+    window.addEventListener('dragover', dragOver);
+
     return (() => {
       removeEventListener('dragset', dragSet);
+      window.removeEventListener('dragover', dragOver);
     });
   }, []);
 
@@ -169,7 +222,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     const queue = [];
     if (serverQueue) {
       for (const [i, track] of serverQueue.entries()) {
-        queue.push(<TrackSmall key={track.goose.UUID!} id={i} track={track} playerClick={props.playerClick} dragID={dragID} />);
+        queue.push(<TrackSmall key={track.goose.UUID!} id={i} track={track} playerClick={props.playerClick} dragID={dragID} cursorText={cursorText} />);
       }
     }
     return (queue);
@@ -177,6 +230,8 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
 
   return (
     <div>
+      <DragBackground visible={state.visible} x={state.dragX} y={state.dragY}>
+        <DragText offset={state.offsetX}>{state.label}</DragText></DragBackground>
       {localQueue}
     </div>
   );

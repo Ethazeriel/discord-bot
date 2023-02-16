@@ -3,6 +3,7 @@ import styled, { css } from 'styled-components';
 import playButton from './media/placeholder/dark_play.png';
 import removeButton from './media/placeholder/dark_remove.png';
 import dragHandle from './media/placeholder/dark_drag.png';
+import dragImage from './media/placeholder/dragImage.png';
 import { timeDisplay } from './utils';
 
 import './App.css';
@@ -21,7 +22,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
     }
     case 'cleanup': {
       if (state.origin && !state.dragging) {
-        console.log('dispatching cleanup');
+        // console.log('dispatching cleanup');
         dispatchEvent(new CustomEvent('cleanup'));
         return ({ ...state, origin: false });
       }
@@ -29,7 +30,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
     }
     case 'id': {
       if (state.origin && state.dragging) {
-        console.log('dispatching id');
+        // console.log('dispatching id');
         dispatchEvent(new CustomEvent('dragset', { detail: value }));
       }
       return ({ ...state }); // too tired, but I think this has been working without a return. thought that gave me an error before? check later
@@ -60,7 +61,7 @@ type DraggedTrack = {
   name: string,
 }
 
-export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerClick) => void, dragID: number | undefined }) {
+export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerClick) => void, dragID:number|undefined, cursorText:React.Dispatch<[any, any?]> }) {
   const initialState:DragState = {
     origin: false,
     dragging: false,
@@ -84,11 +85,16 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const cleanUp = ():void => {
-    console.log('cleanup callback');
+    // console.log('cleanup callback');
     dispatch(['clear']);
     removeEventListener('cleanup', cleanUp);
   };
 
+  const drag_image = React.useMemo(() => {
+    const img = document.createElement('img');
+    img.src = `${dragImage}`;
+    return img;
+  }, []);
   // can't style this on callback because it's null; commented out until I figure out refs/ etc
   const dragStart = (event:React.DragEvent<HTMLDivElement>):void => {
     // console.log(`drag start for track: ${props.id + 1}`);
@@ -100,6 +106,10 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     dispatch(['origin', true]);
     dispatch(['dragging', true]);
     dispatchEvent(new CustomEvent('dragset', { detail: props.id }));
+    props.cursorText(['label', `${props.track.goose.track.name}●${props.track.goose.artist.name}`]);
+    props.cursorText(['position', { X: event.pageX, Y: event.pageY }]);
+    props.cursorText(['visible', true]);
+    event.dataTransfer.setDragImage(drag_image, 0, 0);
     event.currentTarget.style.opacity = '0.4';
     event.dataTransfer.effectAllowed = 'copyMove';
     event.dataTransfer.clearData();
@@ -113,6 +123,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   // styling commented out until I figure out how to undo it; see above
   const dragEnd = (event:React.DragEvent<HTMLElement>):void => {
     event.currentTarget.style.opacity = 'initial';
+    props.cursorText(['visible', false]);
     if (event.dataTransfer.dropEffect === 'none') {
       // console.log(`drag canceled for track: ${props.id + 1}`);
       dispatch(['clear']);
@@ -204,7 +215,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   };
 
   return (
-    <TestContainer onDragStart={(event) => dragStart(event)} onDragEnd={(event) => dragEnd(event)} onDragEnter={(event) => dragEnter(event)} onDragOver={(event) => dragOver(event)} onDragLeave={(event) => dragLeave(event)} onDrop={(event) => drop(event)}>
+    <TestContainer onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
       <Test visible={state.nearerTop} adjacent={state.adjacent} />
       <TrackStyle>
         <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous'/>
@@ -272,21 +283,6 @@ const Test = styled.span<TestProps>`
     }
   }}
 `;
-
-/* ${(props) => {
-    if (props.visible) {
-      return css`
-        visibility: visible;
-      `;
-    }
-  }}
-  ${(props) => {
-    if (props.adjacent) {
-      return css`
-        background-color: '#e40fd2';
-      `;
-    }
-  }} */
 
 const Art = styled.img`
   height: auto;
