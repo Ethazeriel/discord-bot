@@ -53,7 +53,25 @@ export default class App extends React.Component<Record<string, never>, AppState
       },
     }).then((response) => response.json()).then((json) => {
       // console.log(json);
-      this.setState({ playerStatus:json.status });
+      // spite
+      Object.keys(json).map((key:string) => {
+        switch (key) {
+          case 'error': {
+            console.log('setting error state');
+            this.setState({ error: json.error });
+            break;
+          }
+          case 'status': {
+            console.log('setting status');
+            this.setState({ playerStatus: json.player });
+            break;
+          }
+          default: {
+            console.log(key);
+            break;
+          }
+        }
+      });
     }).catch((error) => { console.error(error); });
   }
 
