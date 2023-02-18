@@ -2,10 +2,14 @@
   "name": "discord-bot",
   "version": "1.0.0",
   "description": "GOOSE",
-  "main": "index.js",
+  "main": "build/index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "./node_modules/typescript/bin/tsc --build",
+    "clean": "./node_modules/typescript/bin/tsc --build --clean",
+    "start": "./node_modules/typescript/bin/tsc --build && node .",
+    "go": "node ."
   },
   "author": "Ethazeriel, Whuppee",
   "license": "CC BY-NC-SA 4.0",
