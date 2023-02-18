@@ -101,7 +101,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
       await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
       return;
     }
-  } else if (interaction.isSelectMenu()) {
+  } else if (interaction.isStringSelectMenu()) {
     logComponent(interaction);
     const selectMenu = selects.get(interaction.customId);
     if (!selectMenu) return;
