@@ -52,7 +52,7 @@ export default class Player {
 
     this.player = createAudioPlayer();
     this.player.on('error', error => { log('error', [error.stack! ]); });
-    this.player.on<'stateChange'>('stateChange', async (oldState, newState) => {
+    this.player.on('stateChange', async (oldState, newState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
       if (newState.status == 'playing') {
@@ -84,7 +84,7 @@ export default class Player {
       guildId: (interaction.member as GuildMember).voice.channel!.guild.id,
       adapterCreator: (interaction.member as GuildMember).voice.channel!.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
-    connection.on<'stateChange'>('stateChange', async (oldState, newState) => {
+    connection.on('stateChange', async (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
         if (Object.keys(this.embeds).length) {
