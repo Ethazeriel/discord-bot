@@ -339,6 +339,18 @@ export default class Player {
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
+  async queueIndex(tracks:Track[], index:number) {
+    await this.assignUUID(tracks); // eslint-disable-next-line max-statements-per-line
+    tracks.map((track) => { if (!track.goose.UUID) { logDebug(`queueIndex-UUID null ${!track.goose.UUID}`); } });
+    if (index <= this.queue.playhead) {
+      this.queue.playhead = this.queue.playhead + tracks.length;
+    } else if (this.queue.tracks.length == this.queue.playhead) {
+      this.queue.playhead = index;
+    }
+    this.queue.tracks.splice(index, 0, ...tracks);
+    if (this.player.state.status == 'idle') { await this.play(); }
+  }
+
   async queueLast(tracks:Track[]) {
     await this.assignUUID(tracks);
     this.queue.tracks.push(...tracks);
@@ -354,7 +366,7 @@ export default class Player {
 
     // seems to work well, but moved because it has to be the first check; for wrong values of from
     // there's a chance from == to would fail, when checking by UUID and getting the correct from
-    // would work, and should be made to. for the same reason, since from might be wrong and changed
+    // would work and should be made to. for the same reason, since from might be wrong and changed
     // it has to go before the (from < to) check, else to may not change when it should—redundantly
     // checking length to safely handle checking UUID, while accommodating commands/tampered clients
     if (UUID && from < length && this.queue.tracks[from].goose.UUID !== UUID) {

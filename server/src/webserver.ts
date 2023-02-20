@@ -1,6 +1,7 @@
 import { Worker } from 'worker_threads';
 import { logDebug } from './logger.js';
 import Player from './player.js';
+import fetch from './acquire.js';
 import { seekTime as seekRegex } from './regexes.js';
 import validator from 'validator';
 import { fileURLToPath, URL } from 'url';
@@ -110,9 +111,48 @@ worker.on('message', async (message:WebWorkerMessage) => {
             break;
           }
 
-          case 'queue':
-            // yeah I have no idea what the fuck I want to do here
+          case 'queue':{ // eslint-disable-next-line prefer-const
+            let [stringIndex, query] = (message.parameter as string).split(' ');
+            if (!(stringIndex && query)) {
+              logDebug(`queue—at least one parameter nullish; stringIndex contains [${stringIndex}], query contains [${query}]; message was [${message.parameter}]`);
+              worker.postMessage({ id:message.id, error: `either you've altered your client or we've fucked up; can't queue ${message.parameter}` });
+              break;
+            }
+            let index = Number(stringIndex);
+            if (isNaN(index)) {
+              logDebug(`queue—index NaN, contains [${index}]`);
+              worker.postMessage({ id:message.id, error: `either you've altered your client or we've fucked up; can't queue ${message.parameter}` });
+              break;
+            }
+            // I could do this right or I could get it working and sleep
+            const shittify = /(?:spotify\.com|spotify).+((?:track|playlist|album){1}).+([a-zA-Z0-9]{22})/;
+            if (shittify.test(query)) {
+              const match = query.match(shittify);
+              query = `spotify.com/${match![1]}/${match![2]}`;
+            } else {
+              logDebug(`queue—shitty bandaid failed; ${query} does not match regex`);
+              worker.postMessage({ id:message.id, error: 'I\'ll fix this once I sleep <3' });
+              break;
+            }
+            // websync
+            const tracks = await fetch(query);
+            if (!tracks.length) {
+              logDebug(`queue—[${query}] resulted in 0 tracks; message was [${message.parameter}]`);
+              worker.postMessage({ id:message.id, error: `query ${query} resulted in 0 tracks; check that it isn't private` });
+              break;
+            }
+            let flag = false;
+            const length = player.getQueue().length;
+            if (index < 0) {
+              flag = true; index = 0;
+            } else if (length < index) { flag = true; /* handled by splice */ }
+            if (flag) { logDebug(`queue—${(index < 0) ? `index negative ${index}` : `index ${index} > ${length}`}. queueing anyway`); }
+            await player.queueIndex(tracks, index);
+            player.webSync('queue');
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status, error: (flag) ? 'autoupdates may have broke; try refreshing—position invalid, queueing anyway' : undefined });
             break;
+          }
 
           case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
             if (player.getQueue().length > 1) {

@@ -184,6 +184,7 @@ app.get('/player-:playerId([0-9]{18})', async (req, res) => {
   }
 });
 
+// look into json schema, npm joi maybe
 // take actions on the player with the given id
 app.post('/player', async (req, res) => {
   const webId = req.signedCookies.id;
@@ -192,6 +193,7 @@ app.post('/player', async (req, res) => {
     const user = await db.getUserWeb(webId);
     if (user) {
       const action = validator.escape(validator.stripLow(req.body?.action?.replace(sanitize, '') || '')).trim();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const parameter = validator.escape(validator.stripLow(('' + req.body?.parameter)?.replace(sanitize, '') || '')).trim();
       log(req.method, [req.originalUrl, chalk.green(action)]);
       // log('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
