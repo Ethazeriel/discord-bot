@@ -55,7 +55,7 @@ export default class App extends React.Component<Record<string, never>, AppState
     }).then((response) => response.json()).then((json) => {
       // console.log(json);
       // spite
-      Object.keys(json).map((key:string) => {
+      json && Object.keys(json).map((key:string) => {
         switch (key) {
           case 'error': {
             this.setState({ error: json.error });
@@ -79,7 +79,8 @@ export default class App extends React.Component<Record<string, never>, AppState
       },
     }).then((response) => response.json()).then((json: LoadResponse) => {
       if (json?.user?.status === 'known') {
-        this.setState({ user: json.user, playerStatus: json.player, error: json.error });
+        if (json.error) { console.log(json.error); } // for testing; failing to get a player returns an error, but should
+        this.setState({ user: json.user, playerStatus: json.player }); // only be read as an error by /player, not /load
       } else if (json.user.status === 'new') {
         // could do a new user welcome message?
       } else { this.setState({ error:'unexpected loaduser response' }); }
@@ -144,8 +145,8 @@ export default class App extends React.Component<Record<string, never>, AppState
   // <PlayerQueue playerClick={this.playerClick} queue={this.state.playerStatus} />
 }
 const DragBackground = styled.div<{visible: boolean, x:number, y:number}>`
-  left: ${props => props.x}px;
   top: ${props => props.y}px;
+  left: ${props => props.x}px;
   position: absolute;
   display: flex;
   flex-wrap: nowrap;
@@ -154,7 +155,7 @@ const DragBackground = styled.div<{visible: boolean, x:number, y:number}>`
   visibility: hidden;
   user-select: none;
   pointer-events: none;
-  z-index: 2;
+  z-index: 10;
   border-radius: 0.25rem;
   ${(props) => {
     if (props.visible) {
@@ -181,7 +182,7 @@ function dragText(state: any, [type, value]:[any, any?]) {
       return ({ ...state, visible: value });
     }
     case 'position': {
-      return ({ ...state, dragY: value.Y - 15, dragX:value.X - 9, offsetX:18 });
+      return ({ ...state, dragY: value.y - 15, dragX:value.x - 9, offsetX:18 });
     }
     case 'label': {
       return ({ ...state, label: value });
@@ -207,7 +208,9 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     addEventListener('dragset', dragSet);
 
     const dragOver = (event:DragEvent):void => {
-      cursorText(['position', { X: event.pageX, Y: event.pageY }]);
+      if (event.dataTransfer && event.dataTransfer.types.includes('application/x-goose.track')) {
+        cursorText(['position', { y: event.pageY, x: event.pageX }]);
+      }
     };
     window.addEventListener('dragover', dragOver);
 
@@ -227,6 +230,10 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     }
     return (queue);
   }, [serverQueue, props.playerClick, dragID]);
+
+  React.useEffect(() => {
+    console.log('serverqueue change');
+  }, [serverQueue]);
 
   return (
     <div>
