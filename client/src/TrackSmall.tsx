@@ -1,15 +1,17 @@
 import * as React from 'react';
 import styled, { css } from 'styled-components';
+
 import playButton from './media/placeholder/dark_play.png';
 import removeButton from './media/placeholder/dark_remove.png';
 import dragHandle from './media/placeholder/dark_drag.png';
 import dragImage from './media/placeholder/dragImage.png';
-import { timeDisplay } from './utils';
+
+import { timeDisplay, allowExternal, allowedExternalTypes } from './utils';
 
 import './App.css';
 
 import type { Track, PlayerClick } from './types';
-type Action = 'jump' | 'remove' | 'move';
+type Action = 'jump' | 'remove' | 'move' | 'queue';
 
 // yep, still haven't learned how to type this
 function reducer(state:any, [type, value]:[any, any?]) {
@@ -35,13 +37,14 @@ function reducer(state:any, [type, value]:[any, any?]) {
       }
       return ({ ...state }); // too tired, but I think this has been working without a return. thought that gave me an error before? check later
     }
-    case 'adjacent': {
-      return ({ ...state, adjacent: value });
+    case 'invalid': {
+      return ({ ...state, invalid: value });
     }
     case 'set': {
       return ({ ...state, nearerTop: value, nearerBottom: !value });
     }
     case 'clear': {
+      if (value) { console.log(`clearing for ${value}`); }
       return ({ ...state, nearerTop: false, nearerBottom: false });
     }
   }
@@ -49,14 +52,13 @@ function reducer(state:any, [type, value]:[any, any?]) {
 
 type DragState = {
   origin: boolean,
-  adjacent: boolean,
+  invalid: boolean,
   dragging: boolean,
   nearerTop: boolean,
   nearerBottom: boolean,
 }
 
 type DraggedTrack = {
-  id: number,
   UUID: string,
   name: string,
 }
@@ -65,7 +67,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   const initialState:DragState = {
     origin: false,
     dragging: false,
-    adjacent: false,
+    invalid: false,
     nearerTop: false,
     nearerBottom: false,
   };
@@ -78,16 +80,31 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     dispatch(['clear']);
   }, [props.id]);
 
-  // this is terrible. I'm sorry
   const trackClick = (action:Action, parameter:string | number = props.id) => {
     props.playerClick({ action:action, parameter: parameter });
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // needs a better name. is intended to be called by event; exists to connect cancelled drops to what was last
+  // dragged over, and as part of insertion marks persisting until server response, where the id useEffect and
+  // clear handle all-but dropping "above" something because it's id never changes. may have once had a purpose
+  // in drop; probably no harm in its unregistering listeners after a bad drop, though there shouldn't be any
   const cleanUp = ():void => {
     // console.log('cleanup callback');
     dispatch(['clear']);
     removeEventListener('cleanup', cleanUp);
+  };
+
+  // needs a better name. shared by dragEnd and drop for cancelled and accepted but invalid drops
+  const rejectDrop = () => {
+    // console.log('invalid; ignoring drop');
+    dispatch(['clear']);
+    if (state.origin) { dispatch(['origin', false]); }
+    if (state.dragging) { dispatch(['dragging', false]); }
+    dispatchEvent(new CustomEvent('cleanup'));
+    dispatchEvent(new CustomEvent('dragset', { detail: undefined }));
+    // ^ precaution against bad ID in dragOver if it fires faster than the ID dispatched in start updates,
+    // that needs otherwise to be treated preferentially to handle concurrent updates
   };
 
   const drag_image = React.useMemo(() => {
@@ -95,95 +112,101 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     img.src = `${dragImage}`;
     return img;
   }, []);
-  // can't style this on callback because it's null; commented out until I figure out refs/ etc
-  const dragStart = (event:React.DragEvent<HTMLDivElement>):void => {
-    // console.log(`drag start for track: ${props.id + 1}`);
-    // const cleanUp = ():void => {
-    //   document.removeEventListener('cleanup', cleanUp);
-    // };
-    // document.addEventListener('cleanup', cleanUp);
-    // event.currentTarget.style.color = '#f800e3';
+
+  const dragStart = (event:React.DragEvent<HTMLElement>) => {
     dispatch(['origin', true]);
     dispatch(['dragging', true]);
+    dispatch(['invalid', true]);
     dispatchEvent(new CustomEvent('dragset', { detail: props.id }));
     props.cursorText(['label', `${props.track.goose.track.name}●${props.track.goose.artist.name}`]);
-    props.cursorText(['position', { X: event.pageX, Y: event.pageY }]);
+    props.cursorText(['position', { x: event.pageX, y: event.pageY }]);
     props.cursorText(['visible', true]);
     event.dataTransfer.setDragImage(drag_image, 0, 0);
-    event.currentTarget.style.opacity = '0.4';
     event.dataTransfer.effectAllowed = 'copyMove';
     event.dataTransfer.clearData();
-    const data:DraggedTrack = { id: props.id, UUID: props.track.goose.UUID!, name: props.track.goose.track.name };
+    const data:DraggedTrack = { UUID: props.track.goose.UUID!, name: props.track.goose.track.name };
     event.dataTransfer.setData('application/x-goose.track', `${JSON.stringify(data)}`);
 
     // can't "successfully" drag out of the window if nothing accepts your custom and only type
     // event.dataTransfer.setData('text/plain', `${props.track.goose.artist.name} ${props.track.goose.track.name}`);
   };
 
-  // styling commented out until I figure out how to undo it; see above
-  const dragEnd = (event:React.DragEvent<HTMLElement>):void => {
+  const dragEnd = (event:React.DragEvent<HTMLElement>) => {
     event.currentTarget.style.opacity = 'initial';
     props.cursorText(['visible', false]);
     if (event.dataTransfer.dropEffect === 'none') {
       // console.log(`drag canceled for track: ${props.id + 1}`);
-      dispatch(['clear']);
-      if (state.origin) { dispatch(['origin', false]); }
-      if (state.dragging) { dispatch(['dragging', false]); }
-      dispatchEvent(new CustomEvent('cleanup'));
-      dispatchEvent(new CustomEvent('dragset', { detail: undefined }));
+      rejectDrop();
     } else {
-      dispatch(['dragging', false]);
       // console.log(`drag accepted for track: ${props.id + 1}`);
-      // event.currentTarget.style.color = '#f800e3';
+      dispatch(['dragging', false]);
     }
   };
 
-  const dragEnter = (event:React.DragEvent<HTMLElement>):void => {
-    if (event.dataTransfer.types.includes('application/x-goose.track')) {
+  const dragEnter = (event:React.DragEvent<HTMLElement>) => {
+    // console.log('enter');
+    // console.log(`drag entered track: ${props.id + 1}`);
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    if (internal || allowExternal(event)) {
       event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
       addEventListener('cleanup', cleanUp);
-      // console.log(`drag entered track: ${props.id + 1}`);
+      event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
+      event.dataTransfer.effectAllowed = (internal) ? 'move' : 'copy';
     }
   };
 
-  const dragOver = (event:React.DragEvent<HTMLElement>):void => {
-    if (event.dataTransfer.types.includes('application/x-goose.track')) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-      // console.log(`drag over track: ${props.id + 1}`);
+  const dragOver = (event:React.DragEvent<HTMLElement>) => {
+    // console.log(`drag over track: ${props.id + 1}`);
 
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    if (internal || allowExternal(event)) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
+      event.dataTransfer.effectAllowed = (internal) ? 'move' : 'copy';
       const halfway = event.currentTarget.clientHeight / 2;
       const distanceFromTop = event.pageY - event.currentTarget.offsetTop;
-      const topIsNearer = distanceFromTop <= halfway;
+      const nearerTop = distanceFromTop <= halfway;
 
       // if not nearerTop but should be     or not nearerBottom but should be—set
-      if ((!state.nearerTop && topIsNearer) || (!state.nearerBottom && !topIsNearer)) {
-        dispatch(['set', topIsNearer]);
+      if ((!state.nearerTop && nearerTop) || (!state.nearerBottom && !nearerTop)) {
+        dispatch(['set', nearerTop]);
       }
-      const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
-      if (props.dragID) {
-        from.id = props.dragID;
-      }
-      const adjacent = (state.nearerTop && props.id == (from.id + 1)) || (state.nearerBottom && props.id == (from.id - 1));
 
-      // if not adjacent but should be  or adjacent but should not be—toggle
-      if ((!state.adjacent && adjacent) || state.adjacent && !adjacent) {
-        dispatch(['adjacent', adjacent]);
+      if (!internal) { return; }
+
+      let invalid = false;
+      if (props.dragID !== undefined) {
+        invalid = props.id === props.dragID;
+        invalid ||= (state.nearerTop && props.id === (props.dragID + 1)) || (state.nearerBottom && props.id === (props.dragID - 1));
+      }
+
+      // if not invalid but should be  or invalid but should not be—toggle
+      if ((!state.invalid && invalid) || state.invalid && !invalid) {
+        dispatch(['invalid', invalid]);
       }
     }
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const dragLeave = (event:React.DragEvent<HTMLElement>):void => {
-    if (event.dataTransfer.types.includes('application/x-goose.track')) {
+  const dragLeave = (event:React.DragEvent<HTMLElement>) => {
+    console.log(event);
+    // if (event.target instanceof Element) {
+    // if (event.target.classList.contains('dropzone')) {
+    //   console.log('actual leave');
+    // }
+    // }
+    // console.log(event);
+    // console.log(`drag left track: ${props.id + 1}`);
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    if (internal || allowExternal(event)) {
       removeEventListener('cleanup', cleanUp);
-      // console.log(`drag left track: ${props.id + 1}`);
 
       // in my defense, even with capturing events (phase 1), preventDefault, stopPropagation, stopPropagationImmediate, and bubbling: false,
       // I'm still seeing, for example "target: p ..." with "currentTarget: /* actual parent */", the component registering those handlers—
       // not sure what I'm missing, but sub-components that aren't even listening inheriting a parent's capture seems to defeat the purpose?
       // so this is bad but it seems reliable enough. will intend to do this more properly once I know how
+      // also in my not-defense I can *see* the data I need by printing out the event, but I have no idea how to figure out what the actual,
+      // defined types are that define that. so not knowing how to typescript, it's this or event:any; and we're going with this for a change
       if (event.pageY <= event.currentTarget.offsetTop || event.pageY >= event.currentTarget.offsetTop + event.currentTarget.clientHeight ||
           event.pageX >= event.currentTarget.clientWidth) {
         dispatch(['clear']);
@@ -191,38 +214,47 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     }
   };
 
-  const drop = (event:React.DragEvent<HTMLElement>):void => {
+  const drop = (event:React.DragEvent<HTMLElement>) => {
+    // console.log(event);
     event.preventDefault();
-    // event.stopPropagation(); // unsure if this is needed or what it would contribute
 
-    addEventListener('cleanup', cleanUp);
-    const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
-    if (state.adjacent || props.track.goose.UUID == from.UUID) {
-      // console.log('invalid; ignoring drop');
-      dispatch(['clear']);
-      if (state.origin) { dispatch(['origin', false]); }
-      if (state.dragging) { dispatch(['dragging', false]); }
-      dispatchEvent(new CustomEvent('cleanup'));
-      dispatchEvent(new CustomEvent('dragset', { detail: undefined }));
-    } else {
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    const externalTypes:string[] = (!internal) ? allowedExternalTypes(event) : [];
 
-      // basically how it reads; insert before else after
+    if (internal) {
+      const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
+      if (!props.dragID || state.invalid || props.track.goose.UUID == from.UUID) {
+        rejectDrop();
+      } else {
+        addEventListener('cleanup', cleanUp);
+        // basically how it reads; insert before else after
+        const to = (state.nearerTop) ? props.id : props.id + 1;
+        trackClick('move', `${props.dragID} ${to} ${from.UUID}`); // I'm sorry
+        console.log(`move track: [${props.dragID}] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
+      }
+    } else if (externalTypes.length) {
+      console.log(`external accepted: ${externalTypes}`);
+      addEventListener('cleanup', cleanUp);
       const to = (state.nearerTop) ? props.id : props.id + 1;
-
-      trackClick('move', `${props.dragID || from.id} ${to} ${from.UUID}`); // I'm sorry
-      console.log(`move track: [${props.dragID || from.id }] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
+      trackClick('queue', `${to} ${externalTypes[0]}`);
+      console.log(`queue resource ${externalTypes} at position ${to}`);
+    } else if (externalTypes.length === 0) {
+      console.log('no valid external types');
+      rejectDrop();
+    } else {
+      rejectDrop();
     }
   };
 
   return (
-    <TestContainer onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
-      <Test visible={state.nearerTop} adjacent={state.adjacent} />
-      <TrackStyle>
-        <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous'/>
+    <TestContainer className={'tempshitwrapper'}>
+      <Test visible={state.nearerTop} invalid={state.invalid} />
+      <TrackStyle className={'dropzone'} onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
+        <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
         <ButtonContainer>
-          <Button src={playButton} onClick={() => trackClick('jump')} />
+          <Button src={playButton} onClick={() => trackClick('jump')} draggable="false" />
           <Number>{(props.id + 1)}</Number>
-          <Button src={removeButton} onClick={() => trackClick('remove')} />
+          <Button src={removeButton} onClick={() => trackClick('remove')} draggable="false" />
         </ButtonContainer>
         <Handle src={dragHandle} draggable="true" />
         <Details>
@@ -231,7 +263,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
         </Details>
         <Duration>{timeDisplay(props.track?.youtube[0]?.duration)}</Duration>
       </TrackStyle>
-      <Test visible={state.nearerBottom} adjacent={state.adjacent} />
+      <Test visible={state.nearerBottom} invalid={state.invalid} />
     </TestContainer>
   );
 }
@@ -248,7 +280,7 @@ const TrackStyle = styled.div`
 
 type TestProps = {
   visible: boolean,
-  adjacent: boolean,
+  invalid: boolean,
 }
 
 const TestContainer = styled.div`
@@ -276,7 +308,7 @@ const Test = styled.span<TestProps>`
     }
   }}
   ${(props) => {
-    if (props.adjacent) {
+    if (props.invalid) {
       return css`
         opacity: 0.4;
       `;
@@ -289,12 +321,14 @@ const Art = styled.img`
   width: 6.4vh;
   margin-left: 0.8vh;
   margin-right: 0.5em;
+  pointer-events: none;
 `;
 
 const ButtonContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: none;
 `;
 
 const Button = styled.img`
@@ -303,6 +337,7 @@ const Button = styled.img`
   visibility: hidden;
   ${TrackStyle}:hover & {
     visibility: visible;
+    pointer-events: auto;
   }
 `;
 
@@ -321,6 +356,7 @@ const Number = styled.p`
   font-size: 2vh;
   font-style: italic;
   user-select: none;
+  pointer-events: none;
 `;
 
 const Details = styled.div`
@@ -330,17 +366,23 @@ const Details = styled.div`
   overflow: hidden;
   text-overflow: clip;
   white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
 `;
 
 const Title = styled.h2`
   margin: 0px;
   font-weight: normal;
   font-size: 2vh;
+  user-select: none;
+  pointer-events: none;
 `;
 
 const AlbumInfo = styled.p` // was Artist
   margin: 0px;
   font-size: 1.5vh;
+  user-select: none;
+  pointer-events: none;
 `;
 
 // const Album = styled.p`
@@ -356,6 +398,7 @@ const Duration = styled.p`
   font-size: 2vh;
   font-style: italic;
   user-select: none;
+  pointer-events: none;
 `;
 
 // for future me and anyone else,
