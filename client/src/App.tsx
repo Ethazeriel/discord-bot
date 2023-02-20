@@ -198,7 +198,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     offsetX: 0,
   };
   const [state, cursorText] = React.useReducer(dragText, initialState);
-  const [dragID, setDragID] = React.useState<number | undefined>(undefined);
+  const [dragID, setDragID] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     const dragSet = (event:any):void => {

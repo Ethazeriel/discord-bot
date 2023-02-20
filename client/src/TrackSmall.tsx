@@ -63,7 +63,7 @@ type DraggedTrack = {
   name: string,
 }
 
-export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerClick) => void, dragID:number|undefined, cursorText:React.Dispatch<[any, any?]> }) {
+export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerClick) => void, dragID:number|null, cursorText:React.Dispatch<[any, any?]> }) {
   const initialState:DragState = {
     origin: false,
     dragging: false,
@@ -102,7 +102,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     if (state.origin) { dispatch(['origin', false]); }
     if (state.dragging) { dispatch(['dragging', false]); }
     dispatchEvent(new CustomEvent('cleanup'));
-    dispatchEvent(new CustomEvent('dragset', { detail: undefined }));
+    dispatchEvent(new CustomEvent('dragset', { detail: null }));
     // ^ precaution against bad ID in dragOver if it fires faster than the ID dispatched in start updates,
     // that needs otherwise to be treated preferentially to handle concurrent updates
   };
@@ -126,6 +126,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     event.dataTransfer.clearData();
     const data:DraggedTrack = { UUID: props.track.goose.UUID!, name: props.track.goose.track.name };
     event.dataTransfer.setData('application/x-goose.track', `${JSON.stringify(data)}`);
+    event.currentTarget.style.opacity = '0.4';
 
     // can't "successfully" drag out of the window if nothing accepts your custom and only type
     // event.dataTransfer.setData('text/plain', `${props.track.goose.artist.name} ${props.track.goose.track.name}`);
@@ -175,7 +176,8 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
       // if (!internal) { return; }
 
       let invalid = false;
-      if (props.dragID !== undefined) {
+      if (props.dragID !== null) {
+        console.log(props.dragID);
         invalid = props.id === props.dragID;
         invalid ||= (state.nearerTop && props.id === (props.dragID + 1)) || (state.nearerBottom && props.id === (props.dragID - 1));
       }
