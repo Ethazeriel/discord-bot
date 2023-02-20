@@ -45,7 +45,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
     }
     case 'clear': {
       if (value) { console.log(`clearing for ${value}`); }
-      return ({ ...state, nearerTop: false, nearerBottom: false });
+      return ({ ...state, nearerTop: false, nearerBottom: false, invalid: false });
     }
   }
 }
@@ -144,7 +144,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   };
 
   const dragEnter = (event:React.DragEvent<HTMLElement>) => {
-    // console.log('enter');
+    console.log('enter');
     // console.log(`drag entered track: ${props.id + 1}`);
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal || allowExternal(event)) {
@@ -172,7 +172,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
         dispatch(['set', nearerTop]);
       }
 
-      if (!internal) { return; }
+      // if (!internal) { return; }
 
       let invalid = false;
       if (props.dragID !== undefined) {
@@ -189,28 +189,15 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dragLeave = (event:React.DragEvent<HTMLElement>) => {
-    console.log(event);
-    // if (event.target instanceof Element) {
-    // if (event.target.classList.contains('dropzone')) {
-    //   console.log('actual leave');
-    // }
-    // }
-    // console.log(event);
-    // console.log(`drag left track: ${props.id + 1}`);
+    console.log('leave');
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal || allowExternal(event)) {
       removeEventListener('cleanup', cleanUp);
-
-      // in my defense, even with capturing events (phase 1), preventDefault, stopPropagation, stopPropagationImmediate, and bubbling: false,
-      // I'm still seeing, for example "target: p ..." with "currentTarget: /* actual parent */", the component registering those handlers—
-      // not sure what I'm missing, but sub-components that aren't even listening inheriting a parent's capture seems to defeat the purpose?
-      // so this is bad but it seems reliable enough. will intend to do this more properly once I know how
-      // also in my not-defense I can *see* the data I need by printing out the event, but I have no idea how to figure out what the actual,
-      // defined types are that define that. so not knowing how to typescript, it's this or event:any; and we're going with this for a change
-      if (event.pageY <= event.currentTarget.offsetTop || event.pageY >= event.currentTarget.offsetTop + event.currentTarget.clientHeight ||
-          event.pageX >= event.currentTarget.clientWidth) {
-        dispatch(['clear']);
-      }
+      // if (event.pageY <= event.currentTarget.offsetTop || event.pageY >= event.currentTarget.offsetTop + event.currentTarget.clientHeight ||
+      //     event.pageX >= event.currentTarget.clientWidth) {
+      //   dispatch(['clear']);
+      // }
+      dispatch(['clear']);
     }
   };
 
@@ -223,7 +210,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
     if (internal) {
       const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
-      if (!props.dragID || state.invalid || props.track.goose.UUID == from.UUID) {
+      if (props.dragID === undefined || state.invalid || props.track.goose.UUID == from.UUID) {
         rejectDrop();
       } else {
         addEventListener('cleanup', cleanUp);
@@ -247,7 +234,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   };
 
   return (
-    <TestContainer className={'tempshitwrapper'}>
+    <TestContainer>
       <Test visible={state.nearerTop} invalid={state.invalid} />
       <TrackStyle className={'dropzone'} onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
         <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />

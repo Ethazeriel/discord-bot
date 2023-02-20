@@ -23,7 +23,7 @@ export default async function fetch(search:string, id = crypto.randomBytes(5).to
         worker.removeListener('message', action);
         worker.removeListener('error', error);
       }
-      logDebug(`listener ${id} called`);
+      logDebug(`acquire worker, listener ${id} called`);
     };
     const error = (err:any) => {
       log('error', ['worker error', JSON.stringify(err, null, 2)]);
