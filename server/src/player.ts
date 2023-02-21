@@ -73,6 +73,9 @@ export default class Player {
           } else { db.logPlay(track.goose.id); }
           delete this.queue.tracks[this.queue.playhead].status.start;
         }
+        // temp proof of concept shittiness
+        const next = this.getNext();
+        if (next && (/... PENDING .../).test(next.goose.track.name)) {return; }
         this.next();
       } else if (newState.status == 'paused') {
         this.queue.tracks[this.queue.playhead].status.pause = (Date.now() / 1000);
@@ -321,26 +324,28 @@ export default class Player {
   }
 
   // modification
-  async assignUUID(tracks:Track[]) {
-    tracks.map(track => track.goose.UUID = crypto.randomUUID());
+  assignUUID(tracks:Track[]) {
+    tracks.map(track => track.goose.UUID ||= crypto.randomUUID());
   }
 
   async queueNow(tracks:Track[]) {
     // not constrained to length because splice does that automatically
-    await this.assignUUID(tracks);
+    this.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
+    if ((/... PENDING .../).test(this.queue.tracks[this.queue.playhead].goose.track.name)) { return; }
     (this.player.state.status == 'idle') ? await this.play() : await this.next();
   }
 
   async queueNext(tracks:Track[]) {
     // not constrained to length because splice does that automatically
-    await this.assignUUID(tracks);
+    this.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
+    if ((/... PENDING .../).test(this.queue.tracks[this.queue.playhead].goose.track.name)) { return; }
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
   async queueIndex(tracks:Track[], index:number) {
-    await this.assignUUID(tracks); // eslint-disable-next-line max-statements-per-line
+    this.assignUUID(tracks); // eslint-disable-next-line max-statements-per-line
     tracks.map((track) => { if (!track.goose.UUID) { logDebug(`queueIndex-UUID null ${!track.goose.UUID}`); } });
     if (index <= this.queue.playhead) {
       this.queue.playhead = this.queue.playhead + tracks.length;
@@ -351,11 +356,28 @@ export default class Player {
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
+  async queueUUID(tracks:Track[], UUID:string) {
+    const start = this.queue.tracks.findIndex(track => track.goose.UUID === UUID);
+    if (start !== -1) {
+      this.assignUUID(tracks);
+      if (start <= this.queue.playhead) {
+        this.queue.playhead = this.queue.playhead + tracks.length;
+      }
+      if (this.queue.tracks.length == this.queue.playhead) {
+        this.queue.playhead = start;
+      }
+      this.queue.tracks.splice(start, 1, ...tracks);
+      if (this.player.state.status == 'idle') { await this.play(); }
+    }
+    return (start);
+  }
+
   async queueLast(tracks:Track[]) {
-    await this.assignUUID(tracks);
-    this.queue.tracks.push(...tracks);
+    this.assignUUID(tracks);
+    const length = this.queue.tracks.push(...tracks);
+    if ((/... PENDING .../).test(this.queue.tracks[this.queue.playhead].goose.track.name)) { return length; }
     if (this.player.state.status == 'idle') { await this.play(); }
-    return (this.queue.tracks.length);
+    return (length);
   }
 
   // browser client will always supply UUID; is optional to support commands.
@@ -565,6 +587,73 @@ export default class Player {
     return this.queue;
   }
 
+  // sure
+  pendingTrack():Track[] {
+    const track = [{
+      'goose': {
+        'id': '9b5b722142',
+        'plays': 0,
+        'errors': 0,
+        'album': {
+          'name': '',
+          'trackNumber': 0,
+        },
+        'artist': {
+          'name': 'Unknown Artist',
+        },
+        'track': {
+          'name': '... PENDING ...',
+          'duration': 232,
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+        },
+      },
+      'keys': [
+        'pending',
+      ],
+      'playlists': {},
+      'youtube': [
+        {
+          'id': 'OVL3MYasc-k',
+          'name': 'Elk Bugle up close.',
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'duration': 232,
+          'url': 'https://youtu.be/OVL3MYasc-k',
+        },
+        {
+          'id': 'OVL3MYasc-k',
+          'name': 'Elk Bugle up close.',
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'duration': 232,
+          'url': 'https://youtu.be/OVL3MYasc-k',
+        },
+        {
+          'id': 'OVL3MYasc-k',
+          'name': 'Elk Bugle up close.',
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'duration': 232,
+          'url': 'https://youtu.be/OVL3MYasc-k',
+        },
+        {
+          'id': 'OVL3MYasc-k',
+          'name': 'Elk Bugle up close.',
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'duration': 232,
+          'url': 'https://youtu.be/OVL3MYasc-k',
+        },
+        {
+          'id': 'OVL3MYasc-k',
+          'name': 'Elk Bugle up close.',
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'duration': 232,
+          'url': 'https://youtu.be/OVL3MYasc-k',
+        },
+      ],
+      'status': {},
+    }];
+    this.assignUUID(track);
+    return (track);
+  }
+
   // embeds
   async mediaEmbed(fresh = true, messageTitle = 'Current Track:'):Promise<InteractionReplyOptions> {
     const thumb = fresh ? (new AttachmentBuilder(utils.pickPride('dab') as string, { name:'art.jpg' })) : null;
@@ -639,7 +728,9 @@ export default class Player {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
-      const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
+      // const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
+      // temp proof of concept shittiness
+      const dbtrack = (/... PENDING .../).test(queuePart[i].goose.track.name) ? queuePart[i] : await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
       let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
       const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${dbtrack.youtube[0].url}) - ${utils.timeDisplay(dbtrack.youtube[0].duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;

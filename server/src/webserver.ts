@@ -135,7 +135,19 @@ worker.on('message', async (message:WebWorkerMessage) => {
               break;
             }
             // websync
+            // temp proof of concept shittiness
+            const pending = player.pendingTrack()[0];
+            const UUID = pending.goose.UUID!;
+            const sleep = (ms:number) => new Promise((resolve) => setTimeout(resolve, ms));
+            await player.queueIndex([pending], index);
+            player.webSync('queue');
+            const status = player.getStatus();
+            worker.postMessage({ id:message.id, status:status });
+            const before = Date.now();
             const tracks = await fetch(query);
+            const after = Date.now();
+            const still = 10000 - (after - before);
+            await sleep(still);
             if (!tracks.length) {
               logDebug(`queue—[${query}] resulted in 0 tracks; message was [${message.parameter}]`);
               worker.postMessage({ id:message.id, error: `query ${query} resulted in 0 tracks; check that it isn't private` });
@@ -147,10 +159,10 @@ worker.on('message', async (message:WebWorkerMessage) => {
               flag = true; index = 0;
             } else if (length < index) { flag = true; /* handled by splice */ }
             if (flag) { logDebug(`queue—${(index < 0) ? `index negative ${index}` : `index ${index} > ${length}`}. queueing anyway`); }
-            await player.queueIndex(tracks, index);
+            await player.queueUUID(tracks, UUID);
             player.webSync('queue');
-            const status = player.getStatus();
-            worker.postMessage({ id:message.id, status:status, error: (flag) ? 'autoupdates may have broke; try refreshing—position invalid, queueing anyway' : undefined });
+            // const status = player.getStatus();
+            // worker.postMessage({ id:message.id, status:status, error: (flag) ? 'autoupdates may have broke; try refreshing—position invalid, queueing anyway' : undefined });
             break;
           }
 

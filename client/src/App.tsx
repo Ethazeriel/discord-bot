@@ -233,6 +233,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
 
   React.useEffect(() => {
     console.log('serverqueue change');
+    dispatchEvent(new CustomEvent('cleanup'));
   }, [serverQueue]);
 
   return (

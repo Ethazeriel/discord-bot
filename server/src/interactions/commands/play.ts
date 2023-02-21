@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import * as utils from '../../utils.js';
 import { log } from '../../logger.js';
 import * as database from '../../database.js';
@@ -87,40 +88,37 @@ export async function execute(interaction:ChatInputCommandInteraction) {
             track.ephemeral = true;
           }
         }
-
+        // temp proof of concept shittiness
+        const pending = player.pendingTrack()[0];
+        const UUID = pending.goose.UUID!;
+        const sleep = (ms:number) => new Promise((resolve) => setTimeout(resolve, ms));
         switch (when) {
           case 'now': {
-            await player.queueNow(tracks);
+            player.queueNext([pending]);
             const mediaEmbed = await player.mediaEmbed();
             const queueEmbed = await player.queueEmbed('Playing now:', Math.ceil((player.getPlayhead() + 1) / 10));
-            if (tracks.length == 1) {
-              await interaction.followUp(await utils.generateTrackEmbed(tracks[0], 'Playing Now: '));
-              player.sync(interaction, 'media', queueEmbed, mediaEmbed);
-            } else {
-              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
-            }
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+            await sleep(10000);
+            await player.queueUUID(tracks, UUID);
+            player.next();
             break;
           }
           case 'next': {
-            await player.queueNext(tracks);
+            player.queueNext([pending]);
             const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10));
-            if (tracks.length == 1) {
-              await interaction.editReply(await utils.generateTrackEmbed(tracks[0], 'Playing Next: '));
-              player.sync(interaction, 'queue', queueEmbed);
-            } else {
-              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
-            }
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+            await sleep(10000);
+            await player.queueUUID(tracks, UUID);
+            player.webSync('queue');
             break;
           }
           case 'last': {
-            const length = await player.queueLast(tracks);
+            const length = await player.queueLast([pending]);
             const queueEmbed = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
-            if (tracks.length == 1) {
-              await interaction.editReply(await utils.generateTrackEmbed(tracks[0], `Queued at position ${length}:`));
-              player.sync(interaction, 'queue', queueEmbed);
-            } else {
-              await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
-            }
+            await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+            await sleep(10000);
+            await player.queueUUID(tracks, UUID);
+            player.webSync('queue');
             break;
           }
           default: {
@@ -128,6 +126,48 @@ export async function execute(interaction:ChatInputCommandInteraction) {
             await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
           }
         }
+
+
+        // switch (when) {
+        //   case 'now': {
+        //     await player.queueNow(tracks);
+        //     const mediaEmbed = await player.mediaEmbed();
+        //     const queueEmbed = await player.queueEmbed('Playing now:', Math.ceil((player.getPlayhead() + 1) / 10));
+        //     if (tracks.length == 1) {
+        //       await interaction.followUp(await utils.generateTrackEmbed(tracks[0], 'Playing Now: '));
+        //       player.sync(interaction, 'media', queueEmbed, mediaEmbed);
+        //     } else {
+        //       await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+        //     }
+        //     break;
+        //   }
+        //   case 'next': {
+        //     await player.queueNext(tracks);
+        //     const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10));
+        //     if (tracks.length == 1) {
+        //       await interaction.editReply(await utils.generateTrackEmbed(tracks[0], 'Playing Next: '));
+        //       player.sync(interaction, 'queue', queueEmbed);
+        //     } else {
+        //       await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+        //     }
+        //     break;
+        //   }
+        //   case 'last': {
+        //     const length = await player.queueLast(tracks);
+        //     const queueEmbed = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+        //     if (tracks.length == 1) {
+        //       await interaction.editReply(await utils.generateTrackEmbed(tracks[0], `Queued at position ${length}:`));
+        //       player.sync(interaction, 'queue', queueEmbed);
+        //     } else {
+        //       await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
+        //     }
+        //     break;
+        //   }
+        //   default: {
+        //     log('error', ['OH NO SOMETHING\'S FUCKED']);
+        //     await interaction.followUp({ content:'Something broke. Please try again', ephemeral: true });
+        //   }
+        // }
       }
     }
   } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}

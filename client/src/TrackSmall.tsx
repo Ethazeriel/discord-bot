@@ -177,7 +177,6 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
       let invalid = false;
       if (props.dragID !== null) {
-        console.log(props.dragID);
         invalid = props.id === props.dragID;
         invalid ||= (state.nearerTop && props.id === (props.dragID + 1)) || (state.nearerBottom && props.id === (props.dragID - 1));
       }
@@ -238,7 +237,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   return (
     <TestContainer>
       <Test visible={state.nearerTop} invalid={state.invalid} />
-      <TrackStyle className={'dropzone'} onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
+      <TrackStyle onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
         <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
         <ButtonContainer>
           <Button src={playButton} onClick={() => trackClick('jump')} draggable="false" />
