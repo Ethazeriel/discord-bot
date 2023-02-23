@@ -1,6 +1,7 @@
 type WebWorkerMessage = {
   id:string
   userId:string
+  userName:string
   type:'player'
   action:string
   parameter:string | number
