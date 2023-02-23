@@ -121,7 +121,7 @@ interface Track {
 	itunes?: TrackSource
 	status: {
 		seek?: number
-		ephemeral?: string
+		ephemeral?: boolean
 		pause?: number
 		start?: number
 	}
