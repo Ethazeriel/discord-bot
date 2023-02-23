@@ -73,9 +73,6 @@ export default class Player {
           } else { db.logPlay(track.goose.id); }
           delete this.queue.tracks[this.queue.playhead].status.start;
         }
-        // temp proof of concept shittiness
-        const next = this.getNext();
-        if (next && (/... PENDING .../).test(next.goose.track.name)) {return; }
         this.next();
       } else if (newState.status == 'paused') {
         this.queue.tracks[this.queue.playhead].status.pause = (Date.now() / 1000);
@@ -105,7 +102,7 @@ export default class Player {
               clearInterval(this.embeds[id].queue!.refreshTimer);
               await this.decommission(this.embeds[id].queue!.interaction!, 'queue', queueEmbed, 'Bot left');
             }
-            if (this.embeds[id]) {delete this.embeds[id];}
+            delete this.embeds[id];
           });
         }
         logDebug(`Removing player with id ${this.guildID}`);
@@ -238,30 +235,32 @@ export default class Player {
 
   // playback
   async play() {
-    let ephemeral;
-    let UUID;
-    let track = this.queue.tracks[this.queue.playhead];
-    if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
-    track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-    if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
-    this.queue.tracks[this.queue.playhead] &&= track;
-    if (this.getPause()) { this.togglePause({ force: false }); }
-    if (track) {
-      try {
-        const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
-          output: '-',
-          quiet: true,
-          forceIpv4: true,
-          format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-          limitRate: '100K',
-          cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-          userAgent: useragent,
-        }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
-        this.player.play(resource);
-        log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
-      } catch (error:any) {
-        log('error', [error.stack]);
-      }
+    let track = this.getCurrent();
+    if (track && Player.notPending(track)) {
+      let ephemeral; // TO DO remove db stuff
+      let UUID;
+      if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
+      track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
+      if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
+      this.queue.tracks[this.queue.playhead] &&= track;
+      if (this.getPause()) { this.togglePause({ force: false }); }
+      if (track) {
+        try {
+          const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+            output: '-',
+            quiet: true,
+            forceIpv4: true,
+            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+            limitRate: '100K',
+            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+            userAgent: useragent,
+          }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
+          this.player.play(resource);
+          log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
+        } catch (error:any) {
+          log('error', [error.stack]);
+        }
+      } else if (this.player.state.status == 'playing') { this.player.stop(); } // include this line in db cleanup, outer handles it
     } else if (this.player.state.status == 'playing') { this.player.stop(); }
   }
 
@@ -324,60 +323,88 @@ export default class Player {
   }
 
   // modification
-  assignUUID(tracks:Track[]) {
+  static assignUUID(tracks:Track[]) {
     tracks.map(track => track.goose.UUID ||= crypto.randomUUID());
   }
 
+  // intended for non-pending tracks
   async queueNow(tracks:Track[]) {
-    // not constrained to length because splice does that automatically
-    this.assignUUID(tracks);
+    Player.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
-    if ((/... PENDING .../).test(this.queue.tracks[this.queue.playhead].goose.track.name)) { return; }
     (this.player.state.status == 'idle') ? await this.play() : await this.next();
   }
 
+  // intended for non-pending tracks
   async queueNext(tracks:Track[]) {
-    // not constrained to length because splice does that automatically
-    this.assignUUID(tracks);
+    Player.assignUUID(tracks);
     this.queue.tracks.splice(this.queue.playhead + 1, 0, ...tracks);
-    if ((/... PENDING .../).test(this.queue.tracks[this.queue.playhead].goose.track.name)) { return; }
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
+  // intended for non-pending tracks
+  async queueLast(tracks:Track[]) {
+    Player.assignUUID(tracks);
+    const length = this.queue.tracks.push(...tracks);
+    if (this.player.state.status == 'idle') { await this.play(); }
+    return (length);
+  }
+
+  // intended for non-pending tracks
   async queueIndex(tracks:Track[], index:number) {
-    this.assignUUID(tracks); // eslint-disable-next-line max-statements-per-line
-    tracks.map((track) => { if (!track.goose.UUID) { logDebug(`queueIndex-UUID null ${!track.goose.UUID}`); } });
-    if (index <= this.queue.playhead) {
-      this.queue.playhead = this.queue.playhead + tracks.length;
-    } else if (this.queue.tracks.length == this.queue.playhead) {
+    Player.assignUUID(tracks);
+    const length = this.queue.tracks.length; // eslint-disable-next-line max-statements-per-line
+    if (index < 0) { index = 0; } else if (index > length) { index = length; }
+    if (this.queue.playhead === length) { // on empty or ended queue, see addition as intent to re/start queue
       this.queue.playhead = index;
+    } else if (index <= this.queue.playhead) { // else move playhead ahead of displacement
+      this.queue.playhead = this.queue.playhead + tracks.length;
     }
     this.queue.tracks.splice(index, 0, ...tracks);
     if (this.player.state.status == 'idle') { await this.play(); }
   }
 
-  async queueUUID(tracks:Track[], UUID:string) {
-    const start = this.queue.tracks.findIndex(track => track.goose.UUID === UUID);
-    if (start !== -1) {
-      this.assignUUID(tracks);
-      if (start <= this.queue.playhead) {
-        this.queue.playhead = this.queue.playhead + tracks.length;
-      }
-      if (this.queue.tracks.length == this.queue.playhead) {
-        this.queue.playhead = start;
-      }
-      this.queue.tracks.splice(start, 1, ...tracks);
-      if (this.player.state.status == 'idle') { await this.play(); }
-    }
-    return (start);
+  // insert, return UUID needed to replace; caller is expected to do follow/clean-up for now
+  pendingNext(username:string):{ UUID:string } {
+    const pending = Player.pendingTrack(username);
+    this.queue.tracks.splice(this.queue.playhead + 1, 0, pending);
+    return ({ UUID: pending.goose.UUID });
   }
 
-  async queueLast(tracks:Track[]) {
-    this.assignUUID(tracks);
-    const length = this.queue.tracks.push(...tracks);
-    if ((/... PENDING .../).test(this.queue.tracks[this.queue.playhead].goose.track.name)) { return length; }
-    if (this.player.state.status == 'idle') { await this.play(); }
-    return (length);
+  pendingLast(username:string):{ UUID:string, length:number } {
+    const pending = Player.pendingTrack(username);
+    const length = this.queue.tracks.push(pending);
+    return ({ UUID: pending.goose.UUID, length: length });
+  }
+
+  pendingIndex(username:string, index:number):{ UUID:string } {
+    const pending = Player.pendingTrack(username);
+    const length = this.queue.tracks.length; // eslint-disable-next-line max-statements-per-line
+    if (index < 0) { index = 0; } else if (index > length) { index = length; }
+    logDebug(`pendingIndex—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+    if (index <= this.queue.playhead) { // if splice would move current, move the playhead
+      this.queue.playhead = this.queue.playhead + 1;
+    }
+    this.queue.tracks.splice(index, 0, pending);
+    logDebug(`pendingIndex—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+    return ({ UUID: pending.goose.UUID });
+  }
+
+  async replacePending(tracks:Track[], targetUUID:string) {
+    const start = this.queue.tracks.findIndex(track => track.goose.UUID === targetUUID);
+    if (start !== -1) {
+      logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+      tracks[0].goose.UUID = this.queue.tracks[start].goose.UUID; // niche handling of replacement while dragging
+      Player.assignUUID(tracks);
+      if (this.queue.playhead == this.queue.tracks.length) {
+        this.queue.playhead = start; // on empty or ended queue, see addition as intent to re/start queue
+      } else if (start < this.queue.playhead) { // if not the playhead and would move current, move the playhead
+        this.queue.playhead = this.queue.playhead + tracks.length - 1;
+      } // pending added 1, cancelled by the delete count in splice; length - 1 because of the same swap
+      this.queue.tracks.splice(start, 1, ...tracks);
+      if (this.player.state.status == 'idle') { await this.play(); }
+      logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+    }
+    return (start !== -1);
   }
 
   // browser client will always supply UUID; is optional to support commands.
@@ -434,12 +461,22 @@ export default class Player {
     return (removed);
   }
 
+  async removebyUUID(targetUUID:string) {
+    let removed:Track[] = [];
+    const index = this.queue.tracks.findIndex(track => track.goose.UUID === targetUUID);
+    if (index !== -1) {
+      removed = await this.remove(index);
+      logDebug(`Removed item ${index} with matching UUID`);
+    }
+    return (removed);
+  }
+
   removeById(id:string) {
     const idTest = (element:Track) => element.goose.id === id;
     while (this.queue.tracks.findIndex(idTest) > 0) {
       const index = this.queue.tracks.findIndex(idTest);
       this.remove(index);
-      logDebug(`Removed item ${index} with matching id`);
+      logDebug(`Removed item ${index} with matching goose id`);
     }
   }
 
@@ -557,11 +594,11 @@ export default class Player {
     return (this.queue.tracks[position]);
   }
 
-  getCurrent():Track | undefined {
+  getCurrent():Track|undefined {
     return (this.queue.tracks[this.queue.playhead]);
   }
 
-  getNext():Track { // next, loop around or end
+  getNext():Track|undefined { // next, loop around or end
     const position = ((playhead = this.queue.playhead, length = this.queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.queue.loop) ? 0 : length)();
     return (this.queue.tracks[position]);
   }
@@ -587,11 +624,15 @@ export default class Player {
     return this.queue;
   }
 
-  // sure
-  pendingTrack():Track[] {
-    const track = [{
+  // undefined is also not pending, because undefined is not a transitory state
+  static notPending(track:Track|undefined):boolean {
+    return (track !== undefined && track.goose.id !== '');
+  }
+
+  static pendingTrack(queuedBy:string):Track & { goose:{ UUID:string }} {
+    return ({
       'goose': {
-        'id': '9b5b722142',
+        'id': '',
         'plays': 0,
         'errors': 0,
         'album': {
@@ -599,13 +640,14 @@ export default class Player {
           'trackNumber': 0,
         },
         'artist': {
-          'name': 'Unknown Artist',
+          'name': `Queued by ${queuedBy}`,
         },
         'track': {
-          'name': '... PENDING ...',
+          'name': 'PENDING',
           'duration': 232,
           'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
         },
+        'UUID': crypto.randomUUID(),
       },
       'keys': [
         'pending',
@@ -649,9 +691,7 @@ export default class Player {
         },
       ],
       'status': {},
-    }];
-    this.assignUUID(track);
-    return (track);
+    });
   }
 
   // embeds
@@ -667,7 +707,7 @@ export default class Player {
     };
     // const elapsedTime = (!track || !track.status?.start) ? 0 : (this.getPause()) ? (track.status.pause! - track.status.start) : ((Date.now() / 1000) - track.status.start);
     const elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
-    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
+    if (track && Player.notPending(track) && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';
@@ -728,9 +768,8 @@ export default class Player {
     let queueStr = '';
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
-      // const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
-      // temp proof of concept shittiness
-      const dbtrack = (/... PENDING .../).test(queuePart[i].goose.track.name) ? queuePart[i] : await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track;
+      // const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track; // was
+      const dbtrack = Player.notPending(queuePart[i]) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
       let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
       const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${dbtrack.youtube[0].url}) - ${utils.timeDisplay(dbtrack.youtube[0].duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
@@ -847,7 +886,7 @@ export default class Player {
               return (this.embeds[id].queue!.userPage);
             },
             update: async (userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => {
-              logDebug(`${name} queue: ${description}`);
+              logDebug(`${name} queue: ${description}`); // to do, consider a bandaid like if description === 'web sync', refreshTimer.refresh();
               const contentPage = (content) ? (content.embeds![0] as APIEmbed)?.fields?.[1]?.value?.match(embedPage) : null;
               const differentPage = (contentPage) ? !(Number(contentPage[1]) === this.embeds[id].queue!.getPage()) : null;
               if (!content || differentPage) { content = await this.queueEmbed('Current Queue:', this.embeds[id].queue!.getPage(), false); }
@@ -885,7 +924,7 @@ export default class Player {
             }, 15000).unref(),
             update: async (userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => {
               content ||= await this.mediaEmbed(false);
-              logDebug(`${name} media: ${description}`);
+              logDebug(`${name} media: ${description}`); // to do, consider a bandaid like if description === 'web sync', refreshTimer.refresh();
               const { embeds, components, files } = content!;
               if (!this.embeds[userId].media!.interaction!.replied && files) {
                 this.embeds[userId].media!.interaction!.message = await this.embeds[userId].media!.interaction!.editReply({ embeds: embeds, components: components, files: files });

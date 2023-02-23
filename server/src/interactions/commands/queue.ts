@@ -239,7 +239,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
           if (!player.getQueue().length) {
             const result = await db.getStash(interaction.user.id);
             if (result?.tracks.length) {
-              await player.assignUUID(result.tracks as Track[]);
+              Player.assignUUID(result.tracks as Track[]);
               player.queue.tracks = result.tracks as Track[];
               await player.jump(result.playhead);
               const mediaEmbed = await player.mediaEmbed();
