@@ -11,7 +11,7 @@ import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
 
 import type { Track, PlayerStatus, PlayerClick } from './types';
-type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek';
+type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
 type MediaState = {
   seek:number,
   start:number,
@@ -208,6 +208,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
         <Button onClick={() => button('next')}><Next /></Button>
         <Button onClick={() => button('toggleLoop')}><Loop /></Button>
+        <Button onClick={() => button('slowmode')}>Slow Mode</Button>
       </ButtonRow>
       <SliderRow>
         <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>

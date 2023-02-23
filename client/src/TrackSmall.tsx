@@ -11,7 +11,7 @@ import { timeDisplay, allowExternal, allowedExternalTypes } from './utils';
 import './App.css';
 
 import type { Track, PlayerClick } from './types';
-type Action = 'jump' | 'remove' | 'move' | 'queue';
+type Action = 'jump' | 'remove' | 'move' | 'pendingIndex';
 
 // yep, still haven't learned how to type this
 function reducer(state:any, [type, value]:[any, any?]) {
@@ -79,6 +79,14 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     dispatch(['cleanup']);
     dispatch(['clear']);
   }, [props.id]);
+
+  const cursorText = React.useMemo(() => props.cursorText, [props.cursorText]);
+  const label = React.useMemo(() => {
+    return { trackName: props.track.goose.track.name, artistName: props.track.goose.artist.name };
+  }, [props.track]);
+  React.useEffect(() => {
+    cursorText(['label', `${label.trackName}●${label.artistName}`]);
+  }, [cursorText, label]);
 
   const trackClick = (action:Action, parameter:string | number = props.id) => {
     props.playerClick({ action:action, parameter: parameter });
@@ -224,7 +232,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
       console.log(`external accepted: ${externalTypes}`);
       addEventListener('cleanup', cleanUp);
       const to = (state.nearerTop) ? props.id : props.id + 1;
-      trackClick('queue', `${to} ${externalTypes[0]}`);
+      trackClick('pendingIndex', `${to} ${externalTypes[0]}`);
       console.log(`queue resource ${externalTypes} at position ${to}`);
     } else if (externalTypes.length === 0) {
       console.log('no valid external types');
@@ -388,56 +396,3 @@ const Duration = styled.p`
   user-select: none;
   pointer-events: none;
 `;
-
-// for future me and anyone else,
-// there doesn't seem to be any obvious, built-in way for dragEnd and drop to talk to each other. which seems odd,
-// especially since dragEnd can't tell if the drop was in or out of app, and that's extremely important for styling.
-// event order is inconsistent too; like enter firing before leave—and all in the same update cycle (or whatever)—
-// even if drop fires first, anything it dispatches to the reducer still won't have updated when dragEnd fires, and
-// the event is undefined the moment it's out of scope; takes more work than a lazy/ bad sleep callback, anyway
-//
-// a related annoyance is that whether a drop is accepted depends on calling preventDefault in both enter and over.
-// that might be for cross-browser compatibility or other reasons—drops can be accepted by calling it only in over.
-// it is also possible to (very carefully) trigger enter without over, and so should do both.
-//
-// as far as drag and drop is concerned, a drop is only formally canceled if preventDefault hasn't been called and a
-// drop happens; that's when dropEffect == 'none'. if preventDefault is called, that's a valid drop. so it's unideal
-// that these don't work well with a reducer either; both leak 1 invalid on their first firing. this is almost easily
-// solved—move the adjacency logic into a function they can share, still use the reducer for future firings of over,
-// and return the value for immediate use to not leak invalids. the real problem though is enter is only called once
-// and you're at least /supposed/ to accept or reject the drop (even if only doing it on over seems to work). either
-// the entire element is valid or nah; splitting it like I've done with "above" and "below" is apparently wrong
-//
-// I wish I remembered—there was some reason I didn't go that route, some problem that was more than knowing I was
-// supposed to preventDefault in both events. maybe I'm wrong now about whether it works when done in only over
-//
-// partly it was a holdover from forgetting to test components/ css behavior during the mouseEvent pass; I assumed the
-// WebQueue updating and potentially literally moving every track would reset its styling. using the reducer to clear
-// styling was a bandaid when it all stuck around.
-//
-// somehow this collided with dragEnd not being able to tell the difference between a "success" and an actual success,
-// various attempts at canceling properly, improperly and differently, and not knowing how to connect these better, an
-// easy choice between starting over with a guess at a redesign that might do drops "properly"—and making this work.
-//
-// I forget the details, but the choices were all basically between favoring dragEnd or drop, with no easy way to
-// do both. I could persist the style on the origin for the fraction of a second the server needed to respond, leaving
-// styling in place on "success" that was an offscreen drop, canceling styling that was actually successful, being less
-// able to clean up styling elsewhere, not having insertion marks on adjacency as a consequence of my not knowing this
-// sooner——or I could just have consistent insertion marks, clean up all almost all styling (see custom cleanup event),
-// and just ignore drops that I didn't want to be drops. the only loss was the "moving" styling on the origin, which
-// I'll figure out with refs or something later
-//
-// there might be more, but I'm half asleep and this is at least enough before it's gone to help me remember in future.
-// hopefully. —have been removing the discarded/ set aside portions of this below from my editing process, and having
-// arrived back at this event.dataTransfer line I started this comment to explain a good while ago.. right so
-//
-// again I forget exactly, but that's gone because you can't "successfully" do a drop outside of the window when the
-// only mime type is a custom one that nothing supports. which reminds me also, here toward the very last I had another
-// read of the MDN page. I'm not sure if I forgot dropEffects or removed them somewhere along the way, but re-reading:
-//
-//  > use the value none to indicate that no drop is allowed at this location [...] within the drop and dragend events,
-//  > check the dropEffect property to determine which effect was ultimately chosen
-//
-// extremely funny that one of my problems was trying to gatekeep preventDefault, when just setting dropEffect to none
-// depending on adjacency might have worked——have checked, it cancels despite preventDefault, but drop isn't called..
-// not sure what I'm missing there. anyway, something to experiment with when I get back around to redoing this
