@@ -209,7 +209,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
         <Button onClick={() => button('next')}><Next /></Button>
         <Button onClick={() => button('toggleLoop')}><Loop /></Button>
-        <input type="button" onClick={(event:any) => {event.preventDefault(); button('slowmode');}}><SlowMode/></input>
+        <img src={SlowMode} height='36px' width='36px' onClick={() => button('slowmode')} />
       </ButtonRow>
       <SliderRow>
         <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
