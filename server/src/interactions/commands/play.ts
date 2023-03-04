@@ -123,6 +123,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
     }
   } else { // external resources
     let UUID:string;
+    let length = 0; // look I'm not happy about this either
     switch (when) {
       case 'now': {
         ({ UUID } = player.pendingNext(interaction.user.username));
@@ -139,7 +140,6 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         break;
       }
       case 'last': {
-        let length:number;
         ({ UUID, length } = player.pendingLast(interaction.user.username));
         const queueEmbed = await player.queueEmbed('Queued: ', (Math.ceil((length / 10) || 1)));
         await player.register(interaction, 'queue', queueEmbed);
@@ -175,7 +175,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
       return;
     }
 
-    let success:boolean;
+    let success = false;
     switch (when) {
       case 'now': { // wish I had a better idea than this special casing, but at least now might handle concurrency
         const nextUp = player.getNext();
@@ -187,7 +187,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
           await player.next();
         } else if (current && current.goose.UUID === UUID) { // empty queue or player status idle->next before replace
           logDebug('play now, empty queue/ idle. probably'); // anything that could make this current should call play,
-          success = await player.replacePending(tracks, UUID); // skip pending, and be idle. and replace restarts when idle
+          success = await player.replacePending(tracks, UUID); // skip pending, and be idle. replace restarts when idle
           if (!success) { break; }
         } else {
           logDebug(`play now, UUID ${UUID} not next or current; concurrency issues`); // decided against finding by UUID
@@ -208,7 +208,6 @@ export async function execute(interaction:ChatInputCommandInteraction) {
       case 'next': {
         success = await player.replacePending(tracks, UUID);
         if (!success) { break; }
-        await player.queueNext(tracks);
         const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10));
         if (tracks.length == 1) {
           await interaction.editReply(await utils.generateTrackEmbed(tracks[0], 'Playing Next: '));
@@ -222,7 +221,6 @@ export async function execute(interaction:ChatInputCommandInteraction) {
       case 'last': {
         success = await player.replacePending(tracks, UUID);
         if (!success) { break; }
-        const length = await player.queueLast(tracks);
         const queueEmbed = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
         if (tracks.length == 1) {
           await interaction.editReply(await utils.generateTrackEmbed(tracks[0], `Queued at position ${length}:`));
