@@ -389,10 +389,10 @@ export default class Player {
     return ({ UUID: pending.goose.UUID });
   }
 
-  async replacePending(tracks:Track[], targetUUID:string) {
+  async replacePending(tracks:Track[], targetUUID:string):Promise<boolean> {
     const start = this.queue.tracks.findIndex(track => track.goose.UUID === targetUUID);
     if (start !== -1) {
-      logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+      logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < this.queue.tracks.length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
       tracks[0].goose.UUID = this.queue.tracks[start].goose.UUID; // niche handling of replacement while dragging
       Player.assignUUID(tracks);
       if (this.queue.playhead == this.queue.tracks.length) {
@@ -402,7 +402,7 @@ export default class Player {
       } // pending added 1, cancelled by the delete count in splice; length - 1 because of the same swap
       this.queue.tracks.splice(start, 1, ...tracks);
       if (this.player.state.status == 'idle') { await this.play(); }
-      logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+      logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < this.queue.tracks.length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
     }
     return (start !== -1);
   }
@@ -632,7 +632,7 @@ export default class Player {
   static pendingTrack(queuedBy:string):Track & { goose:{ UUID:string }} {
     return ({
       'goose': {
-        'id': '',
+        'id': '', // currently no id means pending
         'plays': 0,
         'errors': 0,
         'album': {
@@ -645,7 +645,7 @@ export default class Player {
         'track': {
           'name': 'PENDING',
           'duration': 232,
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'art': utils.pickPride('dab', false),
         },
         'UUID': crypto.randomUUID(),
       },
@@ -653,43 +653,7 @@ export default class Player {
         'pending',
       ],
       'playlists': {},
-      'youtube': [
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-      ],
+      'youtube': [],
       'status': {},
     });
   }
