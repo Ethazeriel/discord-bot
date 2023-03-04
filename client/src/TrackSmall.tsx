@@ -72,6 +72,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     nearerBottom: false,
   };
 
+
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
   React.useEffect(() => {
@@ -80,13 +81,15 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     dispatch(['clear']);
   }, [props.id]);
 
-  const cursorText = React.useMemo(() => props.cursorText, [props.cursorText]);
-  const label = React.useMemo(() => {
-    return { trackName: props.track.goose.track.name, artistName: props.track.goose.artist.name };
-  }, [props.track]);
-  React.useEffect(() => {
-    cursorText(['label', `${label.trackName}●${label.artistName}`]);
-  }, [cursorText, label]);
+  // hook confusion for later
+  // const cursorText = React.useMemo(() => props.cursorText, [props.cursorText]);
+  // const label = React.useMemo(() => {
+  //   console.log(`id ${props.id}, track ${props.track.goose.track.name}`);
+  //   return { trackName: props.track.goose.track.name, artistName: props.track.goose.artist.name };
+  // }, [props.id, props.track]);
+  // React.useEffect(() => {
+  //   cursorText(['label', `${label.trackName}●${label.artistName}`]);
+  // }, [cursorText, label]);
 
   const trackClick = (action:Action, parameter:string | number = props.id) => {
     props.playerClick({ action:action, parameter: parameter });
@@ -143,10 +146,10 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   const dragEnd = (event:React.DragEvent<HTMLElement>) => {
     event.currentTarget.style.opacity = 'initial';
     props.cursorText(['visible', false]);
-    if (event.dataTransfer.dropEffect === 'none') {
+    if (event.dataTransfer.dropEffect === 'none') { // app-origin, cancel
       // console.log(`drag canceled for track: ${props.id + 1}`);
-      rejectDrop();
-    } else {
+      // rejectDrop(); // leave should handle this for all origins now
+    } else { // app-origin, success
       // console.log(`drag accepted for track: ${props.id + 1}`);
       dispatch(['dragging', false]);
     }
