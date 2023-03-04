@@ -9,6 +9,7 @@ import { ReactComponent as Play } from './media/placeholder/play.svg';
 import { ReactComponent as Pause } from './media/placeholder/pause.svg';
 import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
+import SlowMode from './media/placeholder/slowmode.png';
 
 import type { Track, PlayerStatus, PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
@@ -208,7 +209,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
         <Button onClick={() => button('next')}><Next /></Button>
         <Button onClick={() => button('toggleLoop')}><Loop /></Button>
-        <Button onClick={() => button('slowmode')}>Slow Mode</Button>
+        <input type="button" onClick={(event:any) => {event.preventDefault(); button('slowmode');}}><SlowMode/></input>
       </ButtonRow>
       <SliderRow>
         <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
