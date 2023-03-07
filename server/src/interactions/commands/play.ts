@@ -128,21 +128,21 @@ export async function execute(interaction:ChatInputCommandInteraction) {
       case 'now': {
         ({ UUID } = player.pendingNext(interaction.user.username));
         const queueEmbed = await player.queueEmbed('Playing now:', Math.ceil((player.getPlayhead() + 2) / 10)); // using the 2 from below
-        await player.register(interaction, 'queue', queueEmbed);
+        // await player.register(interaction, 'queue', queueEmbed);
         await player.sync(interaction, 'media', queueEmbed);
         break;
       }
       case 'next': {
         ({ UUID } = player.pendingNext(interaction.user.username));
         const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10)); // to do: is 2 right?
-        await player.register(interaction, 'queue', queueEmbed);
+        // await player.register(interaction, 'queue', queueEmbed);
         await player.sync(interaction, 'queue', queueEmbed);
         break;
       }
       case 'last': {
         ({ UUID, length } = player.pendingLast(interaction.user.username));
         const queueEmbed = await player.queueEmbed('Queued: ', (Math.ceil((length / 10) || 1)));
-        await player.register(interaction, 'queue', queueEmbed);
+        // await player.register(interaction, 'queue', queueEmbed);
         await player.sync(interaction, 'queue', queueEmbed);
         break;
       }
@@ -176,13 +176,14 @@ export async function execute(interaction:ChatInputCommandInteraction) {
     }
 
     let success = false;
+    const current = player.getCurrent();
+    const mediaSync = (current && current.goose.UUID === UUID);
     switch (when) {
       case 'now': { // wish I had a better idea than this special casing, but at least now might handle concurrency
         const nextUp = player.getNext();
-        const current = player.getCurrent();
         if (nextUp && nextUp.goose.UUID === UUID) { // expected
           logDebug('play now, expected');
-          success = await player.replacePending(tracks, UUID);
+          success = await player.replacePending(tracks, UUID); // I think  move this before the switch, remove duplicates?
           if (!success) { break; }
           await player.next();
         } else if (current && current.goose.UUID === UUID) { // empty queue or player status idle->next before replace
@@ -209,25 +210,27 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         success = await player.replacePending(tracks, UUID);
         if (!success) { break; }
         const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10));
-        if (tracks.length == 1) {
+        const mediaEmbed = mediaSync ? await player.mediaEmbed() : undefined;
+        if (tracks.length == 1) { // also extract the commonality of if length 1 trackEmbed, else register queue
           await interaction.editReply(await utils.generateTrackEmbed(tracks[0], 'Playing Next: '));
-          player.sync(interaction, 'queue', queueEmbed);
+          player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
         } else {
           await player.register(interaction, 'queue', queueEmbed);
-          await player.sync(interaction, 'queue', queueEmbed);
-        }
+          player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
+        } // and feels like this player sync line is generic?
         return;
       }
       case 'last': {
         success = await player.replacePending(tracks, UUID);
         if (!success) { break; }
         const queueEmbed = await player.queueEmbed('Queued: ', (Math.ceil((length - (tracks.length - 1)) / 10) || 1));
+        const mediaEmbed = mediaSync ? await player.mediaEmbed() : undefined;
         if (tracks.length == 1) {
           await interaction.editReply(await utils.generateTrackEmbed(tracks[0], `Queued at position ${length}:`));
-          player.sync(interaction, 'queue', queueEmbed);
+          player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
         } else {
           await player.register(interaction, 'queue', queueEmbed);
-          await player.sync(interaction, 'queue', queueEmbed);
+          player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
         }
         return;
       }
