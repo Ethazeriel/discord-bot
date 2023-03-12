@@ -122,26 +122,14 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     const timer = window.setInterval(() => {
       dispatch(['interval']);
     }, 1000);
-    const keyDown = (key:KeyboardEvent): void => {
-      // console.log(key.key === 'Escape');
-      if (key.key === 'Escape') { dispatch(['cancel', true]); }
+    const keyDown = (event:KeyboardEvent): void => {
+      if (event.key === 'Escape') { dispatch(['cancel', true]); }
     };
     window.addEventListener('keydown', keyDown);
-    // const windowDrop = (event:DragEvent): void => {
-    //   console.log('why hello');
-    // };
-    // window.addEventListener('dragend', windowDrop);
-
-    // const windowBefore = (event:InputEvent): void => {
-    //   console.log('before');
-    // };
-    // window.addEventListener('beforeinput', windowBefore);
 
     return (() => {
       clearInterval(timer);
       window.removeEventListener('keydown', keyDown);
-      // window.removeEventListener('dragend', windowDrop);
-      // window.removeEventListener('beforeinput', windowBefore);
     });
   }, []);
 
@@ -177,30 +165,6 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
     }
   };
 
-  // const before = (event:any) => {
-  //   console.log('slider before');
-  // };
-
-  // const drop = (event:any) => {
-  //   console.log('successful drop');
-  //   console.log(event);
-  // };
-
-  // const end = (event:any) => {
-  //   console.log('drag end');
-  //   console.log(event);
-  // };
-
-  // const enter = (event:any) => {
-  //   // console.log('enter');
-  //   // console.log(event);
-  // };
-
-  // const over = (event:any) => {
-  //   // console.log('over');
-  //   console.log(event);
-  // };
-  // <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => slider(['slider', event.target.value])} onMouseUp={(event) => slider(['seek'])} />
   return (
     <MediaContainer>
       <ButtonRow>
@@ -217,7 +181,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
       </SliderRow>
     </MediaContainer>
-  ); // onDrop={(event) => drop(event)} onDragEnter={(event) => enter(event)} onDragOver={(event) => over(event)} onDragEnd={(event) => end(event)} onBeforeInput={before}
+  );
 }
 
 const MediaContainer = styled.div`
