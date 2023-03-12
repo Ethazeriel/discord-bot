@@ -149,9 +149,10 @@ export async function addPlaylist(trackarray:Track[], listname:string) {// acqui
   }
 }
 
-export async function getPlaylist(listname:string) {
+export async function getPlaylist(listname:string):Promise<Track[]> {
   // returns a playlist as an array of tracks, ready for use
   await connected();
+  let result:Track[] = [];
   try {
     const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection(trackcol);
@@ -159,11 +160,11 @@ export async function getPlaylist(listname:string) {
     const query = { [qustr]: { $exists: true } };
     const options = { sort: { [qustr]:1 }, projection: { _id: 0 } };
     const cursor = await tracks.find(query, options);
-    const everything = await cursor.toArray();
-    return everything;
+    result = await cursor.toArray();
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
+  return result;
 }
 
 export async function removePlaylist(listname:string) {
