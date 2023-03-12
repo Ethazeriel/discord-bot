@@ -84,6 +84,10 @@ export default class Player {
       guildId: (interaction.member as GuildMember).voice.channel!.guild.id,
       adapterCreator: (interaction.member as GuildMember).voice.channel!.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
     });
+    const networkStateChangeHandler = (_oldNetworkState: any, newNetworkState: any) => {
+      const newUdp = Reflect.get(newNetworkState, 'udp');
+      clearInterval(newUdp?.keepAliveInterval);
+    }; // https://github.com/discordjs/discord.js/issues/9185#issuecomment-1459083216
     connection.on('stateChange', async (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
@@ -107,6 +111,9 @@ export default class Player {
         }
         logDebug(`Removing player with id ${this.guildID}`);
         delete Player.#players[this.guildID];
+      } else { // https://github.com/discordjs/discord.js/issues/9185#issuecomment-1459083216
+        Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
+        Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
       }
     });
     connection.subscribe(this.player);
@@ -390,7 +397,7 @@ export default class Player {
   }
 
   async replacePending(tracks:Track[], targetUUID:string):Promise<boolean> {
-    const start = this.queue.tracks.findIndex(track => track.goose.UUID === targetUUID);
+    const start = this.getIndex(targetUUID);
     if (start !== -1) {
       logDebug(`replace—playhead is ${this.queue.playhead}, track is ${(this.queue.playhead < this.queue.tracks.length) ? this.queue.tracks[this.queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
       tracks[0].goose.UUID = this.queue.tracks[start].goose.UUID; // niche handling of replacement while dragging
@@ -409,7 +416,7 @@ export default class Player {
 
   // browser client will always supply UUID; is optional to support commands.
   // is here in attempt to improve UX of concurrent modification while dragging
-  move(from:number, to:number, UUID?:string) {
+  move(from:number, to:number, targetUUID?:string) {
     const length = this.queue.tracks.length;
     logDebug(`move—initial from: ${from}, to: ${to}, length: ${length}`);
 
@@ -418,14 +425,14 @@ export default class Player {
     // would work and should be made to. for the same reason, since from might be wrong and changed
     // it has to go before the (from < to) check, else to may not change when it should—redundantly
     // checking length to safely handle checking UUID, while accommodating commands/tampered clients
-    if (UUID && from < length && this.queue.tracks[from].goose.UUID !== UUID) {
-      logDebug(`move—UUID mismatch; attempting find for UUID [${UUID}]`);
-      from = this.queue.tracks.findIndex(track => track.goose.UUID === UUID);
+    if (targetUUID && from < length && this.queue.tracks[from].goose.UUID !== targetUUID) {
+      logDebug(`move—UUID mismatch; attempting find for UUID [${targetUUID}]`);
+      from = this.getIndex(targetUUID);
       if (from == -1) {
-        logDebug(`move—could not find UUID [${UUID}]`);
+        logDebug(`move—could not find UUID [${targetUUID}]`);
         return ({ success: false, message: 'either someone else removed that track while you were moving it or we\'ve fucked up' });
       }
-      logDebug(`move—UUID [${UUID}] matched to queue[${from}]`);
+      logDebug(`move—UUID [${targetUUID}] matched to queue[${from}]`);
     }
     if (from < to) { to--; } // splice-removing [from] decrements all indexes > from
 
@@ -463,7 +470,7 @@ export default class Player {
 
   async removebyUUID(targetUUID:string) {
     let removed:Track[] = [];
-    const index = this.queue.tracks.findIndex(track => track.goose.UUID === targetUUID);
+    const index = this.getIndex(targetUUID);
     if (index !== -1) {
       removed = await this.remove(index);
       logDebug(`Removed item ${index} with matching UUID`);
@@ -603,6 +610,10 @@ export default class Player {
     return (this.queue.tracks[position]);
   }
 
+  getIndex(targetUUID:string) {
+    return this.queue.tracks.findIndex(track => track.goose.UUID === targetUUID);
+  }
+
   getQueue():Track[] {
     return (this.queue.tracks);
   }
@@ -624,7 +635,7 @@ export default class Player {
     return this.queue;
   }
 
-  // undefined is also not pending, because undefined is not a transitory state
+  // undefined is also not pending, because undefined is not a transient state
   static notPending(track:Track|undefined):boolean {
     return (track !== undefined && track.goose.id !== '');
   }
@@ -653,7 +664,15 @@ export default class Player {
         'pending',
       ],
       'playlists': {},
-      'youtube': [],
+      'youtube': [
+        {
+          'id': 'OVL3MYasc-k',
+          'name': 'Elk Bugle up close.',
+          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+          'duration': 232,
+          'url': 'https://youtu.be/OVL3MYasc-k',
+        },
+      ],
       'status': {},
     });
   }
@@ -804,6 +823,7 @@ export default class Player {
     }
   }
 
+  // don't see any reason this needs to be async; todo: eventually clean up a lot of these unnecessary asyncs
   async register(interaction: CommandInteraction & { message?: Message<boolean> } | ButtonInteraction, type: 'queue'|'media', embed:InteractionUpdateOptions | InteractionReplyOptions) {
     const id = interaction.member!.user.id;
     if (!this.embeds[id]) { this.embeds[id] = {}; }
