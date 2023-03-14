@@ -1,6 +1,6 @@
 import { embedPage } from '../../regexes.js';
 import Workspace from '../../workspace.js';
-import { ButtonInteraction, GuildMember, InteractionDeferUpdateOptions, WebhookEditMessageOptions } from 'discord.js';
+import { ButtonInteraction, GuildMember, InteractionDeferUpdateOptions, InteractionReplyOptions } from 'discord.js';
 
 export const name = 'list';
 
@@ -10,7 +10,7 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
   let match = interaction.message.embeds[0].fields?.[0]?.value?.match(embedPage);
   if (!match) { match = ['0', '1']; }
   const currentPage = Number(match[1]);
-  let reply:string | WebhookEditMessageOptions = 'uhoh';
+  let reply:string | InteractionReplyOptions = 'uhoh';
   switch (which) {
     case 'prev': reply = await workspace.makeEmbed('Current Playlist:', (currentPage - 1), false); break;
     case 'refresh': reply = await workspace.makeEmbed('Current Playlist:', currentPage, false); break;
