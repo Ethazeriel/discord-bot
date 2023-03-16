@@ -1,4 +1,4 @@
-html, body{min-height:100%;}
+html, body{min-height:100%;} /* might do nothing, where 100vh would. but has maybe other problems. see comment in App.css. todo: fix on semantic html compliance pass */
 body {
   margin: 0;
   height:100%;

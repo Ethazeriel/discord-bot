@@ -20,8 +20,8 @@ export const allowExternal = (event:React.DragEvent<HTMLElement>):boolean => {
 export const allowedExternalTypes = (event:React.DragEvent<HTMLElement>) => {
   const allowed = event.dataTransfer.types.filter((type) => typeof type === 'string' && dragPattern.test(type))
     .map((type) => event.dataTransfer.getData(type))
-    .filter((type) => spotifyPattern.test(type) || youtubePattern.test(type));
-  //  || youtubePlaylistPattern.test(type) || napsterPattern.test(type)
+    .filter((type) => spotifyPattern.test(type));
+  //  || youtubePlaylistPattern.test(type) || napsterPattern.test(type) || youtubePattern.test(type)
 
   return (allowed);
 };

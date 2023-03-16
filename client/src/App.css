@@ -1,19 +1,32 @@
 .App {
-  text-align: center;
-  min-height: 100%;
-  background-color: #18191a;
   width: 100%;
+  min-height: 100vh;
+  /* min-height: -webkit-fill-available; */ /* see below */
+  display: flex;
+  flex-direction: column;
+  
+  text-align: center;
   font-size: calc(10px + 2vmin);
   color: white;
+  background-color: #18191a;
 
   font-family: 'Verdana', 'Helvetica', 'Arial', sans-serif;
-  box-sizing: border-box;
   text-rendering: optimizeLegibility;
 }
 
-*, *:before, *:after {
-  box-sizing: inherit;
-}
+/* https://css-tricks.com/css-fix-for-100vh-in-mobile-webkit/ , https://caniuse.com/?search=fill-available , https://www.w3.org/TR/css-sizing-3/
+/* todo: revisit. the above is about mobile, and we're going to need to do a lot more work to support mobile at all. so saving this for then.
+   otherwise noting none of the other options (min-content, max-content, stretch, fill-available, moz-prefixes) seem to have any? effect in Firefox.
+   at least not for this use case, or something else is conflicting. should probably be on body, html per first link, but that wasn't working either
+   
+   —back later to add, html, body height 100% in index css might do nothing since there's no parent component to inherit that from. setting this
+   height there works, but has to be inherited through ReactDOM's root and App both to be available to the flex-grow. thinking App should also be a
+   fragment so as to merge into ReactDOM's root div, but don't think I can style a fragment. fix in semantic html compliance pass
+
+   for now 100vh works well enough
+
+   also preferring this to (further) abusing non-semantic html to wrap a container with a set height around the flex-grow that'll need to be cleaned
+   up later, a height of 100vh on makes sense if applied at the top level, and well, measuring and setting a wrapper to 86vh is much worse */
 
 .App-link {
   color: #61dafb;

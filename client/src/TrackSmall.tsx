@@ -58,7 +58,7 @@ type DragState = {
   nearerBottom: boolean,
 }
 
-type DraggedTrack = {
+export type DraggedTrack = {
   UUID: string,
   name: string,
 }
@@ -136,11 +136,9 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     event.dataTransfer.effectAllowed = 'copyMove';
     event.dataTransfer.clearData();
     const data:DraggedTrack = { UUID: props.track.goose.UUID!, name: props.track.goose.track.name };
+    // event.dataTransfer.setData('text/plain', `${props.track.goose.artist.name} ${props.track.goose.track.name}`);
     event.dataTransfer.setData('application/x-goose.track', `${JSON.stringify(data)}`);
     event.currentTarget.style.opacity = '0.4';
-
-    // can't "successfully" drag out of the window if nothing accepts your custom and only type
-    // event.dataTransfer.setData('text/plain', `${props.track.goose.artist.name} ${props.track.goose.track.name}`);
   };
 
   const dragEnd = (event:React.DragEvent<HTMLElement>) => {
@@ -156,12 +154,13 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   };
 
   const dragEnter = (event:React.DragEvent<HTMLElement>) => {
-    console.log('enter');
+    event.stopPropagation();
+    console.log('track handler—enter');
     // console.log(`drag entered track: ${props.id + 1}`);
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal || allowExternal(event)) {
       event.preventDefault();
-      addEventListener('cleanup', cleanUp);
+      // addEventListener('cleanup', cleanUp);
       event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
       event.dataTransfer.effectAllowed = (internal) ? 'move' : 'copy';
     }
@@ -184,12 +183,12 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
         dispatch(['set', nearerTop]);
       }
 
-      // if (!internal) { return; }
+      if (!internal) { return; }
 
       let invalid = false;
       if (props.dragID !== null) {
         invalid = props.id === props.dragID;
-        invalid ||= (state.nearerTop && props.id === (props.dragID + 1)) || (state.nearerBottom && props.id === (props.dragID - 1));
+        invalid ||= (nearerTop && props.id === (props.dragID + 1)) || (!nearerTop && props.id === (props.dragID - 1));
       }
 
       // if not invalid but should be  or invalid but should not be—toggle
@@ -201,10 +200,11 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dragLeave = (event:React.DragEvent<HTMLElement>) => {
-    console.log('leave');
+    event.stopPropagation();
+    console.log('track handler—leave');
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal || allowExternal(event)) {
-      removeEventListener('cleanup', cleanUp);
+      // removeEventListener('cleanup', cleanUp);
       // if (event.pageY <= event.currentTarget.offsetTop || event.pageY >= event.currentTarget.offsetTop + event.currentTarget.clientHeight ||
       //     event.pageX >= event.currentTarget.clientWidth) {
       //   dispatch(['clear']);
@@ -216,6 +216,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   const drop = (event:React.DragEvent<HTMLElement>) => {
     // console.log(event);
     event.preventDefault();
+    event.stopPropagation();
 
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     const externalTypes:string[] = (!internal) ? allowedExternalTypes(event) : [];
@@ -246,8 +247,8 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   };
 
   return (
-    <TestContainer>
-      <Test visible={state.nearerTop} invalid={state.invalid} />
+    <Wrapper>
+      <InsertionMarker visible={state.nearerTop} invalid={state.invalid} />
       <TrackStyle onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
         <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
         <ButtonContainer>
@@ -262,8 +263,8 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
         </Details>
         <Duration>{timeDisplay(props.track?.youtube[0]?.duration)}</Duration>
       </TrackStyle>
-      <Test visible={state.nearerBottom} invalid={state.invalid} />
-    </TestContainer>
+      <InsertionMarker visible={state.nearerBottom} invalid={state.invalid} />
+    </Wrapper>
   );
 }
 
@@ -277,23 +278,18 @@ const TrackStyle = styled.div`
   width:100%;
 `;
 
-type TestProps = {
-  visible: boolean,
-  invalid: boolean,
-}
-
-const TestContainer = styled.div`
+const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const Test = styled.span<TestProps>`
+const InsertionMarker = styled.span<{ visible: boolean, invalid: boolean }>`
   display: block;
-  height: 4px;
+  height: 2px;
   width: 100%;
-  margin-top: -2px;
-  margin-bottom: -2px;
+  margin-top: -1px;
+  margin-bottom: -1px;
   background-color: #f800e3;
   z-index: 1;
   visibility: hidden;
