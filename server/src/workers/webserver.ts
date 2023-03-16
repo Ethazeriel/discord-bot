@@ -74,7 +74,7 @@ app.get('/load', async (req, res) => {
       parentPort!.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id, userName:user.discord.username });
       const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
-          if (!result.status) { logDebug(`worker responding to ${user.discord.username}, status nullish`); }
+          // if (!result.status) { logDebug(`worker responding to ${user.discord.username}, status nullish`); }
           res.json({ user: user, player:result.status, error:result.error });
           parentPort!.removeListener('message', messageAction);
         }

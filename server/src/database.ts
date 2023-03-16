@@ -6,6 +6,7 @@ import chalk from 'chalk';
 const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
+import Player from './player.js';
 // Connection URL
 let url = mongo.url;
 const dbname = mongo.database;
@@ -395,7 +396,7 @@ export async function saveStash(discordid:string, playhead:number, queue:Track[]
   // returns null if unsuccessful
   await connected();
   const idarray = [];
-  for (const track of queue) { !track.status?.ephemeral ? idarray.push(track.goose.id) : null; }
+  for (const track of queue) { (!track.status?.ephemeral && Player.notPending(track)) ? idarray.push(track.goose.id) : null; }
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection(usercol);
@@ -413,10 +414,10 @@ export async function getStash(discordid:string) { // usage: const result = awai
   try {
     const userdb = db.collection(usercol);
     const user = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
-    const queue = [];
+    const queue:Track[] = [];
     for (const id of user.stash.tracks) {
       const track = await getTrack({ 'goose.id':id });
-      queue.push(track);
+      if (track) { queue.push(track); }
     }
     return { playhead:user.stash.playhead, tracks:queue };
   } catch (error:any) {
