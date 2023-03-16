@@ -22,7 +22,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
 
   switch (message.type) {
     case 'player': {
-      const player = Player.retrievePlayer(message.userId, 'user');
+      const player = Player.retrievePlayer('user', message.userId, message.action !== 'get');
       if (player) {
         switch (message.action) {
           case 'get': {
@@ -248,7 +248,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             worker.postMessage({ id:message.id, error:'Invalid player action' });
             break;
         }
-      } else { logDebug('webserver parent and player nullish'); worker.postMessage({ id:message.id, error:'either you aren\'t in a channel, or the bot\'s in a different channel' }); }
+      } else { worker.postMessage({ id:message.id, error:'either you aren\'t in a channel, or the bot\'s in a different channel' }); }
       break;
     }
 

@@ -174,7 +174,8 @@ client.on('userUpdate', async (oldUser, newUser) => {
 });
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
-  Player.voiceEventDispatch(oldState, newState, client);
+  if (!client.isReady()) { return; }
+  Player.voiceStateChange(oldState, newState, client);
 });
 
 client.on('messageCreate', async message => {

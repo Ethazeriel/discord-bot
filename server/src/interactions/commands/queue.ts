@@ -239,9 +239,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
           if (!player.getQueue().length) {
             const result = await db.getStash(interaction.user.id);
             if (result?.tracks.length) {
-              Player.assignUUID(result.tracks as Track[]);
-              player.queue.tracks = result.tracks as Track[];
-              await player.jump(result.playhead);
+              await player.recall(result.tracks, result.playhead);
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
               await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
