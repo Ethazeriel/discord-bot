@@ -749,7 +749,7 @@ export default class Player {
           { type: 2, custom_id: 'media-refresh', style: 2, label: 'Refresh', disabled: false },
           { type: 2, custom_id: 'media-prev', style: 1, label: 'Previous', disabled: false },
           { type: 2, custom_id: 'media-pause', style: 3, label: (this.getPause()) ? 'Play' : 'Pause', disabled: false },
-          { type: 2, custom_id: 'media-next', style: (this.getCurrent()) ? 1 : 2, label: 'Next', disabled: (this.getCurrent()) ? false : true },
+          { type: 2, custom_id: 'media-next', style: (this.getCurrent()) ? 1 : 2, label: 'Next', disabled: false },
           { type: 2, custom_id: 'media-showqueue', style:1, label:'Show Queue' },
           // { type: 2, custom_id: '', style: 2, label: '', disabled: false },
         ],

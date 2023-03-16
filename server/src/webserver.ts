@@ -49,12 +49,12 @@ worker.on('message', async (message:WebWorkerMessage) => {
 
           case 'next': {
             if (player.getQueue().length) {
-              if (player.getNext()) {
+              if (player.getCurrent()) {
                 await player.next();
-                player.webSync('media');
-                const status = player.getStatus();
-                worker.postMessage({ id:message.id, status:status });
-              } else { worker.postMessage({ id:message.id, error:'Queue is over, and not set to loop.' }); } // rework; next on ended queue should restart
+              } else { await player.jump(0); }
+              player.webSync('media');
+              const status = player.getStatus();
+              worker.postMessage({ id:message.id, status:status });
             } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }

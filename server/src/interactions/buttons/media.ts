@@ -35,7 +35,9 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
         }
 
         case 'next': {
-          await player.next();
+          if (player.getCurrent()) {
+            await player.next();
+          } else { await player.jump(0); }
           const mediaEmbed = await player.mediaEmbed(false);
           const queueEmbed = await player.queueEmbed(undefined, undefined, false);
           await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);

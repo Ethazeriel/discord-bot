@@ -99,10 +99,11 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
           if (player.getQueue().length) {
             if (player.getCurrent()) {
               await player.next();
-              const mediaEmbed = await player.mediaEmbed();
-              const queueEmbed = await player.queueEmbed();
-              await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
-            } else { await interaction.editReply({ content: 'Queue is over, and not set to loop.' }); } // TODO: next on ended queue should restart
+            } else { await player.jump(0); }
+            const mediaEmbed = await player.mediaEmbed();
+            const queueEmbed = await player.queueEmbed();
+            await player.register(interaction, 'media', mediaEmbed);
+            player.sync(interaction, 'media', queueEmbed, mediaEmbed);
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
