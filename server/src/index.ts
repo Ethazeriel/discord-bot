@@ -178,6 +178,11 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   Player.voiceStateChange(oldState, newState, client);
 });
 
+export function getVoiceAdapter(guildID:string) {
+  if (!client.isReady()) { return; }
+  return (client.guilds.cache.get(guildID)?.voiceAdapterCreator);
+}
+
 client.on('messageCreate', async message => {
   logDebug(`${chalk.blue(message.author.username)}: ${validator.escape(validator.stripLow(message.content || '')).trim()}`);
   if (!message.author.bot) { Translator.messageEventDispatch(message); }

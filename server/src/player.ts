@@ -1,6 +1,7 @@
 import fs from 'fs';
 import youtubedl from 'youtube-dl-exec';
 import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayer, DiscordGatewayAdapterCreator } from '@discordjs/voice';
+// const getVoiceAdapter = (await import ('./index.js')).getVoiceAdapter;
 import crypto from 'crypto';
 import { ButtonInteraction, CommandInteraction, GuildMember, AttachmentBuilder, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, InteractionReplyOptions, Message, APIEmbed } from 'discord.js';
 import * as db from './database.js';
@@ -37,7 +38,7 @@ export default class Player {
   }>;
   #listeners:Set<string>;
 
-  static #voiceUsers:Record<string, { guildId:string, channelId:string, adapterCreator:DiscordGatewayAdapterCreator }> = {};
+  static #voiceUsers:Record<string, { guildId:string, channelId:string }> = {};
   static #players:Record<string, Player> = {};
 
   constructor({ channelId, guildId, adapterCreator }:{channelId:string, guildId:string, adapterCreator:DiscordGatewayAdapterCreator}) {
@@ -79,7 +80,11 @@ export default class Player {
         this.#queue.tracks[this.#queue.playhead].status.pause = (Date.now() / 1000);
       }
     });
-
+    // adapterCreator ||= getVoiceAdapter(guildId); // ''as unknown as DiscordGatewayAdapterCreator;
+    // if (!adapterCreator) { // shouldn't be overly possible
+    //   const message = `undefined voice adapter for ${guildId}`;
+    //   log('error', [message]); throw new Error(message);
+    // }
     const connection = joinVoiceChannel({
       channelId: channelId,
       guildId: guildId,
@@ -133,14 +138,13 @@ export default class Player {
     const guild = interaction.guild!.id;
     const connection = getVoiceConnection(guild);
     const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel : null;
-    const isAlone = !botChannel || botChannel.members.size == 1; // was just member check, but since connection seems unreliable, think this is necessary
 
     if (userChannel == botChannel?.id) {
       if (explicitJoin) { await followUp('Bot is already in your channel.'); }
       return (Player.#players[guild]);
-    } else if (!connection || isAlone) {
+    } else if (!connection) {
       const joinConfig = { channelId: userChannel, guildId: guild, adapterCreator: (interaction.member as GuildMember).voice.channel!.guild.voiceAdapterCreator };
-      const player = (Player.#players[guild]?.join(joinConfig) || (Player.#players[guild] = new Player(joinConfig)));
+      const player = (Player.#players[guild] = new Player(joinConfig));
       if (explicitJoin) { await followUp('Joined voice.'); }
       return (player);
     } else {
@@ -151,9 +155,9 @@ export default class Player {
 
   // if you're here to add print lines because /load isn't working it's because the bot hasn't had
   // time to idle out of the channel after you restarted it boot the bot, everything is fine
-  static retrievePlayer(type:'guild'|'user', id:string, join = false) {
+  static async retrievePlayer(type:'guild'|'user', id:string, join = false) {
     if (type !== 'user' && type !== 'guild') {
-      log('error', [`invalid retrievePlayer type: ${type}`]);
+      logDebug('error', [`invalid retrievePlayer type: ${type}`]);
       return;
     }
     if (type === 'guild') { return Player.#players[id]; }
@@ -164,23 +168,24 @@ export default class Player {
     let player = Player.#players[voiceUser.guildId];
 
     if (player) { // if it exists
-      if (player.#listeners.has(id)) { // and you qualify
-        logDebug(`user ${id} is a listener in ${voiceUser.guildId}`);
-        return player;
-      }
-      logDebug(`user ${id} is not a listener in ${voiceUser.guildId}`);
+      if (player.#listeners.has(id)) { return player; } // and you qualify
       return; // else nope
     }
 
-    if (!join) { return; } // doesn't exist and shouldn't be made to
+    if (!join) { return; } // shouldn't exist
 
-    // doesn't exist and should
-    player = (Player.#players[voiceUser.guildId] = new Player(voiceUser));
+    // should exist
+    const adapterCreator = (await import ('./index.js')).getVoiceAdapter(voiceUser.guildId);
+    if (!adapterCreator) { // shouldn't be overly possible
+      log('error', [`undefined voice adapter for ${voiceUser.guildId}`]);
+      return;
+    }
+    player = (Player.#players[voiceUser.guildId] = new Player({ ...voiceUser, adapterCreator }));
     return player;
   }
 
   // events
-  static voiceStateChange(oldState:VoiceState, newState:VoiceState, client:Client<true>) {
+  static async voiceStateChange(oldState:VoiceState, newState:VoiceState, client:Client<true>) {
     // pretty sure these are always equal. lets find out. also break things instead of writing handling cases that probably don't need handled
     if (oldState.guild.id !== newState.guild.id) {
       log('error', ['voice event—old/new guild ID mismatch']); return;
@@ -193,14 +198,14 @@ export default class Player {
     logDebug(`Voice state change for server ${newState.guild.id}, user ${oldState.member?.displayName || newState.member?.displayName}`);
 
     if (newState.channelId && newState.member && !newState.member.user.bot) { // valid, non-bot join
-      Player.#voiceUsers[newState.id] = { channelId: newState.channelId, guildId: newState.member.guild.id, adapterCreator: newState.member.guild.voiceAdapterCreator };
+      Player.#voiceUsers[newState.id] = { channelId: newState.channelId, guildId: newState.member.guild.id };
       logDebug(`user ${oldState.member?.displayName || newState.member?.displayName} joined voice in server ${newState.guild.name}`);
-    } else if (Player.#voiceUsers[newState.id]) { // valid, non-bot leave. probably also cleans up after a server leave or ban while in voice; not sure why else member
-      delete Player.#voiceUsers[newState.id]; // would be null. todo: does mean this could fire for a bot too, but that's fine for now. see comment in manage.
+    } else if (Player.#voiceUsers[newState.id]) { // valid, non-bot* leave. probably also cleans up after a server leave or ban while in voice; not sure why else member
+      delete Player.#voiceUsers[newState.id]; // would be null. *todo: does mean this could fire for a bot too, but that's fine for now. see comment in manage, below
       logDebug(`user ${oldState.member?.displayName || newState.member?.displayName} left voice in server ${newState.guild.name}`);
     }
 
-    const player = Player.retrievePlayer('guild', newState.guild.id);
+    const player = await Player.retrievePlayer('guild', newState.guild.id);
     if (player) {
       player.manageVoiceMembers(oldState, newState, client);
     } else {
@@ -240,17 +245,6 @@ export default class Player {
         if (!this.#listeners.size) { logDebug('Alone in channel; leaving voice'), connection.destroy(); }
       }
     }
-  }
-
-  // presence // todo: cleanup. this hasn't been possible for a long time // formerly // join(interaction:CommandInteraction|ButtonInteraction) {
-  join({ channelId, guildId, adapterCreator }:{channelId:string, guildId:string, adapterCreator:DiscordGatewayAdapterCreator}) {
-    joinVoiceChannel({
-      channelId: channelId,
-      guildId: guildId,
-      adapterCreator: adapterCreator,
-    });
-
-    return (this); // lazy code condensing
   }
 
   static leave(interaction:CommandInteraction | ButtonInteraction) {
@@ -306,33 +300,34 @@ export default class Player {
     } else if (this.#player.state.status == 'playing') { this.#player.stop(); }
   }
 
-  async prev(play = true) { // prior, loop or restart current
+  prev(play = true) { // prior, loop or restart current
     const priorPlayhead = this.#queue.playhead;
     this.#queue.playhead = ((playhead = this.#queue.playhead, length = this.#queue.tracks.length) => (playhead > 0) ? --playhead : (this.#queue.loop) ? (length &&= length - 1) : 0)();
-    if (play) {await this.play();}
+    if (play) {this.play();}
     if (this.#queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
-  async next(play = true) { // next, loop or end
+  next(play = true) { // next, loop or end
     const priorPlayhead = this.#queue.playhead;
     this.#queue.playhead = ((playhead = this.#queue.playhead, length = this.#queue.tracks.length) => (playhead < length - 1) ? ++playhead : (this.#queue.loop) ? 0 : length)();
-    if (play) {await this.play();}
+    if (play) {this.play();}
     if (this.#queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
-  async jump(position:number) {
+  jump(position:number) {
     const priorPlayhead = this.#queue.playhead;
     this.#queue.playhead = ((value = Math.abs(position), length = this.#queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
-    await this.play();
+    this.play();
     if (this.#queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
   }
 
   async seek(time:number) {
     let ephemeral;
+    let UUID;
     let track = this.#queue.tracks[this.#queue.playhead];
-    if (track) { ephemeral = track.status.ephemeral; }
+    if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
     track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-    if (track) { track.status.ephemeral = ephemeral; }
+    if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
     this.#queue.tracks[this.#queue.playhead] &&= track;
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
@@ -377,32 +372,32 @@ export default class Player {
   }
 
   // intended for non-pending tracks
-  async queueNext(tracks:Track[]) {
+  queueNext(tracks:Track[]) {
     Player.assignUUID(tracks);
     this.#queue.tracks.splice(this.#queue.playhead + 1, 0, ...tracks);
-    if (this.#player.state.status == 'idle') { await this.play(); }
+    if (this.#player.state.status == 'idle') { this.play(); }
   }
 
   // intended for non-pending tracks
-  async queueLast(tracks:Track[]) {
+  queueLast(tracks:Track[]) {
     Player.assignUUID(tracks);
     const length = this.#queue.tracks.push(...tracks);
-    if (this.#player.state.status == 'idle') { await this.play(); }
+    if (this.#player.state.status == 'idle') { this.play(); }
     return (length);
   }
 
   // intended for non-pending tracks
-  async queueIndex(tracks:Track[], index:number) {
+  queueIndex(tracks:Track[], index:number) {
     Player.assignUUID(tracks);
     const length = this.#queue.tracks.length; // eslint-disable-next-line max-statements-per-line
     if (index < 0) { index = 0; } else if (index > length) { index = length; }
-    if (this.#queue.playhead === length) { // on empty or ended queue, see addition as intent to re/start queue
+    if (this.#queue.playhead === length) { // on empty or ended queue, see addition as intent to play addition
       this.#queue.playhead = index;
-    } else if (index <= this.#queue.playhead) { // else move playhead ahead of displacement
+    } else if (index <= this.#queue.playhead) { // if splice moves current, move the playhead by displacement
       this.#queue.playhead = this.#queue.playhead + tracks.length;
     }
     this.#queue.tracks.splice(index, 0, ...tracks);
-    if (this.#player.state.status == 'idle') { await this.play(); }
+    if (this.#player.state.status == 'idle') { this.play(); }
   }
 
   // insert, return UUID needed to replace; caller is expected to do follow/clean-up for now
@@ -422,28 +417,30 @@ export default class Player {
     const pending = Player.pendingTrack(username);
     const length = this.#queue.tracks.length; // eslint-disable-next-line max-statements-per-line
     if (index < 0) { index = 0; } else if (index > length) { index = length; }
-    logDebug(`pendingIndex—playhead is ${this.#queue.playhead}, track is ${(this.#queue.playhead < length) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
-    if (index <= this.#queue.playhead) { // if splice would move current, move the playhead
+    logDebug(`pendingIndex—playhead is ${this.#queue.playhead}, track is ${(this.#queue.tracks[this.#queue.playhead]) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+    if (this.#queue.playhead === length) { // on empty or ended queue, see addition as intent to play addition
+      this.#queue.playhead = index;
+    } else if (index <= this.#queue.playhead) { // if splice moves current, move the playhead
       this.#queue.playhead = this.#queue.playhead + 1;
-    }
+    } // because pendingNext does playhead + 1 and splice constrains to length, you get playhead == pending and resume from idle. where on empty/ended this works, but keeps playhead at length instead of on the pending track
     this.#queue.tracks.splice(index, 0, pending);
-    logDebug(`pendingIndex—playhead is ${this.#queue.playhead}, track is ${(this.#queue.playhead < length) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
+    logDebug(`pendingIndex—playhead is ${this.#queue.playhead}, track is ${(this.#queue.tracks[this.#queue.playhead]) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined for reasons?'}`);
     return ({ UUID: pending.goose.UUID });
   }
 
-  async replacePending(tracks:Track[], targetUUID:string):Promise<boolean> {
+  replacePending(tracks:Track[], targetUUID:string):boolean {
     const start = this.getIndex(targetUUID);
     if (start !== -1) {
       logDebug(`replace—playhead is ${this.#queue.playhead}, track is ${(this.#queue.playhead < this.#queue.tracks.length) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
       tracks[0].goose.UUID = this.#queue.tracks[start].goose.UUID; // niche handling of replacement while dragging
       Player.assignUUID(tracks);
-      if (this.#queue.playhead == this.#queue.tracks.length) {
-        this.#queue.playhead = start; // on empty or ended queue, see addition as intent to re/start queue
-      } else if (start < this.#queue.playhead) { // if not the playhead and would move current, move the playhead
-        this.#queue.playhead = this.#queue.playhead + tracks.length - 1;
-      } // pending added 1, cancelled by the delete count in splice; length - 1 because of the same swap
+      if (this.#queue.playhead == this.#queue.tracks.length) { // on empty or ended queue, see addition as intent to play addition
+        this.#queue.playhead = start;
+      } else if (start < this.#queue.playhead) { // pending adds 1, delete count in splice removes 1. so length 1 is an in-place swap
+        this.#queue.playhead = this.#queue.playhead + tracks.length - 1; // length > 1 moves current, so move playhead by displacement
+      }
       this.#queue.tracks.splice(start, 1, ...tracks);
-      if (this.#player.state.status == 'idle') { await this.play(); }
+      if (this.#player.state.status == 'idle') { this.play(); }
       logDebug(`replace—playhead is ${this.#queue.playhead}, track is ${(this.#queue.playhead < this.#queue.tracks.length) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
     }
     return (start !== -1);
@@ -500,7 +497,7 @@ export default class Player {
     // happens first because wrong values of from need corrected before it's used;
     // redundant length check to safely check UUID, then again because UUID is optional
     if (targetUUID && from < length && this.#queue.tracks[from].goose.UUID !== targetUUID) {
-      logDebug(`move—UUID mismatch; attempting find for UUID [${targetUUID}]`);
+      logDebug(`move—UUID mismatch; target UUID [${targetUUID}]`);
       from = this.getIndex(targetUUID);
       if (from == -1) {
         logDebug(`move—could not find UUID [${targetUUID}]`);
@@ -531,13 +528,13 @@ export default class Player {
     } else { return ({ success: false, message: `could not move track from position ${from} to position ${to}. ${(from >= length) ? '\tfrom > length' : ''} ${(to > length) ? '\tto > length' : ''} ${(from == to) ? '\tfrom == to' : ''}` }); }
   }
 
-  async remove(position = this.#queue.playhead) { // will make this take a range later
+  remove(position = this.#queue.playhead) { // will make this take a range later
     position = ((value = Math.abs(position), length = this.#queue.tracks.length) => (value > length) ? length : value)();
     const removed = this.#queue.tracks.splice(position, 1); // constrained 0 to length, not length - 1, and unworried about overshooting due to how splice is implemented
     if (position < this.#queue.playhead) {
       this.#queue.playhead--;
     } else if (position == this.#queue.playhead) {
-      await this.play();
+      this.play();
     }
     return (removed);
   }
@@ -965,6 +962,7 @@ export default class Player {
   }
 
   async sync(interaction:CommandInteraction | ButtonInteraction, type: 'queue'|'media', queueEmbed:InteractionReplyOptions | InteractionUpdateOptions, mediaEmbed?:InteractionReplyOptions | InteractionUpdateOptions) {
+    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
     switch (type) {
       case 'queue': { // strip non-false parameter thing
         Object.keys(this.#embeds).map(async (id) => {
@@ -984,14 +982,13 @@ export default class Player {
         break;
       }
     }
-    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
   }
 
   async webSync(type: 'queue'|'media') {
     if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
     const keys = Object.keys(this.#embeds);
     if (keys.length) {
-      logDebug('have embeds');
+      // logDebug('have embeds');
       switch (type) {
         case 'queue': {
           const queueEmbed = await this.queueEmbed(undefined, undefined, false);
@@ -1013,6 +1010,6 @@ export default class Player {
           logDebug(`web sync—bad case: ${type}`);
         }
       }
-    } else { logDebug('no embeds'); }
+    } // else { logDebug('no embeds'); }
   }
 }

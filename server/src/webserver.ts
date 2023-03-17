@@ -22,7 +22,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
 
   switch (message.type) {
     case 'player': {
-      const player = Player.retrievePlayer('user', message.userId, message.action !== 'get');
+      const player = await Player.retrievePlayer('user', message.userId, message.action !== 'get');
       if (player) {
         switch (message.action) {
           case 'get': {
@@ -168,14 +168,18 @@ worker.on('message', async (message:WebWorkerMessage) => {
               flag = true; index = 0;
             } else if (length < index) { flag = true; /* handled by splice */ }
             if (flag) { logDebug(`webparent queue—${(index < 0) ? `index negative ${index}` : `index ${index} > ${length}`}. queueing anyway`); }
+
             const success = await player.replacePending(tracks, UUID);
             if (!success) {
               logDebug(`webparent queue—failed to replace UUID ${UUID}, probably deleted`);
               return;
             }
-            player.webSync('queue');
-            // const status = player.getStatus();
-            // worker.postMessage({ id:message.id, status:status, error: (flag) ? 'autoupdates may have broke; try refreshing—position invalid, queueing anyway' : undefined });
+
+            const current = player.getCurrent();
+            //                if current will change or just changed (pending and was just replaced)
+            const mediaSync = (current === undefined || current.goose.UUID === UUID);
+
+            player.webSync(mediaSync ? 'media' : 'queue');
             return;
           }
 
