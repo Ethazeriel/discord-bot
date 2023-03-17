@@ -396,12 +396,21 @@ export async function saveStash(discordid:string, playhead:number, queue:Track[]
   // returns null if unsuccessful
   await connected();
   const idarray = [];
-  for (const track of queue) { (!track.status?.ephemeral && Player.notPending(track)) ? idarray.push(track.goose.id) : null; }
+  // logDebug(`stash before—playhead ${playhead}, queue length ${queue.length}`);
+  for (let index = 0; index < queue.length; index++) {
+    const track = queue[index];
+    if (!track.status?.ephemeral && Player.notPending(track)) {
+      idarray.push(track.goose.id);
+    } else { playhead &&= --playhead; }
+  }
+  if (idarray.length === 0) { return; } // assuming we don't want to overwrite a stash someone might want with an empty
+  if (playhead === idarray.length) { playhead &&= 0; } // resume ended queues from the start
+  // logDebug(`stash after—playhead ${playhead}, queue length ${idarray.length}`);
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection(usercol);
     const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
-    log('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length - 1))} tracks`]);
+    log('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length))} tracks`]);
     return result;
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
