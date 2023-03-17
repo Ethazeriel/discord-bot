@@ -134,7 +134,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
   //                [if current will change                   ] or just changed (pending and was just replaced)
   const mediaSync = (when === 'now' || current === undefined || !internal && current.goose.UUID === UUID);
   let queueEmbed:undefined | InteractionReplyOptions | InteractionUpdateOptions = undefined;
-  let message = '';
+  let noContextMessage = '';
 
   switch (when) {
     case 'now': {
@@ -155,32 +155,32 @@ export async function execute(interaction:ChatInputCommandInteraction) {
           await interaction.followUp({ content: 'you/someone rearranged the queue. use `/queue jump` if you still want them to play now', ephemeral: true });
         }
       }
-      message = moved ? 'Queued:' : 'Playing now:';
       const position = moved ? player.getIndex(UUID) : player.getPlayhead();
-      queueEmbed = await player.queueEmbed(message, Math.ceil((position + 1) / 10));
+      noContextMessage = moved ? `Queued at position ${position}:` : 'Playing now:';
+      queueEmbed = await player.queueEmbed(moved ? 'Queued:' : noContextMessage, Math.ceil((position + 1) / 10));
       break;
     }
     case 'next': {
       if (internal) {
         await player.queueNext(tracks);
       } else { /* replacePending handled this */ }
-      message = 'Playing next:';
-      queueEmbed = await player.queueEmbed(message, Math.ceil((player.getPlayhead() + 2) / 10));
+      noContextMessage = 'Playing next:';
+      queueEmbed = await player.queueEmbed(noContextMessage, Math.ceil((player.getPlayhead() + 2) / 10));
       break;
     }
     case 'last': {
       if (internal) { // when !internal, length was assigned by call to pendingLast
         length = await player.queueLast(tracks) - (tracks.length - 1);
       } else { /* replacePending handled this */ } // and pendingLast assigned length
-      message = 'Queued:';
-      queueEmbed = await player.queueEmbed(message, (Math.ceil(length / 10) || 1));
+      noContextMessage = `Queued at position ${length}:`;
+      queueEmbed = await player.queueEmbed('Queued:', (Math.ceil(length / 10) || 1));
       break;
     }
   }
 
   const mediaEmbed = mediaSync ? await player.mediaEmbed() : undefined;
   if (tracks.length === 1) {
-    await interaction.editReply(await utils.generateTrackEmbed(tracks[0], message));
+    await interaction.editReply(await utils.generateTrackEmbed(tracks[0], noContextMessage));
     player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
   } else {
     await player.register(interaction, 'queue', queueEmbed);
