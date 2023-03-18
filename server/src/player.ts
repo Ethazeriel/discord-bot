@@ -90,10 +90,6 @@ export default class Player {
       guildId: guildId,
       adapterCreator: adapterCreator,
     });
-    const networkStateChangeHandler = (_oldNetworkState: any, newNetworkState: any) => {
-      const newUdp = Reflect.get(newNetworkState, 'udp');
-      clearInterval(newUdp?.keepAliveInterval);
-    }; // https://github.com/discordjs/discord.js/issues/9185#issuecomment-1459083216
     connection.on('stateChange', async (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
       if (newState.status == 'destroyed') {
@@ -117,9 +113,6 @@ export default class Player {
         }
         logDebug(`Removing player with id ${this.guildID}`);
         delete Player.#players[this.guildID];
-      } else { // https://github.com/discordjs/discord.js/issues/9185#issuecomment-1459083216
-        Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
-        Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
       }
     });
     connection.subscribe(this.#player);
