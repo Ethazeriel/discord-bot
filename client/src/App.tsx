@@ -64,6 +64,7 @@ export default class App extends React.Component<Record<string, never>, AppState
       json && Object.keys(json).map((key:string) => {
         switch (key) {
           case 'error': {
+            dispatchEvent(new CustomEvent('cleanup')); // better handling is coming
             this.setState({ error: json.error });
             break;
           }
@@ -240,16 +241,17 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
 
   React.useEffect(() => {
     console.log('serverqueue change');
-    clear();
+    clearStyling();
     dispatchEvent(new CustomEvent('cleanup'));
   }, [serverQueue]);
 
   const cleanUp = ():void => {
     // console.log('cleanup callback');
+    clearStyling();
     removeEventListener('cleanup', cleanUp);
   };
 
-  const clear = () => {
+  const clearStyling = () => {
     if (dropStyle.current) {
       dropStyle.current.style.border = 'unset';
     }
@@ -274,9 +276,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
 
   const dragLeave = (event:React.DragEvent<HTMLElement>) => {
     const same = event.currentTarget === event.target;
-    if (same) {
-      clear();
-    }
+    if (same) { clearStyling(); }
     console.log('queue leave handler—same: ' + same);
     console.log(event);
     // const internal = event.dataTransfer.types.includes('application/x-goose.track');
@@ -296,6 +296,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     if (internal) {
       const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
       if (dragID === undefined) {
+        clearStyling();
         console.log('dragID undefined, rejecting');
         return;
       } else {
@@ -308,9 +309,11 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
       props.playerClick({ action:'pendingIndex', parameter:`${localQueue.length} ${externalTypes[0]}` }); // I'm sorry
       console.log(`queue external ${externalTypes[0]} at position ${localQueue.length}`);
     } else if (externalTypes.length === 0) {
+      clearStyling();
       console.log(`queue no valid external types. dataTransfer: ${event.dataTransfer}`);
       return;
     } else {
+      clearStyling();
       console.log(`queue drop should not have been accepted. internal: ${internal}, dataTransfer: ${event.dataTransfer}`);
       return;
     }
