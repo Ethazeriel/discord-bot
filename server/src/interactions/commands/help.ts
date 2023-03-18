@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import type { ChatInputCommandInteraction, InteractionUpdateOptions, WebhookEditMessageOptions } from 'discord.js';
+import type { ChatInputCommandInteraction, InteractionUpdateOptions, InteractionReplyOptions } from 'discord.js';
 import * as utils from '../../utils.js';
 
 
@@ -23,7 +23,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
   const which = interaction.options.getString('section') || 'index';
   const response = helpEmbed(which);
-  await interaction.editReply(response as WebhookEditMessageOptions);
+  await interaction.editReply(response as InteractionReplyOptions);
 }
 
 export function helpEmbed(section:string):InteractionUpdateOptions {
