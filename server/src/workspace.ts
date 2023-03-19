@@ -43,7 +43,7 @@ export default class Workspace {
     this.expiry.refresh();
     const player = await Player.getPlayer(interaction);
     if (player) {
-      const queue = player.getQueue();
+      const queue = await player.getQueue();
       this.list.push(...queue);
       interaction.followUp({ content: `Copied ${queue.length} items from the play queue to the workspace`, ephemeral: true });
     }

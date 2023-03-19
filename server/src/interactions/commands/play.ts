@@ -92,7 +92,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
           case 'now': {
             await player.queueNow(tracks);
             const mediaEmbed = await player.mediaEmbed();
-            const queueEmbed = await player.queueEmbed('Playing now:', Math.ceil((player.getPlayhead() + 1) / 10));
+            const queueEmbed = await player.queueEmbed('Playing now:', Math.ceil((await player.getPlayhead() + 1) / 10));
             if (tracks.length == 1) {
               await interaction.followUp(await utils.generateTrackEmbed(tracks[0], 'Playing Now: '));
               player.sync(interaction, 'media', queueEmbed, mediaEmbed);
@@ -103,7 +103,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
           }
           case 'next': {
             await player.queueNext(tracks);
-            const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((player.getPlayhead() + 2) / 10));
+            const queueEmbed = await player.queueEmbed('Playing next:', Math.ceil((await player.getPlayhead() + 2) / 10));
             if (tracks.length == 1) {
               await interaction.editReply(await utils.generateTrackEmbed(tracks[0], 'Playing Next: '));
               player.sync(interaction, 'queue', queueEmbed);

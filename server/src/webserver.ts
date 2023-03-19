@@ -32,7 +32,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'prev': {
-            if (player.getQueue().length) {
+            if ((await player.getQueue()).length) {
               await player.prev();
               player.webSync('media');
               const status = player.getStatus();
@@ -42,8 +42,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'next': {
-            if (player.getQueue().length) {
-              if (player.getNext()) {
+            if ((await player.getQueue()).length) {
+              if (await player.getNext()) {
                 await player.next();
                 player.webSync('media');
                 const status = player.getStatus();
@@ -54,7 +54,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'jump': {
-            if (player.getQueue().length) {
+            if ((await player.getQueue()).length) {
               const position = Math.abs(Number(message.parameter));
               await player.jump(position);
               player.webSync('media');
@@ -65,8 +65,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'seek': { // copied wholesale from interaction/queue/seek
-            if (player.getQueue().length) {
-              const track = player.getCurrent();
+            if ((await player.getQueue()).length) {
+              const track = await player.getCurrent();
               if (track) {
                 const usrtime = validator.escape(validator.stripLow(message.parameter + '')).trim();
                 if (!seekRegex.test(usrtime)) { worker.postMessage({ id:message.id, error:'Invalid timestamp' }); } else {
@@ -89,8 +89,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'togglePause': {
-            if (player.getQueue().length) {
-              if (player.getCurrent()) {
+            if ((await player.getQueue()).length) {
+              if (await player.getCurrent()) {
                 await player.togglePause();
                 player.webSync('media');
                 const status = player.getStatus();
@@ -101,8 +101,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'toggleLoop': {
-            if (player.getQueue().length) {
-              const current = player.getCurrent();
+            if ((await player.getQueue()).length) {
+              const current = await player.getCurrent();
               await player.toggleLoop();
               player.webSync((current) ? 'queue' : 'media');
               const status = player.getStatus();
@@ -142,7 +142,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
               break;
             }
             let flag = false;
-            const length = player.getQueue().length;
+            const length = (await player.getQueue()).length;
             if (index < 0) {
               flag = true; index = 0;
             } else if (length < index) { flag = true; /* handled by splice */ }
@@ -155,13 +155,13 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
-            if (player.getQueue().length > 1) {
+            if ((await player.getQueue()).length > 1) {
               if (message.parameter && typeof message.parameter == 'string') {
                 const [stringFrom, stringTo, UUID] = (message.parameter as string).split(' ');
                 if (stringFrom && stringTo && UUID) {
                   const from = Number(stringFrom); const to = Number(stringTo);
                   if (!(isNaN(from) || isNaN(to) || typeof UUID !== 'string')) {
-                    const { success, message: failure } = player.move(from, to, UUID);
+                    const { success, message: failure } = await player.move(from, to, UUID);
                     if (success) {
                       player.webSync('queue');
                       const status = player.getStatus();
@@ -187,9 +187,9 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'remove': {
-            if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
+            if ((await player.getQueue()).length) { // TO DO: don\'t correct for input of 0, give error instead
               const position = Math.abs((Number(message.parameter)));
-              const playhead = player.getPlayhead();
+              const playhead = await player.getPlayhead();
               const removed = await player.remove(position); // we'll be refactoring remove later
               player.webSync((playhead == position) ? 'media' : 'queue');
               if (removed.length) {
@@ -208,8 +208,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'shuffle': {
-            if (player.getQueue().length) {
-              const current = player.getCurrent();
+            if ((await player.getQueue()).length) {
+              const current = await player.getCurrent();
               await player.shuffle({ albumAware: (message.parameter == 1) });
               player.webSync((current) ? 'queue' : 'media');
               const status = player.getStatus();

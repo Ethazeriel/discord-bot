@@ -9,7 +9,7 @@ export async function execute(interaction:ButtonInteraction, which:string) {
   (which === 'showmedia') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
   const player = await Player.getPlayer(interaction);
   if (player) {
-    if (player.getQueue().length) {
+    if ((await player.getQueue()).length) {
       const match = interaction.message.embeds[0]?.fields?.[1]?.value.match(embedPage);
       let page = (match) ? Number(match[1]) : undefined;
       switch (which) {
@@ -28,7 +28,7 @@ export async function execute(interaction:ButtonInteraction, which:string) {
         }
 
         case 'home': {
-          page = Math.ceil((player.getPlayhead() + 1) / 10);
+          page = Math.ceil((await player.getPlayhead() + 1) / 10);
           const queueEmbed = await player.queueEmbed(undefined, page, false);
           interaction.message = await interaction.editReply(queueEmbed);
           player.register(interaction, 'queue', queueEmbed);
@@ -43,7 +43,7 @@ export async function execute(interaction:ButtonInteraction, which:string) {
         }
 
         case 'loop': {
-          if (player.getCurrent()) {
+          if (await player.getCurrent()) {
             await player.toggleLoop();
             const queueEmbed = await player.queueEmbed(undefined, page, false);
             await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
@@ -57,7 +57,7 @@ export async function execute(interaction:ButtonInteraction, which:string) {
         }
 
         case 'shuffle': {
-          if (player.getCurrent()) {
+          if (await player.getCurrent()) {
             player.shuffle();
             const queueEmbed = await player.queueEmbed(undefined, page, false);
             await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);

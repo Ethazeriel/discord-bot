@@ -76,7 +76,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
     if (player) {
       switch (interaction.options.getSubcommand()) {
         case 'show': {
-          if (player.getQueue().length) {
+          if ((await player.getQueue()).length) {
             const page = Math.abs(Number(interaction.options.getInteger('page'))) || undefined;
             const queueEmbed = await player.queueEmbed(undefined, page);
             interaction.message = await interaction.editReply(queueEmbed) as Message;
@@ -86,7 +86,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'prev': {
-          if (player.getQueue().length) {
+          if ((await player.getQueue()).length) {
             await player.prev();
             const mediaEmbed = await player.mediaEmbed();
             const queueEmbed = await player.queueEmbed();
@@ -96,8 +96,8 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'next': {
-          if (player.getQueue().length) {
-            if (player.getCurrent()) {
+          if ((await player.getQueue()).length) {
+            if (await player.getCurrent()) {
               await player.next();
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed();
@@ -108,7 +108,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'jump': {
-          if (player.getQueue().length) {
+          if ((await player.getQueue()).length) {
             await player.jump(Math.abs((interaction.options.getInteger('position') || 1) - 1));
             const mediaEmbed = await player.mediaEmbed();
             const queueEmbed = await player.queueEmbed();
@@ -118,8 +118,8 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'seek': {
-          if (player.getQueue().length) {
-            const track = player.getCurrent() ? player.getCurrent() : (await player.prev(false), player.getCurrent());
+          if ((await player.getQueue()).length) {
+            const track = await player.getCurrent() ? await player.getCurrent() : (await player.prev(false), await player.getCurrent());
             if (!track) {throw new Error('nothing playing and no ability to go back one');}
             const usrtime = validator.escape(validator.stripLow(interaction.options.getString('time') || '')).trim();
             if (!seekRegex.test(usrtime)) { await interaction.editReply({ content: 'That doesn\'t look like a valid timestamp.' }); } else {
@@ -141,8 +141,8 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'play-pause': {
-          if (player.getQueue().length) {
-            if (player.getCurrent()) {
+          if ((await player.getQueue()).length) {
+            if (await player.getCurrent()) {
               player.togglePause();
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed();
@@ -153,8 +153,8 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'loop': {
-          if (player.getQueue().length) {
-            if (player.getCurrent()) {
+          if ((await player.getQueue()).length) {
+            if (await player.getCurrent()) {
               await player.toggleLoop();
               const queueEmbed = await player.queueEmbed();
               await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
@@ -169,8 +169,8 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'shuffle': {
-          if (player.getQueue().length) {
-            if (player.getCurrent()) {
+          if ((await player.getQueue()).length) {
+            if (await player.getCurrent()) {
               player.shuffle({ albumAware: (interaction.options.getInteger('album-aware') == 1) });
               const queueEmbed = await player.queueEmbed();
               await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'queue', queueEmbed)]);
@@ -185,7 +185,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
-          const length = player.getQueue().length;
+          const length = (await player.getQueue()).length;
           if (length > 1) {
             const from = Math.abs((interaction.options.getInteger('from') || 1) - 1);
             let to = Math.abs((interaction.options.getInteger('to') || 1) - 1);
@@ -197,7 +197,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
             // compatibility for browser using +1 to signal dragging below tracks; damps -1 in move with same condition;
             // allows command to also move to length, which is neat, but is mostly here just so the values aren't wrong
             if (from < to) { to++; }
-            const { success, message } = player.move(from, to);
+            const { success, message } = await player.move(from, to);
             if (success) {
               const queueEmbed = await player.queueEmbed();
               player.sync(interaction, 'queue', queueEmbed);
@@ -208,12 +208,12 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'remove': {
-          if (player.getQueue().length) { // TODO: don\'t correct for input of 0, give error instead. also allow for removing range
+          if ((await player.getQueue()).length) { // TODO: don\'t correct for input of 0, give error instead. also allow for removing range
             const position = Math.abs((interaction.options.getInteger('position') || 1) - 1);
             const removed = await player.remove(position);
             await interaction.editReply({ content: (removed.length) ? `Removed: ${(removed[0].goose.track.name)}` : 'Remove failed. Most likely your input is too high.' });
 
-            if (position == player.getPlayhead()) {
+            if (position == await player.getPlayhead()) {
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed();
               player.sync(interaction, 'media', queueEmbed, mediaEmbed);
@@ -236,14 +236,13 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
         case 'recall': {
-          if (!player.getQueue().length) {
+          if (!(await player.getQueue()).length) {
             const result = await db.getStash(interaction.user.id);
             if (result?.tracks.length) {
-              await player.assignUUID(result.tracks as Track[]);
               player.queue.tracks = result.tracks as Track[];
               await player.jump(result.playhead);
               const mediaEmbed = await player.mediaEmbed();
-              const queueEmbed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
+              const queueEmbed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((await player.getPlayhead() + 1) / 10));
               await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
             } else { await interaction.editReply({ content: 'Your stash is empty.' }); }
           } else { await interaction.editReply({ content: 'This command can only be called with an empty queue.' }); }

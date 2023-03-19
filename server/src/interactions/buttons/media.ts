@@ -9,7 +9,7 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
 
   const player = await Player.getPlayer(interaction);
   if (player) {
-    if (player.getQueue().length) {
+    if ((await player.getQueue()).length) {
       switch (which) {
         case 'refresh': {
           const mediaEmbed = await player.mediaEmbed(false);

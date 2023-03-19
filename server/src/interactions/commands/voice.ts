@@ -35,7 +35,7 @@ export async function execute(interaction:MusicInteraction):Promise<void> {
       if (player && command != 'join') {
         switch (command) {
           case 'nowplaying': {
-            if (player.getQueue().length) {
+            if ((await player.getQueue()).length) {
               const embed = await player.mediaEmbed();
               interaction.message = await interaction.editReply(embed) as Message<boolean>;
               await player.register(interaction, 'media', embed);

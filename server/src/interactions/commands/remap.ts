@@ -1,6 +1,6 @@
 /* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { ChatInputCommandInteraction, AttachmentBuilder, GuildMemberRoleManager } from 'discord.js';
+import { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
@@ -81,7 +81,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         if (search === 'current') {
           const player = await Player.getPlayer(interaction);
           if (player) {
-            track = player.getCurrent();
+            track = await player.getCurrent();
             if (typeof track === 'undefined') {
               await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
               return;
