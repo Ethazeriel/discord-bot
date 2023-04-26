@@ -108,7 +108,7 @@ export async function addSourceId(query:object, type:'spotify' | 'napster', newi
     const tracks = db.collection(trackcol);
     const target = `${type}.id`;
     await tracks.updateOne(query, { $addToSet: { [target]: newid } });
-    log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
+    log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(JSON.stringify(query))}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -390,7 +390,7 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
   }
 }
 
-export async function saveStash(discordid:string, playhead:number, queue:Track[]) {// acquire2
+export async function saveStash(userIDs:string[], playhead:number, queue:Track[]) {// acquire2
   // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
@@ -399,7 +399,7 @@ export async function saveStash(discordid:string, playhead:number, queue:Track[]
   // logDebug(`stash before—playhead ${playhead}, queue length ${queue.length}`);
   for (let index = 0; index < queue.length; index++) {
     const track = queue[index];
-    if (!track.status?.ephemeral && Player.notPending(track)) {
+    if (!track.status.ephemeral && !Player.pending(track)) {
       idarray.push(track.goose.id);
     } else { playhead &&= --playhead; }
   }
@@ -409,9 +409,11 @@ export async function saveStash(discordid:string, playhead:number, queue:Track[]
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection(usercol);
-    const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
-    log('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length))} tracks`]);
-    return result;
+    const results = userIDs.map(async id => {
+      log('database', [`Updating stash for ${chalk.blue(id)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length))} tracks`]);
+      return userdb.updateOne({ 'discord.id': id }, { $set:{ stash:stash } });
+    });
+    return await Promise.allSettled(results); // I haven't tested if this is correct, but it's unused
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
