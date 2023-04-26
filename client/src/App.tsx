@@ -59,7 +59,7 @@ export default class App extends React.Component<Record<string, never>, AppState
         'Content-Type': 'application/json',
       },
     }).then((response) => response.json()).then((json) => {
-      // console.log(json);
+      console.log(`fetch response ${Date.now()}`);
       // spite
       json && Object.keys(json).map((key:string) => {
         switch (key) {
@@ -109,6 +109,7 @@ export default class App extends React.Component<Record<string, never>, AppState
         const data = JSON.parse(event.data);
         switch (data.type) {
           case 'playerStatus': {
+            console.log(`socket status update ${Date.now()}`);
             this.setState({ playerStatus: data.queue });
             break;
           }
@@ -206,14 +207,27 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
   };
   const [state, cursorText] = React.useReducer(dragText, initialState);
   const [dragID, setDragID] = React.useState<number | null>(null);
+  const [allowed, setAllowed] = React.useState<boolean | null>(null);
   const dropStyle = React.useRef<HTMLDivElement>(null);
+
+  const shouldAllow = (event:React.DragEvent<HTMLElement>, internal:boolean) => {
+    if (allowed !== null) {
+      console.log('queue allow, early exit');
+      return allowed;
+    }
+    let allow = internal;
+    allow ||= allowExternal(event);
+    if (allow) { setAllowed(allow); }
+    console.log(`should ${allow}`);
+    return allow;
+  };
 
   React.useEffect(() => {
     const dragSet = (event:any):void => {
       // console.log(`setting dragID to: ${event.detail}`);
       setDragID(event.detail);
     };
-    addEventListener('dragset', dragSet);
+    addEventListener('dragid', dragSet);
 
     const dragOver = (event:DragEvent):void => {
       if (event.dataTransfer && event.dataTransfer.types.includes('application/x-goose.track')) {
@@ -223,13 +237,14 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     window.addEventListener('dragover', dragOver);
 
     return (() => {
-      removeEventListener('dragset', dragSet);
+      removeEventListener('dragid', dragSet);
       window.removeEventListener('dragover', dragOver);
     });
   }, []);
 
   const serverQueue = props.status?.tracks;
   const localQueue:JSX.Element[] = React.useMemo(() => {
+    console.log('queue happening');
     const queue = [];
     if (serverQueue) {
       for (const [i, track] of serverQueue.entries()) {
@@ -240,7 +255,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
   }, [serverQueue, props.playerClick, dragID]);
 
   React.useEffect(() => {
-    console.log('serverqueue change');
+    console.log(`serverqueue change ${Date.now()}`);
     clearStyling();
     dispatchEvent(new CustomEvent('cleanup'));
   }, [serverQueue]);
@@ -254,41 +269,64 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
   const clearStyling = () => {
     if (dropStyle.current) {
       dropStyle.current.style.border = 'unset';
+      dropStyle.current.style.opacity = 'unset';
     }
   };
 
   const dragEnter = (event:React.DragEvent<HTMLElement>) => {
+    if (!dropStyle.current) { return; } // not mounted; shouldn't be (possible to be) here
     const same = event.currentTarget === event.target;
-    console.log('queue enter handler—same: ' + same);
-    if (same) {
-      if (dropStyle.current) {
-        dropStyle.current.style.border = '2px solid #f800e3';
-      }
+    if (!same) { // shouldn't be possible currently, but may be again in future
+      console.log('queue enter handler—same: ' + same);
+      console.log(event);
+      return;
     }
-    console.log(event);
+
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
-    if (internal || allowExternal(event)) {
+    if (internal && dragID === localQueue.length - 1) {
+      console.log('queue enter, invalid');
+      dropStyle.current.style.borderTop = '2px solid #f800e3';
+      dropStyle.current.style.opacity = '0.4';
+      return;
+    }
+
+    if (internal || shouldAllow(event, internal)) {
       event.preventDefault();
       event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
       event.dataTransfer.effectAllowed = (internal) ? 'move' : 'copy';
+      dropStyle.current.style.border = '2px solid #f800e3';
+    }
+  };
+
+  const dragOver = (event:React.DragEvent<HTMLElement>) => {
+    // console.log(`over queue`);
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    if (internal && dragID === localQueue.length - 1) {
+      console.log('queue over, invalid');
+      return;
+    }
+
+    if (allowed || shouldAllow(event, internal)) {
+      event.preventDefault();
     }
   };
 
   const dragLeave = (event:React.DragEvent<HTMLElement>) => {
-    const same = event.currentTarget === event.target;
-    if (same) { clearStyling(); }
-    console.log('queue leave handler—same: ' + same);
-    console.log(event);
-    // const internal = event.dataTransfer.types.includes('application/x-goose.track');
-    // if (internal || allowExternal(event)) {
-    //   //
-    // }
+    setAllowed(null);
+    if (event.currentTarget === event.target) {
+      clearStyling();
+    } else { // shouldn't be possible currently, but may be again in future
+      console.log('queue enter handler—same: false');
+      console.log(event);
+      return;
+    }
   };
 
   const drop = (event:React.DragEvent<HTMLElement>) => {
     // console.log('queue drop');
     event.preventDefault();
     event.stopPropagation();
+    setAllowed(null);
 
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     const externalTypes:string[] = (!internal) ? allowedExternalTypes(event) : [];
@@ -310,11 +348,13 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
       console.log(`queue external ${externalTypes[0]} at position ${localQueue.length}`);
     } else if (externalTypes.length === 0) {
       clearStyling();
-      console.log(`queue no valid external types. dataTransfer: ${event.dataTransfer}`);
+      const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
+      console.log(`queue drop external, no valid external types. types: ${types}`);
       return;
     } else {
       clearStyling();
-      console.log(`queue drop should not have been accepted. internal: ${internal}, dataTransfer: ${event.dataTransfer}`);
+      const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
+      console.log(`queue drop internal, no valid types. types: ${types}`);
       return;
     }
   };
@@ -326,19 +366,10 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
           <DragText offset={state.offsetX}>{state.label}</DragText></DragBackground>
         {localQueue}
       </div>
-      <div className='dropzone' ref={dropStyle} style={{ flexGrow: 1 }} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop} />
+      <div className='dropzone' ref={dropStyle} style={{ flexGrow: 1, marginTop: '-1px' }} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop} />
     </div>
   );
 }
-// event.currentTarget.style.color = '#f800e3';
-
-const dragOver = (event:React.DragEvent<HTMLElement>) => {
-  // console.log(`over queue`);
-  const internal = event.dataTransfer.types.includes('application/x-goose.track');
-  if (internal || allowExternal(event)) {
-    event.preventDefault();
-  }
-};
 
 function ErrorDisplay(props: { error: null | string }) {
   if (props.error) {
