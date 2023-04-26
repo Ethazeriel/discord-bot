@@ -58,8 +58,12 @@ export async function execute(interaction:ChatInputCommandInteraction) {
     return;
   }
 
-  const player = await Player.getPlayer(interaction);
-  if (!player) { return; }
+  const { player, message } = await Player.getPlayer(interaction);
+
+  if (!player) {
+    interaction.editReply({ content: message });
+    return;
+  }
 
   let UUID = '';
   let length = 0; // queue length, for embed, only used when === 'last'
@@ -91,7 +95,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
     log('error', [`play—${internal ? 'db' : 'fetch'} error, ${error.stack}`]);
     await interaction.editReply({ content: (internal) ? 'OH NO SOMETHING\'S FUCKED' : 'either that\'s a private playlist or SOMETHING\'S FUCKED' });
     if (!internal) { // only external resources exist as pending tracks
-      const removed = await player.removebyUUID(UUID);
+      const removed = player.removebyUUID(UUID);
       if (!removed.length) { logDebug(`failed to find/ UUID ${UUID} already removed`); }
     }
     return undefined;
@@ -102,10 +106,10 @@ export async function execute(interaction:ChatInputCommandInteraction) {
     if (internal) {
       logDebug('error', [`No playlist exists by name '${search}'`]);
       await interaction.editReply({ content: `No internal playlist exists by name '${search}'. See \`/playlist list\` or \`/playlist help\`.` });
-    } else {
-      logDebug('error', [`No result for search '${search}'`]);
-      await interaction.editReply({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.` });
+      return;
     }
+    logDebug('error', [`No result for search '${search}'`]);
+    await interaction.editReply({ content: `No result for '${search}'. Either be more specific or directly link a spotify/youtube resource.` });
     return;
   }
 
@@ -122,7 +126,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
 
   // only external resources exist as pending tracks
   if (!internal) {
-    const success = await player.replacePending(tracks, UUID);
+    const success = player.replacePending(tracks, UUID);
     if (!success) { // to do: remove this if we decide that pending tracks should not be removeable
       logDebug(`failed to replace UUID ${UUID}, probably deleted`);
       await interaction.editReply({ content:'either you/someone removed your pending track before it resolved or SOMETHING\'S FUCKED' });
@@ -134,18 +138,18 @@ export async function execute(interaction:ChatInputCommandInteraction) {
   //                [if current will change                   ] or just changed (pending and was just replaced)
   const mediaSync = (when === 'now' || current === undefined || !internal && current.goose.UUID === UUID);
   let queueEmbed:undefined | InteractionReplyOptions | InteractionUpdateOptions = undefined;
-  let noContextMessage = '';
+  let messageWithoutContext = '';
 
   switch (when) {
     case 'now': {
       let moved = false;
       if (internal) {
-        await player.queueNow(tracks); // handles calling play or next
+        player.queueNow(tracks); // handles calling play or next
       } else {
         const nextUp = player.getNext();
         if (nextUp && nextUp.goose.UUID === UUID) { // typical
           logDebug('pending now, typical');
-          await player.next();
+          player.next();
         } else if (current && current.goose.UUID === UUID) { /* replacePending handled this */
           // empty or ended queue or player status idle->next before replace; anything that could make this true should be calling play, have
           logDebug('pending now, queue empty/ended or something\'s wrong'); // skipped pending and be idle; and replace will have called play
@@ -156,23 +160,23 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         }
       }
       const position = moved ? player.getIndex(UUID) : player.getPlayhead();
-      noContextMessage = moved ? `Queued at position ${position}:` : 'Playing now:';
-      queueEmbed = await player.queueEmbed(moved ? 'Queued:' : noContextMessage, Math.ceil((position + 1) / 10));
+      messageWithoutContext = moved ? `Queued at position ${position}:` : 'Playing now:';
+      queueEmbed = await player.queueEmbed(moved ? 'Queued:' : messageWithoutContext, Math.ceil((position + 1) / 10));
       break;
     }
     case 'next': {
       if (internal) {
-        await player.queueNext(tracks);
+        player.queueNext(tracks);
       } else { /* replacePending handled this */ }
-      noContextMessage = 'Playing next:';
-      queueEmbed = await player.queueEmbed(noContextMessage, Math.ceil((player.getPlayhead() + 2) / 10));
+      messageWithoutContext = 'Playing next:';
+      queueEmbed = await player.queueEmbed(messageWithoutContext, Math.ceil((player.getPlayhead() + 2) / 10));
       break;
     }
     case 'last': {
       if (internal) { // when !internal, length was assigned by call to pendingLast
-        length = await player.queueLast(tracks) - (tracks.length - 1);
+        length = player.queueLast(tracks) - (tracks.length - 1);
       } else { /* replacePending handled this */ } // and pendingLast assigned length
-      noContextMessage = `Queued at position ${length}:`;
+      messageWithoutContext = `Queued at position ${length}:`;
       queueEmbed = await player.queueEmbed('Queued:', (Math.ceil(length / 10) || 1));
       break;
     }
@@ -180,7 +184,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
 
   const mediaEmbed = mediaSync ? await player.mediaEmbed() : undefined;
   if (tracks.length === 1) {
-    await interaction.editReply(await utils.generateTrackEmbed(tracks[0], noContextMessage));
+    await interaction.editReply(await utils.generateTrackEmbed(tracks[0], messageWithoutContext));
     player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
   } else {
     await player.register(interaction, 'queue', queueEmbed);

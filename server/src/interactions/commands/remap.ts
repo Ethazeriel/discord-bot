@@ -79,7 +79,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
       } else {
         let track: Track | undefined;
         if (search === 'current') {
-          const player = await Player.getPlayer(interaction);
+          const { player, message } = await Player.getPlayer(interaction);
           if (player) {
             track = player.getCurrent();
             if (typeof track === 'undefined') {
@@ -87,7 +87,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
               return;
             }
           } else {
-            await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
+            await interaction.followUp({ content: message, ephemeral: true });
             return;
           }
         } else {

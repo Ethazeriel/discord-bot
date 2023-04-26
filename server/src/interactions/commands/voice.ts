@@ -29,11 +29,15 @@ export async function execute(interaction:MusicInteraction):Promise<void> {
     await interaction.deferReply({ ephemeral: true });
     const command = interaction.options.getSubcommand();
     if (command == 'leave') {
-      await interaction.editReply(Player.leave(interaction));
+      await interaction.editReply(await Player.leave(interaction));
     } else {
-      const player = await Player.getPlayer(interaction, { explicitJoin: (command == 'join') });
-      if (player && command != 'join') {
+      const { player, message } = await Player.getPlayer(interaction);
+      if (player) {
         switch (command) {
+          case 'join': {
+            interaction.editReply({ content: 'Joined voice.' });
+            break;
+          }
           case 'nowplaying': {
             if (player.getQueue().length) {
               const embed = await player.mediaEmbed();
@@ -48,7 +52,7 @@ export async function execute(interaction:MusicInteraction):Promise<void> {
             await interaction.editReply({ content: 'Something broke. Please try again', ephemeral: true } as InteractionReplyOptions);
           }
         }
-      }
+      } else { interaction.editReply({ content: message }); }
     }
   } else { await interaction.reply({ content: 'You don\'t have permission to do that.', ephemeral: true });}
 }

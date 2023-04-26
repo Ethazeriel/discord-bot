@@ -1,6 +1,6 @@
 import fs from 'fs';
 import crypto from 'crypto';
-import { Client, Collection, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, GatewayIntentBits, VoiceChannel } from 'discord.js';
 import { fileURLToPath, URL } from 'url';
 const { discord, internal, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const token = discord.token;
@@ -11,10 +11,12 @@ import Player from './player.js';
 import Translator from './translate.js';
 import validator from 'validator';
 import type { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
-import type { ChatInputCommandInteraction, MessageContextMenuCommandInteraction, ButtonInteraction, SelectMenuInteraction, InteractionReplyOptions } from 'discord.js';
+import type { DiscordGatewayAdapterCreator } from '@discordjs/voice';
+import type { ButtonInteraction, ChatInputCommandInteraction, GuildMember, InteractionReplyOptions, MessageContextMenuCommandInteraction, SelectMenuInteraction } from 'discord.js';
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const voiceUsers:Record<string, VoiceUser> = {};
 
 // dynamic import of commands, buttons, select menus
 const commands = new Collection<string, { data:SlashCommandBuilder, execute:(interaction:ChatInputCommandInteraction) => void}>();
@@ -45,7 +47,7 @@ for (const file of selectFiles) {
   selects.set(select.name, select);
 }
 
-
+// TODO scan channels and build voiceUsers when ready
 // When the client is ready, run this code (only once)
 client.once('ready', async () => {
 
@@ -67,21 +69,34 @@ client.once('ready', async () => {
     import('./webserver.js');
   }
 
-  for (const [id, guild] of client.guilds.cache) {
-    logDebug(`Checking users for ${id}`);
-    for (const [userid, member] of guild.members.cache) {
-      // if (member.user.username === 'Ethazeriel') {console.log(member.user);}
-      const user = await database.getUser(userid);
-      if (!user) {
-        logDebug(`New user with ID ${userid}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-        await database.newUser({ id:userid, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:id });
-      } else {
-        if (user.discord.username.current !== member.user.username) { await database.updateUser(userid, 'username', member.user.username); }
-        if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(userid, 'discriminator', member.user.discriminator); }
-        if (user.discord.nickname[id]?.current !== member.nickname) { await database.updateUser(userid, 'nickname', member.nickname!, id); }
-        // if (user.discord.locale !== member.user?.locale) { await database.updateUser(userid, 'locale', member.user?.locale); }
-        // discord never actually sends us this, but will keep the code here just in case they do someday
+  for (const [guildId, guild] of client.guilds.cache) {
+    for (const [channelId, channel] of guild.channels.cache) {
+      if (channel instanceof VoiceChannel) {
+        for (const [memberId, member] of channel.members) {
+          logDebug(`${member.user.bot ? 'bot' : 'user'} ${member.displayName} in voice in server ${guild.name}`);
+          voiceUsers[memberId] = { channelId: channelId, guildId: guildId };
+        }
       }
+    }
+  }
+
+  for (const [guildId, guild] of client.guilds.cache) {
+    logDebug(`Checking users for ${guildId}`);
+    for (const [userId, member] of guild.members.cache) {
+      // if (member.user.username === 'Ethazeriel') {console.log(member.user);}
+      (async () => {
+        const user = await database.getUser(userId);
+        if (!user) {
+          logDebug(`New user with ID ${userId}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
+          await database.newUser({ id:userId, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:guildId });
+        } else {
+          if (user.discord.username.current !== member.user.username) { await database.updateUser(userId, 'username', member.user.username); }
+          if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(userId, 'discriminator', member.user.discriminator); }
+          if (user.discord.nickname[guildId]?.current !== member.nickname) { await database.updateUser(userId, 'nickname', member.nickname!, guildId); }
+          // if (user.discord.locale !== member.user?.locale) { await database.updateUser(userid, 'locale', member.user?.locale); }
+          // discord never actually sends us this, but will keep the code here just in case they do someday
+        }
+      })();
     }
   }
 });
@@ -173,14 +188,66 @@ client.on('userUpdate', async (oldUser, newUser) => {
   }
 });
 
+/**
+ *
+ */
 client.on('voiceStateUpdate', async (oldState, newState) => {
   if (!client.isReady()) { return; }
-  Player.voiceStateChange(oldState, newState, client);
+
+  // pretty sure these can't happen. lets find out. also break things instead of handling cases that probably don't need handled
+  if (oldState.guild.id !== newState.guild.id) {
+    log('error', ['voice state cursed—old/new guild ID mismatch']); return;
+  }
+  if (oldState.id !== newState.id) {
+    log('error', ['voice state cursed—old/new user ID mismatch']); return;
+  }
+  if ((oldState.member === null) && (newState.member === null)) {
+    log('error', ['voice state cursed—old/new member both null']); return;
+  }
+  if ((newState.channelId) && !newState.member) {
+    log('error', ['voice state cursed—non-member joined channel']); return;
+  }
+
+  // no change in channel, just state. if both were null we wouldn't be here, if both are equal we shouldn't be here
+  if (oldState.channelId === newState.channelId) { return; } // ignore mic, hearing, stream/webcam toggle, and so on
+  const member = newState.member || oldState.member as GuildMember; // they can't both be null
+  // logDebug(`Voice state change for server ${newState.guild.id}, user ${member.displayName}`);
+
+  if (oldState.channelId) { // leave
+    logDebug(`${member.user.bot ? 'bot' : 'user'} ${member.displayName} left voice in server ${newState.guild.name}`);
+    const { player:oldPlayer } = await Player.getPlayer(getVoiceUser(oldState.id)!, false); // todo improve types
+    oldPlayer?.voiceLeave(oldState, newState, client);
+  }
+
+  if (newState.channelId) { // join
+    voiceUsers[newState.id] = { channelId: newState.channelId, guildId: newState.guild.id };
+  } else { // leave
+    delete voiceUsers[newState.id];
+  }
+
+  if (client.user.id === newState.id && oldState.channelId) { return; } // bot is not allowed to switch channels for now
+
+  if (newState.channelId) { // join
+    logDebug(`${member.user.bot ? 'bot' : 'user'} ${member.displayName} joined voice in server ${newState.guild.name}`);
+    const { player:newPlayer } = await Player.getPlayer(getVoiceUser(newState.id)!, false); // todo improve types
+    newPlayer?.voiceJoin(oldState, newState, client);
+  }
 });
 
-export function getVoiceAdapter(guildID:string) {
-  if (!client.isReady()) { return; }
-  return (client.guilds.cache.get(guildID)?.voiceAdapterCreator);
+// export function getVoiceAdapter(guildID:string) {
+//   if (!client.isReady()) { return; }
+//   return (client.guilds.cache.get(guildID)?.voiceAdapterCreator);
+// }
+
+export function getVoiceUser(userID:string):undefined | VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator } {
+  const voiceUser = voiceUsers[userID];
+  if (!voiceUser) { return; }
+  const adapterCreator = client.guilds.cache.get(voiceUser.guildId)?.voiceAdapterCreator;
+  if (!adapterCreator) { // shouldn't be overly possible
+    log('error', [`undefined voice adapter for ${voiceUser.guildId}`]);
+    return;
+  }
+  return { ...voiceUser, adapterCreator: adapterCreator };
 }
 
 client.on('messageCreate', async message => {
