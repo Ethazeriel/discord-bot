@@ -69,6 +69,12 @@ interface User {
 	}
 }
 
+type VoiceUser = {
+  // userId: string,
+  channelId: string,
+  guildId: string,
+}
+
 type Oauth2Token = {
 	access:string,
 	renew:string,
