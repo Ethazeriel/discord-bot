@@ -16,12 +16,16 @@ let con:any;
 const sleep = (delay:number) => new Promise((resolve) => setTimeout(resolve, delay));
 
 async function stepone() {
-  MongoClient.connect(url, function(err:any, client:any) {
-    if (err) throw err;
-    con = client;
-    db = client!.db(proddb);
-    log('database', [`Connected to database: ${chalk.green(proddb)}`]);
-  });
+  // MongoClient.connect(url, function(err:any, client:any) {
+  //   if (err) throw err;
+  //   con = client;
+  //   db = client!.db(proddb);
+  //   log('database', [`Connected to database: ${chalk.green(proddb)}`]);
+  // });
+  con = await MongoClient.connect(url);
+  db = con.db(proddb);
+  log('database', [`Connected to database: ${chalk.green(proddb)}`]);
+
   await sleep(1000);
   const trackdatabase = db.collection(prodtrackcol);
   const cursor = await trackdatabase.find({});
@@ -94,12 +98,16 @@ async function stepone() {
     }
   }
 
-  MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
-    if (err) throw err;
-    con = client;
-    db = client!.db(testdb);
-    log('database', [`Connected to database: ${chalk.green(testdb)}`]);
-  });
+  // MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
+  //   if (err) throw err;
+  //   con = client;
+  //   db = client!.db(testdb);
+  //   log('database', [`Connected to database: ${chalk.green(testdb)}`]);
+  // });
+  con = await MongoClient.connect(url, { ignoreUndefined: true });
+  db = con.db(testdb);
+  log('database', [`Connected to database: ${chalk.green(testdb)}`]);
+
   await sleep(1000);
   const newtrackdatabase = db.collection(testtrackcol);
   const result1 = await newtrackdatabase.insertMany(track2s);
