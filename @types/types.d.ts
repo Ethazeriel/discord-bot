@@ -66,6 +66,11 @@ interface User {
 		id:string,
 		username:string,
 		locale:string
+	},
+	napster?: {
+		id:string,
+		username:string,
+		locale:string
 	}
 }
 
@@ -117,8 +122,6 @@ interface Track {
 	bar?: ProgressBarOptions
 	spotify?: TrackSource
 	napster?: TrackSource
-	amazon?: TrackSource
-	itunes?: TrackSource
 	status: {
 		seek?: number
 		ephemeral?: string
