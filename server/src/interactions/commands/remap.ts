@@ -1,6 +1,6 @@
 /* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { ChatInputCommandInteraction, AttachmentBuilder, GuildMemberRoleManager } from 'discord.js';
+import { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
