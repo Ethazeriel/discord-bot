@@ -33,7 +33,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
     case 'id': {
       if (state.origin && state.dragging) {
         // console.log('dispatching id');
-        dispatchEvent(new CustomEvent('dragset', { detail: value }));
+        dispatchEvent(new CustomEvent('dragid', { detail: value }));
       }
       return ({ ...state }); // too tired, but I think this has been working without a return. thought that gave me an error before? check later
     }
@@ -71,15 +71,28 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     nearerTop: false,
     nearerBottom: false,
   };
-
+  console.log('track happening');
 
   const [state, dispatch] = React.useReducer(reducer, initialState);
+  const [allowed, setAllowed] = React.useState<boolean | null>(null);
+
+  const shouldAllow = (event:React.DragEvent<HTMLElement>, internal:boolean) => {
+    if (allowed !== null) { return allowed; }
+    let allow = internal;
+    allow ||= allowExternal(event);
+    if (allow) { setAllowed(allow); }
+    return allow;
+  };
 
   React.useEffect(() => {
     dispatch(['id', props.id]);
     dispatch(['cleanup']);
     dispatch(['clear']);
   }, [props.id]);
+
+  // React.useEffect(() => {
+  //   console.log(`track change: ${props.track.goose.track.name} ${props.track.goose.artist.name}`);
+  // }, [props.track.goose.track, props.track.goose.artist]);
 
   // hook confusion for later
   // const cursorText = React.useMemo(() => props.cursorText, [props.cursorText]);
@@ -113,7 +126,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     if (state.origin) { dispatch(['origin', false]); }
     if (state.dragging) { dispatch(['dragging', false]); }
     dispatchEvent(new CustomEvent('cleanup'));
-    dispatchEvent(new CustomEvent('dragset', { detail: null }));
+    dispatchEvent(new CustomEvent('dragid', { detail: null }));
     // ^ precaution against bad ID in dragOver if it fires faster than the ID dispatched in start updates,
     // that needs otherwise to be treated preferentially to handle concurrent updates
   };
@@ -128,7 +141,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     dispatch(['origin', true]);
     dispatch(['dragging', true]);
     dispatch(['invalid', true]);
-    dispatchEvent(new CustomEvent('dragset', { detail: props.id }));
+    dispatchEvent(new CustomEvent('dragid', { detail: props.id }));
     props.cursorText(['label', `${props.track.goose.track.name}●${props.track.goose.artist.name}`]);
     props.cursorText(['position', { x: event.pageX, y: event.pageY }]);
     props.cursorText(['visible', true]);
@@ -158,7 +171,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     console.log('track handler—enter');
     // console.log(`drag entered track: ${props.id + 1}`);
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
-    if (internal || allowExternal(event)) {
+    if (allowed || shouldAllow(event, internal)) {
       event.preventDefault();
       // addEventListener('cleanup', cleanUp);
       event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
@@ -170,7 +183,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     // console.log(`drag over track: ${props.id + 1}`);
 
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
-    if (internal || allowExternal(event)) {
+    if (allowed || shouldAllow(event, internal)) {
       event.preventDefault();
       event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
       event.dataTransfer.effectAllowed = (internal) ? 'move' : 'copy';
@@ -201,6 +214,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dragLeave = (event:React.DragEvent<HTMLElement>) => {
     event.stopPropagation();
+    setAllowed(null);
     console.log('track handler—leave');
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal || allowExternal(event)) {
@@ -217,6 +231,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     // console.log(event);
     event.preventDefault();
     event.stopPropagation();
+    setAllowed(null);
 
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     const externalTypes:string[] = (!internal) ? allowedExternalTypes(event) : [];

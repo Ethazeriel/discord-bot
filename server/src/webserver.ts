@@ -22,7 +22,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
 
   switch (message.type) {
     case 'player': {
-      const player = await Player.retrievePlayer('user', message.userId, message.action !== 'get');
+      const { player, message:error } = await Player.getPlayer(message.userId, message.action !== 'get');
       if (player) {
         switch (message.action) {
           case 'get': {
@@ -39,7 +39,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
 
           case 'prev': {
             if (player.getQueue().length) {
-              await player.prev();
+              player.prev();
               player.webSync('media');
               const status = player.getStatus();
               worker.postMessage({ id:message.id, status:status });
@@ -50,8 +50,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           case 'next': {
             if (player.getQueue().length) {
               if (player.getCurrent()) {
-                await player.next();
-              } else { await player.jump(0); }
+                player.next();
+              } else { player.jump(0); }
               player.webSync('media');
               const status = player.getStatus();
               worker.postMessage({ id:message.id, status:status });
@@ -62,7 +62,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
           case 'jump': {
             if (player.getQueue().length) {
               const position = Math.abs(Number(message.parameter));
-              await player.jump(position);
+              player.jump(position);
               player.webSync('media');
               const status = player.getStatus();
               worker.postMessage({ id:message.id, status:status });
@@ -97,11 +97,13 @@ worker.on('message', async (message:WebWorkerMessage) => {
           case 'togglePause': {
             if (player.getQueue().length) {
               if (player.getCurrent()) {
-                await player.togglePause();
-                player.webSync('media');
-                const status = player.getStatus();
-                worker.postMessage({ id:message.id, status:status });
-              } else { worker.postMessage({ id:message.id, error:'Queue is over, and not set to loop.' }); } // rework; play-pause on ended queue should restart
+                let force;
+                if (message.parameter !== 'undefined') { force = (message.parameter === 'true') ? true : false; }
+                player.togglePause({ force: force });
+              } else { player.jump(0); }
+              player.webSync('media');
+              const status = player.getStatus();
+              worker.postMessage({ id:message.id, status:status });
             } else { worker.postMessage({ id:message.id, error:'Queue is empty' }); }
             break;
           }
@@ -109,7 +111,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
           case 'toggleLoop': {
             if (player.getQueue().length) {
               const current = player.getCurrent();
-              await player.toggleLoop();
+              player.toggleLoop();
               player.webSync((current) ? 'queue' : 'media');
               const status = player.getStatus();
               worker.postMessage({ id:message.id, status:status });
@@ -169,7 +171,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             } else if (length < index) { flag = true; /* handled by splice */ }
             if (flag) { logDebug(`webparent queue—${(index < 0) ? `index negative ${index}` : `index ${index} > ${length}`}. queueing anyway`); }
 
-            const success = await player.replacePending(tracks, UUID);
+            const success = player.replacePending(tracks, UUID);
             if (!success) {
               logDebug(`webparent queue—failed to replace UUID ${UUID}, probably deleted`);
               return;
@@ -184,7 +186,8 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
-            if (player.getQueue().length > 1) {
+            const length = player.getQueue().length;
+            if (length > 1) {
               if (message.parameter && typeof message.parameter == 'string') {
                 const [stringFrom, stringTo, UUID] = (message.parameter as string).split(' ');
                 if (stringFrom && stringTo && UUID) {
@@ -195,7 +198,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
                       player.webSync('queue');
                       const status = player.getStatus();
                       worker.postMessage({ id:message.id, status:status });
-                    } else { logDebug(`move—probable user error ${failure}`); worker.postMessage({ id:message.id, error:`sorry this isn't formatted: ${failure}` }); }
+                    } else { logDebug(`move—probable user error ${failure}`); worker.postMessage({ id:message.id, error:failure }); }
                   } else {
                     logDebug(`move—${isNaN(from) ? `from is NaN, contains [${from}]` : isNaN(to) ? `to is NaN, contains [${to}]` : `UUID is not a string, contains [${UUID}]`}`);
                     worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
@@ -210,7 +213,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
               }
             } else {
               logDebug('move—web client, length <= 1');
-              worker.postMessage({ id:message.id, error:'probably your auto-updates broke; queue is ~empty. try refreshing' });
+              worker.postMessage({ id:message.id, error:'probably your auto-updates broke; try refreshing' });
             }
             break;
           }
@@ -219,7 +222,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             if (player.getQueue().length) { // TO DO: don\'t correct for input of 0, give error instead
               const position = Math.abs((Number(message.parameter)));
               const playhead = player.getPlayhead();
-              const removed = await player.remove(position); // we'll be refactoring remove later
+              const removed = player.remove(position); // we'll be refactoring remove later
               player.webSync((playhead == position) ? 'media' : 'queue');
               if (removed.length) {
                 const status = player.getStatus();
@@ -230,7 +233,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
           }
 
           case 'empty': {
-            await player.empty();
+            player.empty();
             const status = player.getStatus();
             worker.postMessage({ id:message.id, status:status });
             break;
@@ -239,7 +242,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
           case 'shuffle': {
             if (player.getQueue().length) {
               const current = player.getCurrent();
-              await player.shuffle({ albumAware: (message.parameter == 1) });
+              player.shuffle({ albumAware: (message.parameter == 1) });
               player.webSync((current) ? 'queue' : 'media');
               const status = player.getStatus();
               worker.postMessage({ id:message.id, status:status });
@@ -252,7 +255,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             worker.postMessage({ id:message.id, error:'Invalid player action' });
             break;
         }
-      } else { worker.postMessage({ id:message.id, error:'either you aren\'t in a channel, or the bot\'s in a different channel' }); }
+      } else { worker.postMessage({ id:message.id, error:error }); }
       break;
     }
 

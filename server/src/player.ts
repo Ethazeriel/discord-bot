@@ -1,9 +1,8 @@
 import fs from 'fs';
 import youtubedl from 'youtube-dl-exec';
-import { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayer, DiscordGatewayAdapterCreator } from '@discordjs/voice';
-// const getVoiceAdapter = (await import ('./index.js')).getVoiceAdapter;
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayer, AudioPlayerStatus, AudioPlayerState, DiscordGatewayAdapterCreator, VoiceConnection, VoiceConnectionStatus } from '@discordjs/voice';
 import crypto from 'crypto';
-import { ButtonInteraction, CommandInteraction, GuildMember, AttachmentBuilder, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, InteractionReplyOptions, Message, APIEmbed } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, BaseInteraction, GuildMember, AttachmentBuilder, VoiceChannel, Client, VoiceState, InteractionUpdateOptions, InteractionReplyOptions, Message, APIEmbed } from 'discord.js';
 import * as db from './database.js';
 import { log, logDebug } from './logger.js';
 import { fileURLToPath, URL } from 'url';
@@ -13,11 +12,21 @@ import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import { stream as seekable } from 'play-dl';
 
+// type GetPlayer = Promise<{ player?: Player; message?: string; }>;
+type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
+
 export default class Player {
   // type definitions
+  static #players:Record<string, Player> = {};
+
   readonly guildID:string;
+  readonly channelID:string;
+
+  #audioPlayer:AudioPlayer;
+  #connection:VoiceConnection;
+
   #queue:PlayerStatus;
-  #player:AudioPlayer;
+  #listeners:Set<string>;
   #embeds:Record<string, {
     queue?: {
       userPage:number
@@ -36,10 +45,6 @@ export default class Player {
       update:(userId:string, description:string, content?:InteractionUpdateOptions | InteractionReplyOptions) => void
     }
   }>;
-  #listeners:Set<string>;
-
-  static #voiceUsers:Record<string, { guildId:string, channelId:string }> = {};
-  static #players:Record<string, Player> = {};
 
   constructor({ channelId, guildId, adapterCreator }:{channelId:string, guildId:string, adapterCreator:DiscordGatewayAdapterCreator}) {
     this.#queue = {
@@ -49,20 +54,21 @@ export default class Player {
       paused: false,
     };
     this.guildID = guildId;
+    this.channelID = channelId;
     this.#embeds = {};
     this.#listeners = new Set();
 
-    this.#player = createAudioPlayer();
-    this.#player.on('error', error => { log('error', [error.stack! ]); });
-    this.#player.on('stateChange', async (oldState, newState) => {
+    this.#audioPlayer = createAudioPlayer();
+    this.#audioPlayer.on('error', error => { log('error', [error.stack! ]); });
+    const audioStateChange = async (oldState:AudioPlayerState, newState:AudioPlayerState) => {
       logDebug(`Player transitioned from ${oldState.status} to ${newState.status}`);
 
-      if (newState.status == 'playing') {
+      if (newState.status == AudioPlayerStatus.Playing) {
         const diff = (this.#queue.tracks[this.#queue.playhead].status.pause) ? (this.#queue.tracks[this.#queue.playhead].status.pause! - this.#queue.tracks[this.#queue.playhead].status.start!) : 0;
         this.#queue.tracks[this.#queue.playhead].status.start = ((Date.now() / 1000) - (this.#queue.tracks[this.#queue.playhead].status.seek || 0)) - diff;
         if (this.#queue.tracks[this.#queue.playhead].status.seek) { this.#queue.tracks[this.#queue.playhead].status.seek = 0; }
         if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
-      } else if (newState.status == 'idle') {
+      } else if (newState.status == AudioPlayerStatus.Idle) { // && this.#connection.state.status != VoiceConnectionStatus.Destroyed
         const track = this.#queue.tracks[this.#queue.playhead];
         if (track) {
           const elapsed = (Date.now() / 1000) - track.status.start!;
@@ -76,196 +82,161 @@ export default class Player {
           delete this.#queue.tracks[this.#queue.playhead].status.start;
         }
         this.next();
-      } else if (newState.status == 'paused') {
+      } else if (newState.status == AudioPlayerStatus.Paused || newState.status == AudioPlayerStatus.AutoPaused) {
         this.#queue.tracks[this.#queue.playhead].status.pause = (Date.now() / 1000);
       }
-    });
-    // adapterCreator ||= getVoiceAdapter(guildId); // ''as unknown as DiscordGatewayAdapterCreator;
-    // if (!adapterCreator) { // shouldn't be overly possible
-    //   const message = `undefined voice adapter for ${guildId}`;
-    //   log('error', [message]); throw new Error(message);
-    // }
-    const connection = joinVoiceChannel({
+    };
+    this.#audioPlayer.on('stateChange', audioStateChange);
+
+    this.#connection = joinVoiceChannel({
       channelId: channelId,
       guildId: guildId,
       adapterCreator: adapterCreator,
     });
-    connection.on('stateChange', async (oldState, newState) => {
+    this.#connection.on('stateChange', async (oldState, newState) => {
       logDebug(`Connection transitioned from ${oldState.status} to ${newState.status}`);
-      if (newState.status == 'destroyed') {
+      if (newState.status == VoiceConnectionStatus.Destroyed) {
+        const listenerIDs:string[] = [];
+        this.#listeners.forEach(listenerId => listenerIDs.push(listenerId));
+        db.saveStash(listenerIDs, this.getPlayhead(), this.getQueue());
+
         if (Object.keys(this.#embeds).length) {
           const mediaEmbed = await this.mediaEmbed(false);
           const queueEmbed = await this.queueEmbed(undefined, undefined, false);
-          Object.keys(this.#embeds).map(async (id) => {
+          Object.keys(this.#embeds).forEach(async (id) => {
             const { media, queue } = this.#embeds[id];
             if (media) {
               clearTimeout(this.#embeds[id].media!.idleTimer);
               clearInterval(this.#embeds[id].media!.refreshTimer);
-              await this.decommission(this.#embeds[id].media!.interaction!, 'media', mediaEmbed, 'Bot left');
+              this.decommission(this.#embeds[id].media!.interaction!, 'media', mediaEmbed, 'Bot left');
             }
             if (queue) {
               clearTimeout(this.#embeds[id].queue!.idleTimer);
               clearInterval(this.#embeds[id].queue!.refreshTimer);
-              await this.decommission(this.#embeds[id].queue!.interaction!, 'queue', queueEmbed, 'Bot left');
+              this.decommission(this.#embeds[id].queue!.interaction!, 'queue', queueEmbed, 'Bot left');
             }
-            delete this.#embeds[id];
           });
         }
-        logDebug(`Removing player with id ${this.guildID}`);
+        logDebug(`Removing player for channel ${this.channelID} in guild ${this.guildID}`);
+        this.#audioPlayer.removeListener('stateChange', audioStateChange);
         delete Player.#players[this.guildID];
       }
     });
-    connection.subscribe(this.#player);
+    this.#connection.subscribe(this.#audioPlayer);
   }
 
-  // acquisition
-  // to do: remove beautiful legacy code from before being alone in voice destroyed that Player
-  static async getPlayer(interaction:CommandInteraction | ButtonInteraction, { explicitJoin = false } = {}) {
-    const followUp = (message:string) => ((interaction.isCommand()) ? interaction.editReply({ content: message }) : interaction.editReply({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }));
-    const userChannel = (interaction.member as GuildMember).voice.channelId;
-
-    if (!userChannel) {
-      await followUp('You must join a voice channel first.');
-      return (null);
-    }
-    const guild = interaction.guild!.id;
-    const connection = getVoiceConnection(guild);
-    const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel : null;
-
-    if (userChannel == botChannel?.id) {
-      if (explicitJoin) { await followUp('Bot is already in your channel.'); }
-      return (Player.#players[guild]);
-    } else if (!connection) {
-      const joinConfig = { channelId: userChannel, guildId: guild, adapterCreator: (interaction.member as GuildMember).voice.channel!.guild.voiceAdapterCreator };
-      const player = (Player.#players[guild] = new Player(joinConfig));
-      if (explicitJoin) { await followUp('Joined voice.'); }
-      return (player);
-    } else {
-      await followUp('Bot is busy in another channel.');
-      return (null);
-    }
-  }
-
-  // if you're here to add print lines because /load isn't working it's because the bot hasn't had
-  // time to idle out of the channel after you restarted it boot the bot, everything is fine
-  static async retrievePlayer(type:'guild'|'user', id:string, join = false) {
-    if (type !== 'user' && type !== 'guild') {
-      logDebug('error', [`invalid retrievePlayer type: ${type}`]);
-      return;
-    }
-    if (type === 'guild') { return Player.#players[id]; }
-
-    const voiceUser = Player.#voiceUsers[id];
-    if (!voiceUser) { return; }
+  // presence
+  static async getPlayer(overload:string|BaseInteraction|JoinableVoiceUser, join = true) {
+    let voiceUser:JoinableVoiceUser | undefined;
+    if (typeof overload === 'string') {
+      voiceUser = (await import ('./index.js')).getVoiceUser(overload);
+    } else if (overload instanceof BaseInteraction) {
+      const interaction = overload;
+      if (!interaction.guild || !interaction.member || !(interaction.member instanceof GuildMember)) { // none of these should be possible
+        log('error', [`getPlayer cursed—interaction ${interaction.id} from user ${interaction.user.username}#${interaction.user.discriminator}`,
+          `id ${interaction.user.id}—somehow interacting despite member/ guild not existing, or member not being a GuildMember. somehow`]);
+        return { message: 'uhoh' };
+      }
+      const channel = interaction.member.voice.channel;
+      if (channel) { voiceUser = { channelId: channel.id, guildId: interaction.guild.id, adapterCreator: channel.guild.voiceAdapterCreator }; }
+    } else { voiceUser = overload; }
+    if (!voiceUser) { return { message: (join) ? 'You must join a voice channel first.' : '' }; }
 
     let player = Player.#players[voiceUser.guildId];
-
-    if (player) { // if it exists
-      if (player.#listeners.has(id)) { return player; } // and you qualify
-      return; // else nope
+    if (player) { // if it exists and you qualify
+      if (player.channelID === voiceUser.channelId) {
+        return { player };
+      } // else nope
+      return { message: 'Bot is busy in another channel.' };
     }
 
-    if (!join) { return; } // shouldn't exist
+    if (!join) { return {}; } // doesn't exist; shouldn't exist. used to request only existing players
 
-    // should exist
-    const adapterCreator = (await import ('./index.js')).getVoiceAdapter(voiceUser.guildId);
-    if (!adapterCreator) { // shouldn't be overly possible
-      log('error', [`undefined voice adapter for ${voiceUser.guildId}`]);
-      return;
-    }
-    player = (Player.#players[voiceUser.guildId] = new Player({ ...voiceUser, adapterCreator }));
-    return player;
-  }
-
-  // events
-  static async voiceStateChange(oldState:VoiceState, newState:VoiceState, client:Client<true>) {
-    // pretty sure these are always equal. lets find out. also break things instead of writing handling cases that probably don't need handled
-    if (oldState.guild.id !== newState.guild.id) {
-      log('error', ['voice event—old/new guild ID mismatch']); return;
-    } else if (oldState.id !== newState.id) {
-      log('error', ['voice event—old/new user ID mismatch']); return;
-    }
-
-    // no change in channel, just state. if both were null we wouldn't be here, if both are equal we shouldn't be here
-    if (oldState.channelId === newState.channelId) { return; } // ignore mic, hearing, stream/webcam toggle, and so on
-    logDebug(`Voice state change for server ${newState.guild.id}, user ${oldState.member?.displayName || newState.member?.displayName}`);
-
-    if (newState.channelId && newState.member && !newState.member.user.bot) { // valid, non-bot join
-      Player.#voiceUsers[newState.id] = { channelId: newState.channelId, guildId: newState.member.guild.id };
-      logDebug(`user ${oldState.member?.displayName || newState.member?.displayName} joined voice in server ${newState.guild.name}`);
-    } else if (Player.#voiceUsers[newState.id]) { // valid, non-bot* leave. probably also cleans up after a server leave or ban while in voice; not sure why else member
-      delete Player.#voiceUsers[newState.id]; // would be null. *todo: does mean this could fire for a bot too, but that's fine for now. see comment in manage, below
-      logDebug(`user ${oldState.member?.displayName || newState.member?.displayName} left voice in server ${newState.guild.name}`);
-    }
-
-    const player = await Player.retrievePlayer('guild', newState.guild.id);
-    if (player) {
-      player.manageVoiceMembers(oldState, newState, client);
-    } else {
-      logDebug(`No player currently active in server ${newState.guild.id}`);
-    }
-  }
-
-  async manageVoiceMembers(oldState:VoiceState, newState:VoiceState, client:Client<true>) {
-    const id = newState.id;
-    const connection = getVoiceConnection(newState.guild.id);
-    if (connection && (connection.joinConfig.channelId === oldState.channelId) && (newState.channelId !== connection.joinConfig.channelId)) { // leave
-      if (!newState.member || !(newState.member.user.bot)) { // if (!(newState.member && newState.member.user.bot)) {
-        this.#listeners.delete(id); // todo, this'd make a stash for a bot that left. casing needs to handle !newState.member to detect leaves, but then probably use oldState for whether bot? but then the || fails in other ways, so needs more work
-        await db.saveStash(id, this.#queue.playhead, this.#queue.tracks);
-        if (this.#embeds[id]?.queue) {
-          clearTimeout(this.#embeds[id].queue!.idleTimer);
-          clearInterval(this.#embeds[id].queue!.refreshTimer);
-          await this.decommission(this.#embeds[id].queue!.interaction!, 'queue', await this.queueEmbed('Current Queue:', this.#embeds[id].queue!.getPage(), false), 'You left the channel');
-        }
-        if (this.#embeds[id]?.media) {
-          clearTimeout(this.#embeds[id].media!.idleTimer);
-          clearInterval(this.#embeds[id].media!.refreshTimer);
-          await this.decommission(this.#embeds[id].media!.interaction!, 'media', await this.mediaEmbed(false), 'You left the channel');
-        }
-        if (this.#embeds[id]) {delete this.#embeds[id];}
-      }
-      if (!this.#listeners.size) { logDebug('Alone in channel; leaving voice'), connection.destroy(); }
-    } else if (connection && (connection.joinConfig.channelId === newState.channelId) && (oldState.channelId !== connection.joinConfig.channelId)) { // join
-      if (newState.member && !(newState.member.user.bot)) { // if (!(newState.member as GuildMember).user.bot) {
-        this.#listeners.add(id);
-      } else if (client.user.id == id) {
-        this.#listeners.clear();
-        const botChannel = client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel;
-        for (const [, member] of botChannel.members) {
-          if (!member.user.bot) { this.#listeners.add(member.user.id); }
-        }
-        if (!this.#listeners.size) { logDebug('Alone in channel; leaving voice'), connection.destroy(); }
-      }
-    }
+    // else should exist
+    player = (Player.#players[voiceUser.guildId] = new Player(voiceUser));
+    return { player };
   }
 
   static leave(interaction:CommandInteraction | ButtonInteraction) {
-    const connection = getVoiceConnection(interaction.guild!.id);
-    if (connection) {
-      const userChannel = (interaction.member as GuildMember).voice.channelId;
-      const botChannel = (connection) ? interaction.client.channels.cache.get(connection.joinConfig.channelId as string) as VoiceChannel : null;
-      const isAlone = botChannel?.members?.size == 1;
+    if (!interaction.guild || !interaction.member || !(interaction.member instanceof GuildMember)) { // none of these should be possible
+      log('error', [`Player.leave cursed—interaction ${interaction.id} from user ${interaction.user.username}#${interaction.user.discriminator}`,
+        `id ${interaction.user.id}—somehow interacting despite member/ guild not existing, or member not being a GuildMember. somehow`]);
+      return { content: 'uhoh' };
+    }
 
-      if (userChannel == botChannel || isAlone) {
-        for (const [, member] of botChannel!.members) {
-          // console.log(member.id);
-          if (!member.user.bot) { db.saveStash(member.id, Player.#players[interaction.guild!.id].#queue.playhead, Player.#players[interaction.guild!.id].#queue.tracks); }
-        }
-        const success = connection.disconnect();
-        // eslint-disable-next-line no-console
-        (!success) ? console.log(`failed to disconnect connection: ${connection}`) : connection.destroy();
-        return ({ content: (success) ? 'Left voice.' : 'Failed to leave voice.' });
-      } else {
-        return ({ content:'Bot is busy in another channel.' });
+    const player = Player.#players[interaction.guild.id];
+    if (!player) { return { content: 'Bot is not in a channel.' }; }
+
+    const channel = interaction.member.voice.channel; // !channel is a typeguard for channel.id; it's not that the user not being in a channel means the bot is busy
+    if (!channel || player.channelID !== channel.id) { return { content:'Bot is busy in another channel.' }; } // but that we'd have returned already if it weren't
+
+    player.#connection.destroy();
+
+    return ({ content: 'Left voice.' });
+  }
+
+  // events
+  voiceJoin(oldState:VoiceState, newState:VoiceState, client:Client<true>) {
+    if (!newState.member) { // shouldn't be possible
+      log('error', [`voiceJoin cursed—null member with user id ${newState.id} has somehow joined channel ${this.channelID} in guild ${this.guildID},`,
+        `${(oldState.member) ? `member was previously ${oldState.member.user.username}#${oldState.member.user.discriminator}` : ''}`]);
+      return;
+    }
+    const userId = newState.id;
+    if (!newState.member.user.bot) {
+      this.#listeners.add(userId);
+    } else if (client.user.id === userId) {
+      const botChannel = client.channels.cache.get(newState.channelId!); // eslint-disable-next-line max-statements-per-line
+      if (!botChannel || !(botChannel instanceof VoiceChannel)) { log('error', [`voiceJoin cursed—bot channel ${newState.channelId}`]); return; } // not possible
+      botChannel.members.forEach(member => {
+        if (!member.user.bot) { this.#listeners.add(member.user.id); }
+      });
+    }
+  }
+
+  async voiceLeave(oldState:VoiceState, newState:VoiceState, client:Client<true>) {
+    const userId = newState.id;
+    const self = client.user.id == userId;
+    const listener = this.#listeners.has(userId);
+    if (!self && !listener) { return; }
+
+    if (self) {
+      if (!newState.member) { // I assume this happens if you kick/ ban the bot
+        log('error', [`bot ${client.user.username}#${client.user.discriminator} id ${userId} is no longer a guild member`]);
       }
-    } else { return ({ content:'Bot is not in a voice channel.' }); }
+      this.#connection.destroy();
+      return;
+    } // per early return, !self means listener
+
+    this.#listeners.delete(userId);
+    if (newState.member) { db.saveStash([userId], this.getPlayhead(), this.getQueue()); }
+    if (this.#embeds[userId]?.queue) {
+      clearTimeout(this.#embeds[userId].queue!.idleTimer);
+      clearInterval(this.#embeds[userId].queue!.refreshTimer);
+      if (newState.member) {
+        const queueEmbed = await this.queueEmbed('Current Queue:', this.#embeds[userId].queue!.getPage(), false);
+        this.decommission(this.#embeds[userId].queue!.interaction!, 'queue', queueEmbed, 'You left the channel');
+      }
+    }
+    if (this.#embeds[userId]?.media) {
+      clearTimeout(this.#embeds[userId].media!.idleTimer);
+      clearInterval(this.#embeds[userId].media!.refreshTimer);
+      if (newState.member) {
+        const mediaEmbed = await this.mediaEmbed(false);
+        this.decommission(this.#embeds[userId].media!.interaction!, 'media', mediaEmbed, 'You left the channel');
+      }
+    }
+    delete this.#embeds[userId]; // eslint-disable-next-line max-statements-per-line
+    if (!this.#listeners.size) {
+      logDebug(`Client ${client.user.username} id ${client.user.id} alone in channel; leaving voice`);
+      this.#connection.destroy();
+    }
   }
 
   // playback
   async play() {
     let track = this.getCurrent();
-    if (track && Player.notPending(track)) {
+    if (track && !Player.pending(track)) {
       let ephemeral; // TO DO remove db stuff
       let UUID;
       if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
@@ -284,13 +255,13 @@ export default class Player {
             cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
             userAgent: useragent,
           }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
-          this.#player.play(resource);
+          this.#audioPlayer.play(resource);
           log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
         } catch (error:any) {
           log('error', [error.stack]);
         }
-      } else if (this.#player.state.status == 'playing') { this.#player.stop(); } // include this line in db cleanup, outer handles it
-    } else if (this.#player.state.status == 'playing') { this.#player.stop(); }
+      } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
+    } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
   prev(play = true) { // prior, loop or restart current
@@ -327,28 +298,28 @@ export default class Player {
       try {
         const source = await seekable(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
         const resource = createAudioResource(source.stream, { inputType: source.type });
-        this.#player.play(resource);
+        this.#audioPlayer.play(resource);
         log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
       } catch (error:any) {
         log('error', [error.stack]);
       }
       track.status.seek = time;
       track.status.start = (Date.now() / 1000) - (time || 0);
-    } else if (this.#player.state.status == 'playing') { this.#player.stop(); }
+    } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
   togglePause({ force }:{ force?:boolean } = {}) {
     force = (typeof force == 'boolean') ? force : undefined;
     const condition = (force == undefined) ? this.#queue.paused : !force;
-    const result = (condition) ? !this.#player.unpause() : this.#player.pause();
+    const result = (condition) ? !this.#audioPlayer.unpause() : this.#audioPlayer.pause();
     (condition != result) ? this.#queue.paused = result : logDebug('togglePause failed');
     return ((condition != result) ? ({ content: (result) ? 'Paused.' : 'Unpaused.' }) : ({ content:'OH NO SOMETHING\'S FUCKED' }));
   }
 
-  async toggleLoop({ force }:{ force?:boolean } = {}) {
+  toggleLoop({ force }:{ force?:boolean } = {}) {
     force = (typeof force == 'boolean') ? force : undefined;
     this.#queue.loop = (force == undefined) ? !this.#queue.loop : force;
-    if (this.#queue.loop && this.#queue.tracks.length && (this.#queue.tracks.length == this.#queue.playhead)) { await this.next(); }
+    if (this.#queue.loop && this.#queue.tracks.length && (this.#queue.tracks.length == this.#queue.playhead)) { this.next(); }
     return (this.#queue.loop);
   }
 
@@ -358,24 +329,24 @@ export default class Player {
   }
 
   // intended for non-pending tracks
-  async queueNow(tracks:Track[]) {
+  queueNow(tracks:Track[]) {
     Player.assignUUID(tracks);
     this.#queue.tracks.splice(this.#queue.playhead + 1, 0, ...tracks);
-    (this.#player.state.status == 'idle') ? await this.play() : await this.next();
+    (this.#audioPlayer.state.status == 'idle') ? this.play() : this.next();
   }
 
   // intended for non-pending tracks
   queueNext(tracks:Track[]) {
     Player.assignUUID(tracks);
     this.#queue.tracks.splice(this.#queue.playhead + 1, 0, ...tracks);
-    if (this.#player.state.status == 'idle') { this.play(); }
+    if (this.#audioPlayer.state.status == 'idle') { this.play(); }
   }
 
   // intended for non-pending tracks
   queueLast(tracks:Track[]) {
     Player.assignUUID(tracks);
     const length = this.#queue.tracks.push(...tracks);
-    if (this.#player.state.status == 'idle') { this.play(); }
+    if (this.#audioPlayer.state.status == 'idle') { this.play(); }
     return (length);
   }
 
@@ -390,7 +361,7 @@ export default class Player {
       this.#queue.playhead = this.#queue.playhead + tracks.length;
     }
     this.#queue.tracks.splice(index, 0, ...tracks);
-    if (this.#player.state.status == 'idle') { this.play(); }
+    if (this.#audioPlayer.state.status == 'idle') { this.play(); }
   }
 
   // insert, return UUID needed to replace; caller is expected to do follow/clean-up for now
@@ -433,15 +404,15 @@ export default class Player {
         this.#queue.playhead = this.#queue.playhead + tracks.length - 1; // length > 1 moves current, so move playhead by displacement
       }
       this.#queue.tracks.splice(start, 1, ...tracks);
-      if (this.#player.state.status == 'idle') { this.play(); }
+      if (this.#audioPlayer.state.status == 'idle') { this.play(); }
       logDebug(`replace—playhead is ${this.#queue.playhead}, track is ${(this.#queue.playhead < this.#queue.tracks.length) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
     }
     return (start !== -1);
   }
 
-  // undefined is also not pending because undefined is not a transient state
-  static notPending(track:Track|undefined):boolean {
-    return (track !== undefined && track.goose.id !== '');
+  // a track has to exist to be pending; undefined is not a transient state
+  static pending(track:Track|undefined) {
+    return (track !== undefined && track.goose.id === '');
   }
 
   static pendingTrack(queuedBy:string):Track & { goose:{ UUID:string }} {
@@ -488,7 +459,7 @@ export default class Player {
     logDebug(`move—initial from: ${from}, to: ${to}, length: ${length}`);
 
     // happens first because wrong values of from need corrected before it's used;
-    // redundant length check to safely check UUID, then again because UUID is optional
+    // redundant length check to safely check UUID, then after because UUID is optional
     if (targetUUID && from < length && this.#queue.tracks[from].goose.UUID !== targetUUID) {
       logDebug(`move—UUID mismatch; target UUID [${targetUUID}]`);
       from = this.getIndex(targetUUID);
@@ -532,11 +503,11 @@ export default class Player {
     return (removed);
   }
 
-  async removebyUUID(targetUUID:string) {
+  removebyUUID(targetUUID:string) {
     let removed:Track[] = [];
     const index = this.getIndex(targetUUID);
     if (index !== -1) {
-      removed = await this.remove(index);
+      removed = this.remove(index);
       logDebug(`Removed item ${index} with matching UUID`);
     }
     return (removed);
@@ -561,13 +532,13 @@ export default class Player {
   empty() {
     this.#queue.playhead = 0;
     this.#queue.tracks.length = 0;
-    this.#player.stop();
+    this.#audioPlayer.stop();
   }
 
-  async recall(tracks:Track[], playhead:number) {
+  recall(tracks:Track[], playhead:number) {
     Player.assignUUID(tracks);
     this.#queue.tracks = tracks;
-    await this.jump(playhead);
+    this.jump(playhead);
   }
 
   // verbatim Fisher—Yates shuffle, but of the order elements will be visited rather than of the actual elements
@@ -718,7 +689,7 @@ export default class Player {
     };
     // const elapsedTime = (!track || !track.status?.start) ? 0 : (this.getPause()) ? (track.status.pause! - track.status.start) : ((Date.now() / 1000) - track.status.start);
     const elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
-    if (track && Player.notPending(track) && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
+    if (track && !Player.pending(track) && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';
@@ -780,7 +751,7 @@ export default class Player {
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
       // const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track; // was
-      const dbtrack = Player.notPending(queuePart[i]) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
+      const dbtrack = (!Player.pending(queuePart[i])) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
       let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
       const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${dbtrack.youtube[0].url}) - ${utils.timeDisplay(dbtrack.youtube[0].duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
@@ -832,8 +803,8 @@ export default class Player {
           for (const button of row.components) { button.style = 2; }
         }
         components[0].components[0].style = 3;
-        await interaction.editReply({ embeds: embeds, components: components });
-        break;
+        return interaction.editReply({ embeds: embeds, components: components });
+        // break;
       }
       case 'media': {
         logDebug('decommission media');
@@ -841,8 +812,8 @@ export default class Player {
         for (const button of components[0].components) { button.style = 2; }
         components[0].components[2].label = (this.getPause()) ? 'Play' : 'Pause';
         components[0].components[0].style = 3;
-        await interaction.editReply({ embeds: embeds, components: components });
-        break;
+        return interaction.editReply({ embeds: embeds, components: components });
+        // break;
       }
 
       default: {

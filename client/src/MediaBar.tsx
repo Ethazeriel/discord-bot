@@ -10,6 +10,7 @@ import { ReactComponent as Pause } from './media/placeholder/pause.svg';
 import { ReactComponent as Next } from './media/placeholder/next.svg';
 import { ReactComponent as Loop } from './media/placeholder/loop.svg';
 import SlowMode from './media/placeholder/slowmode.png';
+import AlmostEmpty from './media/placeholder/almost_empty.mp3';
 
 import type { Track, PlayerStatus, PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
@@ -25,7 +26,7 @@ type MediaState = {
 };
 
 // I have no idea how to type this. will figure it out later
-function reducer(state:any, [type, value]:[any, any?]) {
+function reducer(state:MediaState, [type, value]:[any, any?]) {
   switch (type) {
     case 'interval': {
       const elapsed = (state.seek) ? state.seek : (state.paused) ? state.elapsed : (state.elapsed + 1 <= state.duration) ? state.elapsed + 1 : state.elapsed;
@@ -59,6 +60,7 @@ function reducer(state:any, [type, value]:[any, any?]) {
         console.log('slider released—cancel reset');
         return ({ ...state, cancel: false });
       }
+
       /*
       probably changes could/should be made so that this could just be
         if (state.seeking) { ... } else { ...state, cancel: false }
@@ -89,6 +91,9 @@ function reducer(state:any, [type, value]:[any, any?]) {
 
       [also TODO: make cancel:true effect css styling]
       */
+    }
+    default: {
+      return ({ ...state });
     }
   }
 }
@@ -174,6 +179,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <Button onClick={() => button('next')}><Next /></Button>
         <Button onClick={() => button('toggleLoop')}><Loop /></Button>
         <img src={SlowMode} height='36px' width='36px' onClick={() => button('slowmode')} />
+        <WrapMediaHack {...props} />
       </ButtonRow>
       <SliderRow>
         <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
@@ -181,6 +187,164 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
         <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
       </SliderRow>
     </MediaContainer>
+  );
+}
+
+type MediaFuck = {
+  seek:number,
+  // start:number,
+  elapsed:number,
+  duration:number,
+  paused:boolean,
+  // loop:boolean,
+};
+function mediaDispatch(state:MediaFuck, [type, value]:[any, any?]) {
+  switch (type) {
+    // case 'mount': {
+    //   console.log('mount');
+    //   const { playerClick, mediaSession } = state;
+    //   mediaSession.setActionHandler('play', () => {
+    //     console.log('dispatching play');
+    //     playerClick({ action:'togglePause', parameter:'false' });
+    //     // navigator.mediaSession.playbackState = 'playing';
+    //   });
+    //   mediaSession.setActionHandler('pause', () => {
+    //     console.log('dispatching pause');
+    //     playerClick({ action:'togglePause', parameter:'true' });
+    //     // navigator.mediaSession.playbackState = 'paused';
+    //   });
+    //   mediaSession.setActionHandler('stop', () => {
+    //     console.log('dispatching stop');
+    //     playerClick({ action:'togglePause', parameter:'true' });
+    //     // navigator.mediaSession.playbackState = 'paused';
+    //   });
+    //   mediaSession.setActionHandler('previoustrack', () => {
+    //     console.log('dispatching prev');
+    //     playerClick({ action:'prev' });
+    //   });
+    //   mediaSession.setActionHandler('nexttrack', () => {
+    //     console.log('dispatching next');
+    //     playerClick({ action:'next' });
+    //   });
+    //   return ({ ...state });
+    // }
+    // case 'unmount': {
+    //   console.log('unmount');
+    //   navigator.mediaSession.setActionHandler('play', null);
+    //   navigator.mediaSession.setActionHandler('pause', null);
+    //   navigator.mediaSession.setActionHandler('stop', null);
+    //   navigator.mediaSession.setActionHandler('previoustrack', null);
+    //   navigator.mediaSession.setActionHandler('nexttrack', null);
+    //   return ({ ...state });
+    // }
+    case 'elapsed': {
+      return ({ ...state, elapsed: value });
+    }
+    case 'interval': {
+      const elapsed = state.elapsed + 1;
+      return ({ ...state, elapsed: elapsed });
+    }
+    default: {
+      return ({ ...state });
+    }
+  }
+}
+const WrapMediaHack = (props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void}) => {
+  if (!('mediaSession' in navigator)) { return null; }
+  const { status:player, playerClick } = props;
+  if (!player) { return null; }
+  return (
+    <MediaHack player={player} playerClick={playerClick}/>
+  );
+};
+function MediaHack(props: { player:PlayerStatus, playerClick:(action:PlayerClick) => void}) {
+  const { player, playerClick } = props;
+  const track = player.tracks?.[player.playhead];
+
+  const now = Math.floor(Date.now() / 1000);
+  const seek = Math.floor(track?.status?.seek || 0);
+  const pause = Math.floor(track?.status?.pause || 0);
+  const start = Math.floor(track?.status?.start || now);
+  const paused = player.paused || false;
+  const elapsed = (pause) ? pause - start : now - start;
+  // console.log(`elapsed ${elapsed}`);
+  const duration = track?.youtube[0]?.duration || 0;
+
+  const initialState:MediaFuck = {
+    seek: seek,
+    paused: paused,
+    elapsed: elapsed,
+    duration: duration,
+    // playerClick: props.playerClick,
+    // mediaSession: navigator.mediaSession,
+  };
+  const [state, dispatch] = useReducer(mediaDispatch, initialState);
+  useEffect(() => {
+    dispatch(['elapsed', elapsed]);
+  }, [elapsed]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      dispatch(['interval']);
+    }, 1000);
+
+    return (() => {
+      clearInterval(timer);
+    });
+  }, []);
+
+  useEffect(() => {
+    // console.log('mount');
+    if (paused) {
+      navigator.mediaSession.setActionHandler('play', () => playerClick({ action:'togglePause', parameter:false }));
+      navigator.mediaSession.setActionHandler('pause', null);
+    } else {
+      navigator.mediaSession.setActionHandler('pause', () => playerClick({ action:'togglePause', parameter:true }));
+      navigator.mediaSession.setActionHandler('play', null);
+    }
+    navigator.mediaSession.setActionHandler('previoustrack', () => playerClick({ action: 'prev' }));
+    navigator.mediaSession.setActionHandler('nexttrack', () => playerClick({ action: 'next' }));
+    navigator.mediaSession.setActionHandler('seekto', (time) => {
+      console.log(time);
+      playerClick({ action: 'seek', parameter:time });
+    });
+    return (() => {
+      // console.log('unmount');
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+      navigator.mediaSession.setActionHandler('seekto', null);
+    });
+  }, [playerClick, paused]);
+
+  if (!track) {
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = 'none';
+  } else {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.goose.track.name,
+      artist: track.goose.artist.name,
+      album: track.goose.album.name,
+      artwork: [
+        {
+          src: track.goose.track.art,
+          sizes: '640x640',
+          type: 'image/jpg',
+        },
+      ],
+    });
+
+    navigator.mediaSession.setPositionState({
+      duration: duration,
+      playbackRate: 1,
+      position: (elapsed < duration - 1) ? elapsed : duration - 1,
+    });
+    navigator.mediaSession.playbackState = (paused) ? 'paused' : 'playing';
+  }
+
+  return (
+    <audio src={AlmostEmpty} autoPlay loop />
   );
 }
 

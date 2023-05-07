@@ -7,7 +7,7 @@ export const name = 'queue';
 
 export async function execute(interaction:ButtonInteraction, which:string) {
   (which === 'showmedia') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
-  const player = await Player.getPlayer(interaction);
+  const { player, message } = await Player.getPlayer(interaction);
   if (player) {
     if (player.getQueue().length) {
       const match = interaction.message.embeds[0]?.fields?.[1]?.value.match(embedPage);
@@ -80,5 +80,5 @@ export async function execute(interaction:ButtonInteraction, which:string) {
         default: logDebug(`queue buttons—bad case: ${which}`); return;
       }
     } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
-  }
+  } else { interaction.editReply({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }); }
 }
