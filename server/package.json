@@ -33,7 +33,7 @@
     "fs": "^0.0.1-security",
     "googleapis": "^87.0.0",
     "helmet": "^5.0.2",
-    "jimp": "^0.16.2",
+    "jimp": "^0.22.8",
     "libsodium-wrappers": "^0.7.9",
     "mongodb": "^5.4.0",
     "musicbrainz-api": "^0.8.0",
