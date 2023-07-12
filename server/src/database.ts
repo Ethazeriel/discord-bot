@@ -7,6 +7,7 @@ import chalk from 'chalk';
 const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
+import Player from './player.js';
 // Connection URL
 let url = mongo.url;
 const dbname = mongo.database;
@@ -115,7 +116,7 @@ export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster
     const tracks = db.collection<Track>(trackcol);
     const target = `${type}.id`;
     await tracks.updateOne(query, { $addToSet: { [target]: newid } });
-    log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
+    log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(JSON.stringify(query))}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -157,7 +158,7 @@ export async function addPlaylist(trackarray:Track[], listname:string) {// acqui
   }
 }
 
-export async function getPlaylist(listname:string) {
+export async function getPlaylist(listname:string):Promise<Track[]> {
   // returns a playlist as an array of tracks, ready for use
   const db = await getDb();
   let result:Track[] = [];
@@ -398,19 +399,30 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
   }
 }
 
-export async function saveStash(discordid:string, playhead:number, queue:Track[]) {// acquire2
+export async function saveStash(userIDs:string[], playhead:number, queue:Track[]) {// acquire2
   // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
   const db = await getDb();
   const idarray = [];
-  for (const track of queue) { !track.status?.ephemeral ? idarray.push(track.goose.id) : null; }
+  // logDebug(`stash before—playhead ${playhead}, queue length ${queue.length}`);
+  for (let index = 0; index < queue.length; index++) {
+    const track = queue[index];
+    if (!track.status.ephemeral && !Player.pending(track)) {
+      idarray.push(track.goose.id);
+    } else { playhead &&= --playhead; }
+  }
+  if (idarray.length === 0) { return; } // assuming we don't want to overwrite a stash someone might want with an empty
+  if (playhead === idarray.length) { playhead &&= 0; } // resume ended queues from the start
+  // logDebug(`stash after—playhead ${playhead}, queue length ${idarray.length}`);
   const stash = { playhead: playhead, tracks: idarray };
   try {
     const userdb = db.collection<User>(usercol);
-    const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
-    log('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length - 1))} tracks`]);
-    return result;
+    const results = userIDs.map(async id => {
+      log('database', [`Updating stash for ${chalk.blue(id)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length))} tracks`]);
+      return userdb.updateOne({ 'discord.id': id }, { $set:{ stash:stash } });
+    });
+    return await Promise.allSettled(results); // I haven't tested if this is correct, but it's unused
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
