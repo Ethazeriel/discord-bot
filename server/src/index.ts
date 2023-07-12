@@ -219,6 +219,13 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     oldPlayer?.voiceLeave(oldState, newState, client);
   }
 
+  // todo remember and comment (this time) why this is separate from the leave/ join blocks
+  // I think it was a combination of my poor typing—a voice adapter isn't needed when the join parameter is false, but I
+  // don't know how to write that, which is why getVoiceUser is temporarily in use; not wanting to await that; not wanting
+  // to have to send a deep copy and not trusting a reference to the overwrite on join; not wanting to delete and put back
+  // the same key instead of just overwriting; and not wanting to complicate the logic, and especially the part that needs
+  // to delete regardless of newState.channelId, but only for bots. also why it's in the middle—old needs the values before
+  // the overwrite, new needs them after the overwrite. possibly more reasons too. intended to be temporary
   if (newState.channelId) { // join
     voiceUsers[newState.id] = { channelId: newState.channelId, guildId: newState.guild.id };
   } else { // leave
