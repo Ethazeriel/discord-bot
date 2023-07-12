@@ -124,7 +124,7 @@ interface Track {
 	napster?: TrackSource
 	status: {
 		seek?: number
-		ephemeral?: string
+		ephemeral?: boolean
 		pause?: number
 		start?: number
 	}
