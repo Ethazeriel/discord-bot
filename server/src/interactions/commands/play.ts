@@ -78,13 +78,13 @@ export async function execute(interaction:ChatInputCommandInteraction) {
 
       if (tracks && tracks.length > 0) {
         if (tracks.length > 1 && (shuffle !== 'no')) {
-          tracks = player.shuffle({ albumAware: (shuffle === 'albums') }, tracks);
+          tracks = player.shuffle({ albumAware: (shuffle === 'albums') }, tracks) as Track[];
         }
 
         if (ephemeral === 'yes') {
           // console.log('ephemeral');
           for (const track of tracks) {
-            track.ephemeral = true;
+            track.status.ephemeral = true;
           }
         }
 

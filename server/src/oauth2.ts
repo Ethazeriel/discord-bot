@@ -7,6 +7,7 @@ const { discord, spotify, mongo, napster } = JSON.parse(fs.readFileSync(fileURLT
 const usercol = mongo.usercollection;
 import chalk from 'chalk';
 import { APIUser } from 'discord-api-types/v9';
+import type { UpdateFilter } from 'mongodb';
 
 export async function flow(type:'discord' | 'spotify' | 'napster', code:string, webClientId:string):Promise<boolean> {
 
@@ -107,9 +108,9 @@ export async function flow(type:'discord' | 'spotify' | 'napster', code:string, 
 
 export async function getToken(user:object, type:'discord' | 'spotify' | 'napster') {
   // takes a db query object, and refreshes/returns the relevant tokens, ready to use
-  await db.connected();
+  const dab = await db.getDb();
   try {
-    const userdb = db.db.collection(usercol);
+    const userdb = dab.collection<User>(usercol);
     const tokenuser = await userdb.findOne(user, { projection: { _id: 0 } });
 
     if (tokenuser?.tokens[type]) {
@@ -178,10 +179,10 @@ async function updateToken(user:User, type:'discord' | 'spotify' | 'napster'):Pr
           expiry: ((Date.now() - 1000) + (tokendata.expires_in * 1000)),
           scope:tokendata.scope,
         };
-        await db.connected();
-        const userdb = db.db.collection(usercol);
+        const dab = await db.getDb();
+        const userdb = dab.collection<User>(usercol);
         const target = `tokens.${type}`;
-        await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ [target]:token } });
+        await userdb.updateOne({ 'discord.id': user.discord.id }, { $set:{ [target]:token } } as UpdateFilter<User>);
         log('database', [`Renewed Oauth2 token type ${type} for ${chalk.blue(user.discord.id)}: expires ${chalk.green(token.expiry)}`]);
         return token.access;
       }
@@ -194,9 +195,9 @@ async function updateToken(user:User, type:'discord' | 'spotify' | 'napster'):Pr
 
 async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expires:string, user:APIUser }, webClientId:string):Promise<void> {
   // first pass - consider revising - I'm not thinking super clearly right now
-  await db.connected();
+  const dab = await db.getDb();
   try {
-    const userdb = db.db.collection(usercol);
+    const userdb = dab.collection<User>(usercol);
     const token = {
       access:authtoken.access_token,
       renew:authtoken.refresh_token,
@@ -213,9 +214,9 @@ async function saveTokenDiscord(authtoken:AccessTokenResponse, userdata:{ expire
 async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:string):Promise<void> {
   // intended to be called by the webserver oauth flow - arguments are the auth and data object returned by the discord api
   // first pass - consider revising - I'm not thinking super clearly right now
-  await db.connected();
+  const dab = await db.getDb();
   try {
-    const userdb = db.db.collection(usercol);
+    const userdb = dab.collection<User>(usercol);
     const token = {
       access:authtoken.access_token,
       renew:authtoken.refresh_token,
@@ -230,9 +231,9 @@ async function saveTokenSpotify(authtoken:AccessTokenResponse, webClientId:strin
 }
 
 async function saveTokenNapster(authtoken:AccessTokenResponse, webClientId:string):Promise<void> {
-  await db.connected();
+  const dab = await db.getDb();
   try {
-    const userdb = db.db.collection(usercol);
+    const userdb = dab.collection<User>(usercol);
     const token = {
       access:authtoken.access_token,
       renew:authtoken.refresh_token,
@@ -255,10 +256,10 @@ async function updateSpotifyUser(target:object, spotifyInfo:SpotifyApi.CurrentUs
     username:spotifyInfo.display_name,
     locale:spotifyInfo.country,
   };
-  await db.connected();
+  const dab = await db.getDb();
   try {
-    const userdb = db.db.collection(usercol);
-    await userdb.updateOne(target, { $set: { spotify:dbspotify } });
+    const userdb = dab.collection<User>(usercol);
+    await userdb.updateOne(target, { $set: { spotify:dbspotify } } as UpdateFilter<User>);
     log('database', [`Updating Spotify userdata for ${chalk.green(dbspotify.username)}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
@@ -271,9 +272,9 @@ async function updateNapsterUser(target:object, napsterInfo:any):Promise<void> {
     username:napsterInfo.account.screenName,
     locale:napsterInfo.account.preferredLanguage,
   };
-  await db.connected();
+  const dab = await db.getDb();
   try {
-    const userdb = db.db.collection(usercol);
+    const userdb = dab.collection<User>(usercol);
     await userdb.updateOne(target, { $set: { napster:dbnapster } });
     log('database', [`Updating Napster userdata for ${chalk.green(dbnapster.username)}`]);
   } catch (error:any) {

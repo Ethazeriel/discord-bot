@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { Document, MongoClient } from 'mongodb';
+import type { Db, Filter, FindOptions, UpdateFilter } from 'mongodb';
 import { log } from './logger.js';
 import chalk from 'chalk';
 const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
@@ -12,24 +13,31 @@ const dbname = mongo.database;
 const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
 if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR; }
-export let db:any;
-let con:MongoClient | undefined;
-MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
-  if (err) throw err;
-  con = client;
-  db = client?.db(dbname);
-  if (isMainThread) {
-    log('database', [`Main thread connected to db: ${dbname}`]);
-  } else {
-    log('database', [`${workerData?.name} worker connected to database: ${dbname}`]);
-  }
-});
+let globalDb:Db | undefined;
+// let con:MongoClient | undefined;
+// MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
+//   if (err) throw err;
+//   con = client;
+//   globalDb = client?.db(dbname);
+//   if (isMainThread) {
+//     log('database', [`Main thread connected to db: ${dbname}`]);
+//   } else {
+//     log('database', [`${workerData?.name} worker connected to database: ${dbname}`]);
+//   }
+// });
+const con = await MongoClient.connect(url, { ignoreUndefined: true });
+globalDb = con.db(dbname);
+if (isMainThread) {
+  log('database', [`Main thread connected to db: ${dbname}`]);
+} else {
+  log('database', [`${workerData?.name} worker connected to database: ${dbname}`]);
+}
 
-export async function connected():Promise<boolean> { // await this in your code to wait for the db to connect before doing things
+export async function getDb():Promise<Db> { // await this in your code to wait for the db to connect before doing things
   return new Promise((resolve) => {
     const wait = (() => {
-      if (db) {
-        resolve(true);
+      if (globalDb) {
+        resolve(globalDb);
       } else { setTimeout(wait, 100);}
     });
     wait();
@@ -40,8 +48,8 @@ export async function connected():Promise<boolean> { // await this in your code 
 export async function closeDB():Promise<object | undefined> {
   // we should really only be doing this when the program exits
   try {
-    db = null;
-    await con!.close();
+    globalDb = undefined;
+    await con.close();
     log('database', [`Closed connection: ${dbname}`]);
   } catch (error:any) {
     log('error', ['database error:', error.message]);
@@ -49,13 +57,13 @@ export async function closeDB():Promise<object | undefined> {
   }
 }
 
-export async function getTrack(query:object):Promise<Track | undefined> {// acquire2
+export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {// acquire2
   // returns the first track object that matches the query
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const track = await tracks.findOne(query, { projection: { _id: 0 } });
-    return track;
+    if (track) { return track; }
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -71,11 +79,11 @@ export async function getTrack(query:object):Promise<Track | undefined> {// acqu
 export async function insertTrack(track:Track):Promise<object | undefined> {// acquire2
   // inserts a single track object into the database
   track.status = {}; // track status should be null, but just in case
-  await connected();
-  const tracks = db.collection(trackcol);
+  const db = await getDb();
+  const tracks = db.collection<Track>(trackcol);
   // check if we already have this url
-  const test = await tracks.findOne({ $or: [{ 'youtube.id': track.youtube[0].id }, { 'goose.id': track.goose.id }] }, { projection: { _id: 0 } });
-  if (test == null || (test.youtube.id != track.youtube[0].id && test.goose.id != track.goose.id)) {
+  const test = await tracks.findOne({ 'goose.id': track.goose.id }, { projection: { _id: 0 } });
+  if (test == null || (test.youtube[0].id != track.youtube[0].id && test.goose.id != track.goose.id)) {
     // we don't have this in our database yet, so
     const result = await tracks.insertOne(track);
     log('database', [`Adding track ${chalk.green(track.goose.track.name)} by ${chalk.green(track.goose.artist.name)} to database`]);
@@ -85,12 +93,12 @@ export async function insertTrack(track:Track):Promise<object | undefined> {// a
   // shouldn't matter, but leaving this comment just in case
 }
 
-export async function addKey(query:object, newkey:string) {// acquire2
+export async function addKey(query:Filter<Track>, newkey:string) {// acquire2
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     await tracks.updateOne(query, { $addToSet: { keys: newkey.toLowerCase() } });
     log('database', [`Adding key ${chalk.blue(newkey.toLowerCase())} to ${chalk.green(JSON.stringify(query))}`]);
   } catch (error:any) {
@@ -99,12 +107,12 @@ export async function addKey(query:object, newkey:string) {// acquire2
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
-export async function addSourceId(query:object, type:'spotify' | 'napster', newid:string) {// acquire2
+export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster', newid:string) {// acquire2
   // adds a new id of the specified type to a track we already have
   // silently fails if we don't have the track in the DB already
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const target = `${type}.id`;
     await tracks.updateOne(query, { $addToSet: { [target]: newid } });
     log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(query)}`]);
@@ -114,11 +122,11 @@ export async function addSourceId(query:object, type:'spotify' | 'napster', newi
 }
 // addSourceId({ 'goose.id': '12345abcde' }, 'spotify', '6i71OngJrJDr6hQIFmzYI0');
 
-export async function addTrackSource(query:object, type:'spotify' | 'napster', source:TrackSource) {// acquire2
-  await connected();
+export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'napster', source:TrackSource) {// acquire2
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
-    await tracks.updateOne(query, { $set: { [type]: source } });
+    const tracks = db.collection<Track>(trackcol);
+    await tracks.updateOne(query, { $set: { [type]: source } } as UpdateFilter<Track>);
     log('database', [`Adding ${type} source to ${chalk.green(query)}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
@@ -130,14 +138,14 @@ export async function addPlaylist(trackarray:Track[], listname:string) {// acqui
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
   const name = listname.replace(sanitizePlaylists, '');
   const test = await getPlaylist(name);
-  await connected();
+  const db = await getDb();
   if (!test.length) {
     try {
-      const tracks = db.collection(trackcol);
+      const tracks = db.collection<Track>(trackcol);
       trackarray.forEach(async (element, index) => {
         const query = { 'goose.id': element.goose.id };
         const field = `playlists.${name}`;
-        await tracks.updateOne(query, { $set: { [field]:index } });
+        await tracks.updateOne(query, { $set: { [field]:index } as Partial<Track> });
         log('database', [`Adding playlist entry ${chalk.blue(name + ':' + index)} to ${chalk.green(element.goose.track.name)} by ${chalk.green(element.goose.artist.name)}`]);
       });
     } catch (error:any) {
@@ -151,29 +159,30 @@ export async function addPlaylist(trackarray:Track[], listname:string) {// acqui
 
 export async function getPlaylist(listname:string) {
   // returns a playlist as an array of tracks, ready for use
-  await connected();
+  const db = await getDb();
+  let result:Track[] = [];
   try {
     const name = listname.replace(sanitizePlaylists, '');
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
-    const options = { sort: { [qustr]:1 }, projection: { _id: 0 } };
-    const cursor = await tracks.find(query, options);
-    const everything = await cursor.toArray();
-    return everything;
+    const options:FindOptions<Track> = { sort: { [qustr]:1 }, projection: { _id: 0 } };
+    const cursor = tracks.find(query, options);
+    result = await cursor.toArray();
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
+  return result;
 }
 
-export async function removePlaylist(listname:string) {
-  await connected();
+export async function removePlaylist(listname:string):Promise<number | undefined> {
+  const db = await getDb();
   try {
     const name = listname.replace(sanitizePlaylists, '');
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const qustr = `playlists.${name}`;
     const query = { [qustr]: { $exists: true } };
-    const filt = { $unset:{ [qustr]: '' } };
+    const filt:UpdateFilter<Track> = { $unset:{ [qustr]: '' } };
     const result = await tracks.updateMany(query, filt);
     log('database', [`Removed playlist ${chalk.blue(name)} from ${chalk.green(result.modifiedCount)} tracks.`]);
     return result.modifiedCount;
@@ -182,11 +191,11 @@ export async function removePlaylist(listname:string) {
   }
 }
 
-export async function updateTrack(query:object, update:object) {
+export async function updateTrack(query:Filter<Track>, update:UpdateFilter<Track>) {
   // generic update function; basically just a wrapper for updateOne
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     await tracks.updateOne(query, update);
     log('database', [`Updating track ${chalk.blue(JSON.stringify(query, null, 2))} with data ${chalk.green(JSON.stringify(update, null, 2))}`]);
   } catch (error:any) {
@@ -197,9 +206,9 @@ export async function updateTrack(query:object, update:object) {
 export async function removeTrack(query:string) { // acquire2
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const track = await tracks.deleteOne({ 'youtube.0.id':query });
     if (track.deletedCount === 1) {
       log('database', [`Removed track ${chalk.red(query)} from DB.`]);
@@ -215,11 +224,11 @@ export async function removeTrack(query:string) { // acquire2
 
 export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource):Promise<number> { // acquire2
   // returns the first track object that matches the query
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const search = { 'youtube.0.id':query };
-    const track:Track = await tracks.findOne(search);
+    const track:Track | null = await tracks.findOne(search);
     if (track) {
       const original = track.youtube[0].id;
       if (typeof alternate === 'number') {
@@ -247,10 +256,10 @@ export async function switchAlternate(query:string, alternate:number | TrackYout
 
 export async function printCount():Promise<number | undefined> {
   // returns the number of tracks we have
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
-    const number = await tracks.count();
+    const tracks = db.collection<Track>(trackcol);
+    const number = await tracks.countDocuments();
     log('database', [`We currently have ${chalk.green(number)} tracks in the ${dbname} database, collection ${trackcol}.`]);
     return number;
   } catch (error:any) {
@@ -261,12 +270,12 @@ export async function printCount():Promise<number | undefined> {
 export async function listPlaylists():Promise<Set<string> | undefined> {
   // returns all the playlists we have as a set
   // this may take a long time to return and a lot of cpu once we've got more than a few playlists; consider revising
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const list = await tracks.distinct('playlists');
     const result = new Set<string>();
-    list.forEach((element:string) => {
+    list.forEach((element:Record<string, number>) => {
       Object.keys(element).forEach((ohno) => {
         result.add(ohno);
       });
@@ -278,9 +287,9 @@ export async function listPlaylists():Promise<Set<string> | undefined> {
 }
 
 export async function logPlay(id:string, success = true):Promise<void> {
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     const update = success ? { $inc: { 'goose.plays': 1 } } : { $inc: { 'goose.errors': 1, 'goose.plays': 1 } };
     await tracks.updateOne({ 'goose.id': id }, update);
     log('database', [`Logging ${success ? chalk.green('successful play') : chalk.red('play error')} for track ${chalk.blue(id)}`]);
@@ -290,9 +299,9 @@ export async function logPlay(id:string, success = true):Promise<void> {
 }
 
 export async function updateOfficial(id:string, link:string) {// acquire2
-  await connected();
+  const db = await getDb();
   try {
-    const tracks = db.collection(trackcol);
+    const tracks = db.collection<Track>(trackcol);
     await tracks.updateOne({ 'goose.id': id }, { $set: { 'goose.artist.official': link } });
     log('database', [`Updated artist link to ${link} for track ${chalk.blue(id)}`]);
   } catch (error:any) {
@@ -311,25 +320,26 @@ type DiscordUser = {
   guild?:string,
   locale?:string
 }
-export async function newUser(discord:DiscordUser):Promise<object | undefined> { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
+export async function newUser(discord:DiscordUser) { // usage: await newUser({ id:'119678070222225408', username:'Ethazeriel', nickname:'Eth', discriminator:'4962', guild:'888246961097048065', locale:'en-US'});
   // inserts a new user object into the database
   // returns null if unsuccessful
-  await connected();
+  const db = await getDb();
   try {
-    const userdb = db.collection(usercol);
+    const userdb = db.collection<User>(usercol);
     // check if we already have this user
     const test = await userdb.findOne({ 'discord.id': discord.id }, { projection: { _id: 0 } });
     if (test == null) {
       // we don't have this in our database yet, so
-      const object = {
+      const object:User = {
         discord: {
           id:discord.id,
-          locale:discord.locale,
-          nickname: (discord.guild) ? { [discord.guild]:{ current:discord?.nickname, old:[] } } : {},
+          locale:discord.locale || 'UNK',
+          nickname: (discord.guild) ? { [discord.guild]:{ current:(discord?.nickname || discord.username), old:[] } } : {},
           username:{ current:discord.username, old:[] },
           discriminator:{ current:discord.discriminator, old:[] },
         },
         stash: { playhead:0, tracks:[] },
+        tokens: {},
       };
       const result = await userdb.insertOne(object);
       log('database', [`Adding user ${chalk.green(`${discord.username}#${discord.discriminator}`)} to database`]);
@@ -342,11 +352,11 @@ export async function newUser(discord:DiscordUser):Promise<object | undefined> {
 
 export async function getUser(discordid:string):Promise<User | undefined> { // usage: const result = await getUser('119678070222225408');
   // returns the user object with the matching id
-  await connected();
+  const db = await getDb();
   try {
-    const userdb = db.collection(usercol);
+    const userdb = db.collection<User>(usercol);
     const result = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
-    return result;
+    if (result) {return result; }
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -355,9 +365,9 @@ export async function getUser(discordid:string):Promise<User | undefined> { // u
 export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'username', data:string, guild?:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
-  await connected();
+  const db = await getDb();
   try {
-    const userdb = db.collection(usercol);
+    const userdb = db.collection<User>(usercol);
     const user = await getUser(discordid);
     if (!user) {return;}
     const validfields = ['username', 'nickname', 'discriminator', 'locale'];
@@ -380,7 +390,7 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
       update = { $set: { [why]:data }, $addToSet:{ [why2]:user.discord[field].current } };
     }
     update = (field === 'locale') ? { $set: { 'discord.locale':data } } : update;
-    const result = await userdb.updateOne({ 'discord.id': discordid }, update);
+    const result = await userdb.updateOne({ 'discord.id': discordid }, update as UpdateFilter<User>);
     log('database', [`Updating info for ${chalk.blue(discordid)}: ${chalk.green(field)} is now ${chalk.green(data)}`]);
     return result;
   } catch (error:any) {
@@ -392,12 +402,12 @@ export async function saveStash(discordid:string, playhead:number, queue:Track[]
   // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
-  await connected();
+  const db = await getDb();
   const idarray = [];
   for (const track of queue) { !track.status?.ephemeral ? idarray.push(track.goose.id) : null; }
   const stash = { playhead: playhead, tracks: idarray };
   try {
-    const userdb = db.collection(usercol);
+    const userdb = db.collection<User>(usercol);
     const result = await userdb.updateOne({ 'discord.id': discordid }, { $set:{ stash:stash } });
     log('database', [`Updating stash for ${chalk.blue(discordid)}: Playhead ${chalk.green(stash.playhead)}, ${chalk.green((stash.tracks.length - 1))} tracks`]);
     return result;
@@ -408,16 +418,18 @@ export async function saveStash(discordid:string, playhead:number, queue:Track[]
 
 export async function getStash(discordid:string) { // usage: const result = await getStash('119678070222225408');
   // returns the stash (playhead and full track objects) for the given id
-  await connected();
+  const db = await getDb();
   try {
-    const userdb = db.collection(usercol);
+    const userdb = db.collection<User>(usercol);
     const user = await userdb.findOne({ 'discord.id': discordid }, { projection: { _id: 0 } });
-    const queue = [];
-    for (const id of user.stash.tracks) {
-      const track = await getTrack({ 'goose.id':id });
-      queue.push(track);
+    const queue:Track[] = [];
+    if (user && user.stash) {
+      for (const id of user.stash.tracks) {
+        const track = await getTrack({ 'goose.id':id });
+        if (track) { queue.push(track); }
+      }
+      return { playhead:user.stash.playhead, tracks:queue };
     }
-    return { playhead:user.stash.playhead, tracks:queue };
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -425,9 +437,9 @@ export async function getStash(discordid:string) { // usage: const result = awai
 
 export async function getUserWeb(webid:string):Promise<WebUser | undefined> {
   // functions like getUser, but takes a web client ID and only returns basic user info - not everything we have
-  await connected();
+  const db = await getDb();
   try {
-    const userdb = db.collection(usercol);
+    const userdb = db.collection<User>(usercol);
     const result = await userdb.findOne({ webClientId: webid }, { projection: { _id: 0 } });
     if (result && Object.keys(result).length) {
       const basicuser:WebUser = {
@@ -453,7 +465,7 @@ export async function getUserWeb(webid:string):Promise<WebUser | undefined> {
 
 export async function genericUpdate(query:object, changes:object, collection:string):Promise<void> {
   // generic update function; basically just a wrapper for updateOne
-  await connected();
+  const db = await getDb();
   try {
     const coll = db.collection(collection);
     await coll.updateOne(query, changes);
@@ -465,11 +477,11 @@ export async function genericUpdate(query:object, changes:object, collection:str
 
 export async function genericGet(query:object, collection:string):Promise<Document|undefined> { // arc v1
   // returns the first item that matches the query
-  await connected();
+  const db = await getDb();
   try {
     const coll = db.collection(collection);
     const result = await coll.findOne(query, { projection: { _id: 0 } });
-    return result;
+    if (result) { return result; }
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
