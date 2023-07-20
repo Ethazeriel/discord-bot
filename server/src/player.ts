@@ -10,7 +10,7 @@ const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL(
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
-import { stream as seekable } from 'play-dl';
+import * as seekable from 'play-dl';
 
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
@@ -296,7 +296,10 @@ export default class Player {
     if (this.getPause()) { this.togglePause({ force: false }); }
     if (track) {
       try {
-        const source = await seekable(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
+        seekable.setToken({
+          useragent : [useragent],
+        }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
+        const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
         const resource = createAudioResource(source.stream, { inputType: source.type });
         this.#audioPlayer.play(resource);
         log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
