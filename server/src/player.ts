@@ -10,7 +10,7 @@ const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL(
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
-import * as seekable from 'play-dl';
+// import * as seekable from 'play-dl';
 
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
@@ -264,6 +264,45 @@ export default class Player {
     } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
+  async seek(time:number) {
+    let track = this.getCurrent();
+    if (track && !Player.pending(track)) {
+      let ephemeral; // TO DO remove db stuff
+      let UUID;
+      if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
+      track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
+      if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
+      this.#queue.tracks[this.#queue.playhead] &&= track;
+      if (this.getPause()) { this.togglePause({ force: false }); }
+      if (track) {
+        try {
+          // seekable.setToken({
+          //   useragent : [useragent],
+          // }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
+          // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
+          // const resource = createAudioResource(source.stream, { inputType: source.type });
+          const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+            output: '-',
+            quiet: true,
+            forceIpv4: true,
+            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+            limitRate: '100K',
+            // @ts-expect-error wrapper types are out of date
+            downloadSections : `*${time}-inf`,
+            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+            userAgent: useragent,
+          }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
+          this.#audioPlayer.play(resource);
+          log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
+        } catch (error:any) {
+          log('error', [error.stack]);
+        }
+        track.status.seek = time;
+        track.status.start = (Date.now() / 1000) - (time || 0);
+      } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
+    } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
+  }
+
   prev(play = true) { // prior, loop or restart current
     const priorPlayhead = this.#queue.playhead;
     this.#queue.playhead = ((playhead = this.#queue.playhead, length = this.#queue.tracks.length) => (playhead > 0) ? --playhead : (this.#queue.loop) ? (length &&= length - 1) : 0)();
@@ -283,32 +322,6 @@ export default class Player {
     this.#queue.playhead = ((value = Math.abs(position), length = this.#queue.tracks.length) => (value < length) ? value : (length &&= length - 1))();
     this.play();
     if (this.#queue.tracks[priorPlayhead]?.status?.ephemeral) { this.remove(priorPlayhead); }
-  }
-
-  async seek(time:number) {
-    let ephemeral;
-    let UUID;
-    let track = this.#queue.tracks[this.#queue.playhead];
-    if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
-    track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-    if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
-    this.#queue.tracks[this.#queue.playhead] &&= track;
-    if (this.getPause()) { this.togglePause({ force: false }); }
-    if (track) {
-      try {
-        seekable.setToken({
-          useragent : [useragent],
-        }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
-        const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
-        const resource = createAudioResource(source.stream, { inputType: source.type });
-        this.#audioPlayer.play(resource);
-        log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
-      } catch (error:any) {
-        log('error', [error.stack]);
-      }
-      track.status.seek = time;
-      track.status.start = (Date.now() / 1000) - (time || 0);
-    } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
   togglePause({ force }:{ force?:boolean } = {}) {
