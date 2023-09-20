@@ -129,7 +129,7 @@ client.on('interactionCreate', async (interaction):Promise<void> => {
     }
   } else if (interaction.isButton()) {
     logComponent(interaction);
-    const match = interaction.customId.match(/([A-z]*)[-]([A-z]*)/);
+    const match = interaction.customId.match(/([a-zA-Z]*)[-]([a-zA-Z]*)/);
     const buttonPress = buttons.get(match![1]);
     if (!buttonPress) return;
     try {
