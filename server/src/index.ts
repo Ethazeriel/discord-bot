@@ -207,6 +207,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   if ((newState.channelId) && !newState.member) {
     log('error', ['voice state cursed—non-member joined channel']); return;
   }
+  if (client.user === null) { // addressing inconsistent, weird behavior claiming this as a possible state. believe it's just
+    log('error', ['client user somehow null, despite ready']); return; // older discordjs types with updated lint/ typescript
+  }
 
   // no change in channel, just state. if both were null we wouldn't be here, if both are equal we shouldn't be here
   if (oldState.channelId === newState.channelId) { return; } // ignore mic, hearing, stream/webcam toggle, and so on
