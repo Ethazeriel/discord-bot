@@ -29,7 +29,7 @@ export function progressBar(size:number, duration:number, playhead:number, { sta
 }
 
 type PrideResponse<T extends boolean> = T extends true ? { url:string, name:string} : string;
-export function pickPride<T extends boolean>(type:'heart' | 'dab' | 'fish', detail?:T): PrideResponse<T> {
+export function pickPride<T extends boolean = false>(type:'heart' | 'dab' | 'fish', detail?:T): PrideResponse<T> {
   const pridearray = ['agender', 'aromantic', 'asexual', 'bigender', 'bisexual', 'demisexual', 'gaymen', 'genderfluid', 'genderqueer', 'intersex', 'lesbian', 'nonbinary', 'pan', 'poly', 'pride', 'trans'];
   let ranpride = pridearray[Math.floor(Math.random() * pridearray.length)];
   if (ranpride == 'pride') {

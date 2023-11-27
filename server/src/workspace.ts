@@ -41,12 +41,12 @@ export default class Workspace {
 
   async importQueue(interaction:CommandInteraction) {
     this.expiry.refresh();
-    const player = await Player.getPlayer(interaction);
+    const { player, message } = await Player.getPlayer(interaction);
     if (player) {
       const queue = player.getQueue();
       this.list.push(...queue);
       interaction.followUp({ content: `Copied ${queue.length} items from the play queue to the workspace`, ephemeral: true });
-    }
+    } else { interaction.editReply({ content: message }); }
   }
 
   addTracks(tracks:Track[], index:number) {

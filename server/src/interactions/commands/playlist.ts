@@ -146,12 +146,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       case 'play': {
         if (workspace.list.length) {
-          const player = await Player.getPlayer(interaction);
+          const { player, message } = await Player.getPlayer(interaction);
           if (player) {
+            const mediaSync = player.getCurrent() === undefined; // to handle empty, ended queues
             const length = await player.queueLast(workspace.list);
-            const embed = await player.queueEmbed('Queued: ', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
-            await Promise.all([player.register(interaction, 'queue', embed), player.sync(interaction, 'queue', embed)]);
-          }
+            const mediaEmbed = mediaSync ? await player.mediaEmbed() : undefined;
+            const queueEmbed = await player.queueEmbed(mediaSync ? 'Playing now:' : 'Queued:', (Math.ceil((length - (workspace.list.length - 1)) / 10) || 1));
+            await player.register(interaction, 'queue', queueEmbed);
+            player.sync(interaction, mediaSync ? 'media' : 'queue', queueEmbed, mediaEmbed);
+          } else { interaction.editReply({ content: message }); }
         } else { await interaction.editReply('Your workspace is empty.'); }
         break;
       }

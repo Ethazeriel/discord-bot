@@ -1,12 +1,14 @@
 import './App.css';
 import * as React from 'react';
-import { TrackSmall } from './TrackSmall';
+import { TrackSmall, DraggedTrack } from './TrackSmall';
 import type { PlayerClick, PlayerStatus, User } from './types';
 import { StatusBar } from './StatusBar';
 import { MediaBar } from './MediaBar';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
 import DisplaySelect from './DisplaySelect';
+
+import { allowExternal, allowedExternalTypes } from './utils';
 
 
 type AppState = {
@@ -24,10 +26,14 @@ type LoadResponse = {
 
 const MainContent = styled.div`
 display: flex;
+flex-grow: 1;
 & > div {
+  width: 100%;
+  
+} /* ✨quality✨ */
+& > div > div:not([class*='dropzone']) {
   border-left: 2px solid #373839;
   border-right: 2px solid #373839;
-  width: 100%;
 }
 `;
 
@@ -53,11 +59,12 @@ export default class App extends React.Component<Record<string, never>, AppState
         'Content-Type': 'application/json',
       },
     }).then((response) => response.json()).then((json) => {
-      // console.log(json);
+      console.log(`fetch response ${Date.now()}`);
       // spite
       json && Object.keys(json).map((key:string) => {
         switch (key) {
           case 'error': {
+            dispatchEvent(new CustomEvent('cleanup')); // better handling is coming
             this.setState({ error: json.error });
             break;
           }
@@ -102,6 +109,7 @@ export default class App extends React.Component<Record<string, never>, AppState
         const data = JSON.parse(event.data);
         switch (data.type) {
           case 'playerStatus': {
+            console.log(`socket status update ${Date.now()}`);
             this.setState({ playerStatus: data.queue });
             break;
           }
@@ -199,13 +207,27 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
   };
   const [state, cursorText] = React.useReducer(dragText, initialState);
   const [dragID, setDragID] = React.useState<number | null>(null);
+  const [allowed, setAllowed] = React.useState<boolean | null>(null);
+  const dropStyle = React.useRef<HTMLDivElement>(null);
+
+  const shouldAllow = (event:React.DragEvent<HTMLElement>, internal:boolean) => {
+    if (allowed !== null) {
+      console.log('queue allow, early exit');
+      return allowed;
+    }
+    let allow = internal;
+    allow ||= allowExternal(event);
+    if (allow) { setAllowed(allow); }
+    console.log(`should ${allow}`);
+    return allow;
+  };
 
   React.useEffect(() => {
     const dragSet = (event:any):void => {
       // console.log(`setting dragID to: ${event.detail}`);
       setDragID(event.detail);
     };
-    addEventListener('dragset', dragSet);
+    addEventListener('dragid', dragSet);
 
     const dragOver = (event:DragEvent):void => {
       if (event.dataTransfer && event.dataTransfer.types.includes('application/x-goose.track')) {
@@ -215,13 +237,14 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     window.addEventListener('dragover', dragOver);
 
     return (() => {
-      removeEventListener('dragset', dragSet);
+      removeEventListener('dragid', dragSet);
       window.removeEventListener('dragover', dragOver);
     });
   }, []);
 
   const serverQueue = props.status?.tracks;
   const localQueue:JSX.Element[] = React.useMemo(() => {
+    console.log('queue happening');
     const queue = [];
     if (serverQueue) {
       for (const [i, track] of serverQueue.entries()) {
@@ -232,14 +255,118 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
   }, [serverQueue, props.playerClick, dragID]);
 
   React.useEffect(() => {
-    console.log('serverqueue change');
+    console.log(`serverqueue change ${Date.now()}`);
+    clearStyling();
+    dispatchEvent(new CustomEvent('cleanup'));
   }, [serverQueue]);
 
+  const cleanUp = ():void => {
+    // console.log('cleanup callback');
+    clearStyling();
+    removeEventListener('cleanup', cleanUp);
+  };
+
+  const clearStyling = () => {
+    if (dropStyle.current) {
+      dropStyle.current.style.border = 'unset';
+      dropStyle.current.style.opacity = 'unset';
+    }
+  };
+
+  const dragEnter = (event:React.DragEvent<HTMLElement>) => {
+    if (!dropStyle.current) { return; } // not mounted; shouldn't be (possible to be) here
+    const same = event.currentTarget === event.target;
+    if (!same) { // shouldn't be possible currently, but may be again in future
+      console.log('queue enter handler—same: ' + same);
+      console.log(event);
+      return;
+    }
+
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    if (internal && dragID === localQueue.length - 1) {
+      console.log('queue enter, invalid');
+      dropStyle.current.style.borderTop = '2px solid #f800e3';
+      dropStyle.current.style.opacity = '0.4';
+      return;
+    }
+
+    if (internal || shouldAllow(event, internal)) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = (internal) ? 'move' : 'copy';
+      event.dataTransfer.effectAllowed = (internal) ? 'move' : 'copy';
+      dropStyle.current.style.border = '2px solid #f800e3';
+    }
+  };
+
+  const dragOver = (event:React.DragEvent<HTMLElement>) => {
+    // console.log(`over queue`);
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    if (internal && dragID === localQueue.length - 1) {
+      console.log('queue over, invalid');
+      return;
+    }
+
+    if (allowed || shouldAllow(event, internal)) {
+      event.preventDefault();
+    }
+  };
+
+  const dragLeave = (event:React.DragEvent<HTMLElement>) => {
+    setAllowed(null);
+    if (event.currentTarget === event.target) {
+      clearStyling();
+    } else { // shouldn't be possible currently, but may be again in future
+      console.log('queue enter handler—same: false');
+      console.log(event);
+      return;
+    }
+  };
+
+  const drop = (event:React.DragEvent<HTMLElement>) => {
+    // console.log('queue drop');
+    event.preventDefault();
+    event.stopPropagation();
+    setAllowed(null);
+
+    const internal = event.dataTransfer.types.includes('application/x-goose.track');
+    const externalTypes:string[] = (!internal) ? allowedExternalTypes(event) : [];
+
+    if (internal) {
+      const from = JSON.parse(event.dataTransfer.getData('application/x-goose.track')) as DraggedTrack;
+      if (dragID === undefined) {
+        clearStyling();
+        console.log('dragID undefined, rejecting');
+        return;
+      } else {
+        addEventListener('cleanup', cleanUp);
+        props.playerClick({ action:'move', parameter:`${dragID} ${localQueue.length} ${from.UUID}` }); // I'm sorry
+        console.log(`move track: [${dragID}] ${from.name} to: [${localQueue.length}]`);
+      }
+    } else if (externalTypes.length) {
+      addEventListener('cleanup', cleanUp);
+      props.playerClick({ action:'pendingIndex', parameter:`${localQueue.length} ${externalTypes[0]}` }); // I'm sorry
+      console.log(`queue external ${externalTypes[0]} at position ${localQueue.length}`);
+    } else if (externalTypes.length === 0) {
+      clearStyling();
+      const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
+      console.log(`queue drop external, no valid external types. types: ${types}`);
+      return;
+    } else {
+      clearStyling();
+      const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
+      console.log(`queue drop internal, no valid types. types: ${types}`);
+      return;
+    }
+  };
+
   return (
-    <div>
-      <DragBackground visible={state.visible} x={state.dragX} y={state.dragY}>
-        <DragText offset={state.offsetX}>{state.label}</DragText></DragBackground>
-      {localQueue}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div>
+        <DragBackground visible={state.visible} x={state.dragX} y={state.dragY}>
+          <DragText offset={state.offsetX}>{state.label}</DragText></DragBackground>
+        {localQueue}
+      </div>
+      <div className='dropzone' ref={dropStyle} style={{ flexGrow: 1, marginTop: '-1px' }} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop} />
     </div>
   );
 }

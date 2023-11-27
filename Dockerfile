@@ -8,6 +8,7 @@ COPY client/public ./public
 COPY client/src ./src
 COPY @types ./src/@types
 COPY client/tsconfig.json ./tsconfig.json
+COPY client/.eslintrc.json ./.eslintrc.json
 RUN npm run build
 
 FROM node:18-alpine

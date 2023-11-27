@@ -7,7 +7,7 @@ export const name = 'media';
 export async function execute(interaction:ButtonInteraction, which:string):Promise<void> {
   (which === 'showqueue') ? await interaction.deferReply({ ephemeral: true }) : await interaction.deferUpdate({ ephemeral: true } as InteractionDeferUpdateOptions);
 
-  const player = await Player.getPlayer(interaction);
+  const { player, message } = await Player.getPlayer(interaction);
   if (player) {
     if (player.getQueue().length) {
       switch (which) {
@@ -19,7 +19,7 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
         }
 
         case 'prev': {
-          await player.prev();
+          player.prev();
           const mediaEmbed = await player.mediaEmbed(false);
           const queueEmbed = await player.queueEmbed(undefined, undefined, false);
           await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
@@ -27,15 +27,20 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
         }
 
         case 'pause': {
-          await player.togglePause();
+          if (player.getCurrent()) {
+            player.togglePause();
+          } else { player.jump(0); }
           const mediaEmbed = await player.mediaEmbed(false);
           const queueEmbed = await player.queueEmbed(undefined, undefined, false);
-          await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
+          await player.register(interaction, 'media', mediaEmbed);
+          player.sync(interaction, 'media', queueEmbed, mediaEmbed);
           break;
         }
 
         case 'next': {
-          await player.next();
+          if (player.getCurrent()) {
+            player.next();
+          } else { player.jump(0); }
           const mediaEmbed = await player.mediaEmbed(false);
           const queueEmbed = await player.queueEmbed(undefined, undefined, false);
           await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
@@ -52,5 +57,5 @@ export async function execute(interaction:ButtonInteraction, which:string):Promi
         default: logDebug(`media buttons—bad case: ${which}`); return;
       }
     } else { await player.decommission(interaction, 'media', await player.mediaEmbed(false), 'Queue is empty.'); }
-  }
+  } else { interaction.editReply({ embeds: [{ color: 0xfc1303, title: message, thumbnail: { url: 'attachment://art.jpg' } }], components: [] }); }
 }

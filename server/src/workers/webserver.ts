@@ -71,10 +71,10 @@ app.get('/load', async (req, res) => {
     if (user) {
       logDebug(`webserver worker—recognizes user ${user.discord.username}`);
       const id = crypto.randomBytes(5).toString('hex');
-      parentPort!.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id });
+      parentPort!.postMessage({ type:'player', action: 'get', id: id, userId: user.discord.id, userName:user.discord.username });
       const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
-          if (!result.status) { logDebug(`worker responding to ${user.discord.username}, status nullish`); }
+          // if (!result.status) { logDebug(`worker responding to ${user.discord.username}, status nullish`); }
           res.json({ user: user, player:result.status, error:result.error });
           parentPort!.removeListener('message', messageAction);
         }
@@ -171,8 +171,8 @@ app.get('/player-:playerId([0-9]{18})', async (req, res) => {
   if (!(webId && webIdRegex.test(webId))) { res.status(400).send('ID Cookie not set or invalid'); } else {
     const user = await db.getUserWeb(webId);
     if (!user) { res.status(401).send('User not authenticated'); } else {
-      const id = crypto.randomBytes(5).toString('hex');
-      parentPort!.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId });
+      const id = crypto.randomBytes(5).toString('hex'); // to-do: this is what I mean with the types; there's no userID but there should be
+      parentPort!.postMessage({ type:'player', action:'get', id:id, playerId:req.params.playerId }); // and typescript doesn't flag this
       const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
           res.json(result);
@@ -198,7 +198,7 @@ app.post('/player', async (req, res) => {
       log(req.method, [req.originalUrl, chalk.green(action)]);
       // log('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
       const id = crypto.randomBytes(5).toString('hex');
-      parentPort!.postMessage({ type:'player', action:action, parameter:parameter, id:id, userId: user.discord.id });
+      parentPort!.postMessage({ type:'player', action:action, parameter:parameter, id:id, userId: user.discord.id, userName:user.discord.username });
       const messageAction = (result:WebParentMessage) => {
         if (result?.id === id) {
           res.json(result);

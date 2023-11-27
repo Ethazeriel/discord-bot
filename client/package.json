@@ -13,6 +13,7 @@
     "@types/react-dom": "^18.0.3",
     "@types/styled-components": "^5.1.25",
     "eslint-plugin-react": "^7.29.4",
+    "eslint-plugin-react-hooks": "^5.0.0-next-f0efa1164-20220901",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-scripts": "5.0.1",
@@ -47,7 +48,6 @@
   "devDependencies": {
     "@types/node": "^17.0.31",
     "@typescript-eslint/eslint-plugin": "^5.22.0",
-    "@typescript-eslint/parser": "^5.22.0",
-    "eslint-plugin-react-hooks": "^5.0.0-next-f0efa1164-20220901"
+    "@typescript-eslint/parser": "^5.22.0"
   }
 }

@@ -72,7 +72,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
   if ((interaction.member?.roles as GuildMemberRoleManager)?.cache?.some(role => role.name === roles.dj)) {
     await interaction.deferReply({ ephemeral: true });
 
-    const player = await Player.getPlayer(interaction);
+    const { player, message } = await Player.getPlayer(interaction);
     if (player) {
       switch (interaction.options.getSubcommand()) {
         case 'show': {
@@ -99,10 +99,11 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
           if (player.getQueue().length) {
             if (player.getCurrent()) {
               await player.next();
-              const mediaEmbed = await player.mediaEmbed();
-              const queueEmbed = await player.queueEmbed();
-              await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
-            } else { await interaction.editReply({ content: 'Queue is over, and not set to loop.' }); } // TODO: next on ended queue should restart
+            } else { await player.jump(0); }
+            const mediaEmbed = await player.mediaEmbed();
+            const queueEmbed = await player.queueEmbed();
+            await player.register(interaction, 'media', mediaEmbed);
+            player.sync(interaction, 'media', queueEmbed, mediaEmbed);
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
@@ -144,10 +145,11 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
           if (player.getQueue().length) {
             if (player.getCurrent()) {
               player.togglePause();
-              const mediaEmbed = await player.mediaEmbed();
-              const queueEmbed = await player.queueEmbed();
-              await Promise.all([player.register(interaction, 'media', mediaEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
-            } else { await interaction.editReply({ content: 'Queue is over.' }); } // TODO: play-pause on ended queue should restart
+            } else { player.jump(0); }
+            const mediaEmbed = await player.mediaEmbed();
+            const queueEmbed = await player.queueEmbed();
+            await player.register(interaction, 'media', mediaEmbed);
+            player.sync(interaction, 'media', queueEmbed, mediaEmbed);
           } else { player.decommission(interaction, 'queue', await player.queueEmbed(undefined, undefined, false), 'Queue is empty.'); }
           break;
         }
@@ -197,6 +199,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
             // compatibility for browser using +1 to signal dragging below tracks; damps -1 in move with same condition;
             // allows command to also move to length, which is neat, but is mostly here just so the values aren't wrong
             if (from < to) { to++; }
+            // eslint-disable-next-line no-shadow
             const { success, message } = player.move(from, to);
             if (success) {
               const queueEmbed = await player.queueEmbed();
@@ -239,9 +242,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
           if (!player.getQueue().length) {
             const result = await db.getStash(interaction.user.id);
             if (result?.tracks.length) {
-              await player.assignUUID(result.tracks as Track[]);
-              player.queue.tracks = result.tracks as Track[];
-              await player.jump(result.playhead);
+              await player.recall(result.tracks, result.playhead);
               const mediaEmbed = await player.mediaEmbed();
               const queueEmbed = await player.queueEmbed(`Recalled ${result.tracks.length} tracks:`, Math.ceil((player.getPlayhead() + 1) / 10));
               await Promise.all([player.register(interaction, 'queue', queueEmbed), player.sync(interaction, 'media', queueEmbed, mediaEmbed)]);
@@ -256,6 +257,6 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
         }
 
       }
-    }
+    } else { interaction.editReply({ content: message }); }
   } else { await interaction.reply({ content:'You don\'t have permission to do that.', ephemeral: true });}
 }
