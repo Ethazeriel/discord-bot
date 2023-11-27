@@ -254,7 +254,9 @@ const httpServer = app.listen(port, () => {
   log('info', [`Web server active at http://localhost:${port}`]);
 });
 
-const wss = new WebSocketServer<WebSocket & {isAlive:boolean}>({ server: httpServer, clientTracking: true });
+// TODO - get rid of this any, at some point the type stopped working and we have no idea why or how
+// this used to be const wss = new WebSocketServer<WebSocket & {isAlive:boolean}>({ server: httpServer, clientTracking: true });
+const wss = new WebSocketServer<any>({ server: httpServer, clientTracking: true });
 // httpServer.on('upgrade', (request, socket, head) => {
 //   wss.handleUpgrade(request, socket, head, (ws) => {
 //     logDebug('WebSocket upgrade event—have not tested if this works.');
