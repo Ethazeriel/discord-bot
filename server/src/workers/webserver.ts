@@ -240,8 +240,11 @@ app.get('/spotify-playlist/:id([a-zA-Z0-9]{22})', async (req, res) => {
     const user = await db.getUserWeb(webId);
     if (!user) { res.status(401).send('User not authenticated'); } else {
       // now we know the user has authed, we can do things
+      // probably excessive sanitization - the regex in the endpoint target should make this unneccessary, but codeql doesn't agree so let's just do something basic to appease it
+      // if I was less lazy I would use the regex above instead of the generic sanitize
+      const playlistId = validator.escape(validator.stripLow(req.params.id).replace(sanitize, '')).trim();
       logDebug('getting playlist');
-      const playlist = await spotifyactions.getPlaylist(req.params.id);
+      const playlist = await spotifyactions.getPlaylist(playlistId);
       res.json(playlist);
     }
   }
