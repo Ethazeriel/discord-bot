@@ -17,6 +17,8 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: 18
+        cache: 'npm'
+        cache-dependency-path: server/package-lock.json
     - name: Install npm packages
       run: npm install --prefix server
     - name: Build the Server-side code
