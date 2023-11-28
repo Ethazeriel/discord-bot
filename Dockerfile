@@ -11,7 +11,9 @@ COPY client/tsconfig.json ./tsconfig.json
 COPY client/.eslintrc.json ./.eslintrc.json
 RUN npm run build
 
-FROM node:18-alpine
+# temporary- pin alpine to version 3.17 to allow use of prebuilt opus packages
+# once we've set up a build env that can make these, we can use that - or maybe the available binaries will update someday
+FROM node:18-alpine3.17
 ENV NODE_ENV production
 RUN apk add dumb-init
 RUN apk --no-cache add python3
