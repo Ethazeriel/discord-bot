@@ -18,9 +18,10 @@ RUN apk --no-cache add python3
 WORKDIR /server
 COPY server/package* ./
 RUN npm install
-COPY --chown=node:node server/tsconfig.json ./tsconfig.json
-COPY --chown=node:node server/src ./src
-COPY --chown=node:node @types ./src/@types
+COPY server/src ./src
+COPY @types ./src/@types
+COPY server/tsconfig.json ./tsconfig.json
+COPY server/.eslintrc.json ./.eslintrc.json
 RUN npm run build
 
 # temporary- pin alpine to version 3.17 to allow use of prebuilt opus packages
