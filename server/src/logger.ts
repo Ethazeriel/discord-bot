@@ -5,7 +5,7 @@ import { sanitize } from './regexes.js';
 import { fileURLToPath, URL } from 'url';
 const debugMode = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).debug;
 import { isMainThread } from 'worker_threads';
-import { ButtonInteraction, CommandInteraction, MessageContextMenuCommandInteraction, GuildMember, MessageInteraction, SelectMenuInteraction, ComponentType } from 'discord.js';
+import { ButtonInteraction, CommandInteraction, MessageContextMenuCommandInteraction, GuildMember, MessageInteraction, StringSelectMenuInteraction, ComponentType } from 'discord.js';
 
 if (!fs.existsSync('../logs')) {
   fs.mkdirSync('../logs');
@@ -141,7 +141,7 @@ export async function logCommand(interaction:(CommandInteraction | MessageContex
   });
 }
 
-export async function logComponent(interaction:ButtonInteraction | SelectMenuInteraction) {
+export async function logComponent(interaction:ButtonInteraction | StringSelectMenuInteraction) {
   // takes an interaction, logs relevant details to file and console
   // for console
   let conStr = `Guild: ${chalk.blue((interaction.member as GuildMember).guild.name.replace(sanitize, '').trim())}, User: ${chalk.blue(`${interaction.user.username.replace(sanitize, '').trim()}#${interaction.user.discriminator}`)}, Source: ${chalk.cyan((interaction.message.interaction as MessageInteraction)?.commandName || 'component')}, Type: ${chalk.cyan(interaction.componentType)}, ID: ${chalk.cyan(interaction.customId)}`;

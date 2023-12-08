@@ -12,7 +12,7 @@ import Translator from './translate.js';
 import validator from 'validator';
 import type { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
 import type { DiscordGatewayAdapterCreator } from '@discordjs/voice';
-import type { ButtonInteraction, ChatInputCommandInteraction, GuildMember, InteractionReplyOptions, MessageContextMenuCommandInteraction, SelectMenuInteraction } from 'discord.js';
+import type { ButtonInteraction, ChatInputCommandInteraction, GuildMember, InteractionReplyOptions, MessageContextMenuCommandInteraction, StringSelectMenuInteraction } from 'discord.js';
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
@@ -40,7 +40,7 @@ for (const file of buttonFiles) {
   const button = await import(`./interactions/buttons/${file}`);
   buttons.set(button.name, button);
 }
-const selects = new Collection<string, { name:string, execute:(interaction:SelectMenuInteraction) => void}>();
+const selects = new Collection<string, { name:string, execute:(interaction:StringSelectMenuInteraction) => void}>();
 const selectFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/selects', import.meta.url).toString())).filter(file => file.endsWith('.js'));
 for (const file of selectFiles) {
   const select = await import(`./interactions/selects/${file}`);
