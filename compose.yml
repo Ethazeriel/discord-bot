@@ -9,15 +9,19 @@ services:
       - nginx-config:/etc/nginx/templates
     ports:
       - 80:8080
+    networks:
+      - frontend
 
   mongo:
-    image: mongo:latest
+    image: mongo:7.0.4
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: username
       MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
       - ./compose/mongo:/data/db
+    networks:
+      - backend
 
   goose:
     image: goosebot
@@ -31,8 +35,18 @@ services:
     environment:
       DOCKER: true
       MONGO_CONN_STR: mongodb://username:password@mongo:27017/?authSource=admin
+    networks:
+      - frontend
+      - backend
 
 volumes:
   client-assets:
   nginx-config:
       
+networks:
+  frontend:
+    driver: bridge
+    attachable: true
+  backend:
+    driver: bridge
+    internal: true

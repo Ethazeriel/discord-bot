@@ -42,7 +42,7 @@ interface User {
 	discord: {
 		id: string,
 		locale: string,
-		nickname: Record<string, { current: string,	old?: string[] }>
+		nickname: Record<string, { current: string | null,	old?: string[] }>
 		username: {
 			current: string,
 			old?: string[]

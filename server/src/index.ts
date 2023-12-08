@@ -12,7 +12,7 @@ import Translator from './translate.js';
 import validator from 'validator';
 import type { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
 import type { DiscordGatewayAdapterCreator } from '@discordjs/voice';
-import type { ButtonInteraction, ChatInputCommandInteraction, GuildMember, InteractionReplyOptions, MessageContextMenuCommandInteraction, SelectMenuInteraction } from 'discord.js';
+import type { ButtonInteraction, ChatInputCommandInteraction, GuildMember, InteractionReplyOptions, MessageContextMenuCommandInteraction, StringSelectMenuInteraction } from 'discord.js';
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
@@ -40,7 +40,7 @@ for (const file of buttonFiles) {
   const button = await import(`./interactions/buttons/${file}`);
   buttons.set(button.name, button);
 }
-const selects = new Collection<string, { name:string, execute:(interaction:SelectMenuInteraction) => void}>();
+const selects = new Collection<string, { name:string, execute:(interaction:StringSelectMenuInteraction) => void}>();
 const selectFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/selects', import.meta.url).toString())).filter(file => file.endsWith('.js'));
 for (const file of selectFiles) {
   const select = await import(`./interactions/selects/${file}`);
@@ -88,7 +88,7 @@ client.once('ready', async () => {
         const user = await database.getUser(userId);
         if (!user) {
           logDebug(`New user with ID ${userId}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-          await database.newUser({ id:userId, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:guildId });
+          await database.newUser({ id:userId, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:guildId });
         } else {
           if (user.discord.username.current !== member.user.username) { await database.updateUser(userId, 'username', member.user.username); }
           if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(userId, 'discriminator', member.user.discriminator); }
@@ -158,7 +158,7 @@ client.on('guildMemberUpdate', async (oldUser, member) => {
   const user = await database.getUser(member.user.id);
   if (!user) {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:member.guild.id });
+    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id });
   } else {
     if (user.discord.username.current !== member.user.username) { await database.updateUser(member.user.id, 'username', member.user.username); }
     if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(member.user.id, 'discriminator', member.user.discriminator); }
@@ -172,7 +172,11 @@ client.on('guildMemberAdd', async member => {
   const user = await database.getUser(member.user.id);
   if (!user) {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:member.guild.id });
+    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id });
+  } else {
+    // the user already exists, but is new to this guild
+    // add/update nickname, leave other fields
+    await database.updateUser(member.user.id, 'nickname', member.nickname, member.guild.id);
   }
 });
 

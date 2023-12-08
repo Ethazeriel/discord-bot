@@ -1,10 +1,10 @@
-import { SelectMenuInteraction } from 'discord.js';
+import { StringSelectMenuInteraction } from 'discord.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
 
 export const name = 'remap';
 
-export async function execute(interaction:SelectMenuInteraction) { // dropdown selection function
+export async function execute(interaction:StringSelectMenuInteraction) { // dropdown selection function
   const choice = Number(interaction.values[0]);
   if (choice < 4) {
     const track = await db.getTrack({ 'youtube.0.id': interaction.message.embeds[0].footer!.text }) as Track;
