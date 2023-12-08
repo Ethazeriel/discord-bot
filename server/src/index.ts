@@ -172,7 +172,11 @@ client.on('guildMemberAdd', async member => {
   const user = await database.getUser(member.user.id);
   if (!user) {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:member.guild.id });
+    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id });
+  } else {
+    // the user already exists, but is new to this guild
+    // add/update nickname, leave other fields
+    await database.updateUser(member.user.id, 'nickname', member.nickname, member.guild.id);
   }
 });
 

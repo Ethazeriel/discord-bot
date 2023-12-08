@@ -363,7 +363,7 @@ export async function getUser(discordid:string):Promise<User | undefined> { // u
   }
 }
 
-export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'username', data:string, guild?:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
+export async function updateUser(discordid:string, field:'nickname' | 'locale' | 'discriminator' | 'username', data:string | null, guild?:string) { // usage: const result = await database.updateUser(userid, 'username', member.user.username);
   // updates the given field for the given user
   // returns null if unsuccessful
   const db = await getDb();
