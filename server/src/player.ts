@@ -10,7 +10,7 @@ const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL(
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
-// import * as seekable from 'play-dl';
+import * as seekable from 'play-dl';
 
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
@@ -276,22 +276,22 @@ export default class Player {
       if (this.getPause()) { this.togglePause({ force: false }); }
       if (track) {
         try {
-          // seekable.setToken({
-          //   useragent : [useragent],
-          // }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
-          // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
-          // const resource = createAudioResource(source.stream, { inputType: source.type });
-          const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
-            output: '-',
-            quiet: true,
-            forceIpv4: true,
-            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-            limitRate: '100K',
-            // @ts-expect-error wrapper types are out of date
-            downloadSections : `*${time}-inf`,
-            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-            userAgent: useragent,
-          }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
+          seekable.setToken({
+            useragent : [useragent],
+          }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
+          const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
+          const resource = createAudioResource(source.stream, { inputType: source.type });
+          // const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+          //   output: '-',
+          //   quiet: true,
+          //   forceIpv4: true,
+          //   format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+          //   limitRate: '100K',
+          //   // @ts-expect-error wrapper types are out of date
+          //   downloadSections : `*${time}-inf`,
+          //   cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+          //   userAgent: useragent,
+          // }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
           this.#audioPlayer.play(resource);
           log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
         } catch (error:any) {
