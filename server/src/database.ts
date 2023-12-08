@@ -316,7 +316,7 @@ export async function updateOfficial(id:string, link:string) {// acquire2
 type DiscordUser = {
   id:string,
   username:string,
-  nickname?:string,
+  nickname?:string | null,
   discriminator:string,
   guild?:string,
   locale?:string

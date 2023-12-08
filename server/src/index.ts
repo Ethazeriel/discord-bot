@@ -88,7 +88,7 @@ client.once('ready', async () => {
         const user = await database.getUser(userId);
         if (!user) {
           logDebug(`New user with ID ${userId}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-          await database.newUser({ id:userId, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:guildId });
+          await database.newUser({ id:userId, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:guildId });
         } else {
           if (user.discord.username.current !== member.user.username) { await database.updateUser(userId, 'username', member.user.username); }
           if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(userId, 'discriminator', member.user.discriminator); }
@@ -158,7 +158,7 @@ client.on('guildMemberUpdate', async (oldUser, member) => {
   const user = await database.getUser(member.user.id);
   if (!user) {
     logDebug(`New user with ID ${member.user.id}, username ${member.user.username}, discrim ${member.user.discriminator}, nickname ${member.nickname}`);
-    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname!, discriminator:member.user.discriminator, guild:member.guild.id });
+    await database.newUser({ id:member.user.id, username:member.user.username, nickname:member.nickname, discriminator:member.user.discriminator, guild:member.guild.id });
   } else {
     if (user.discord.username.current !== member.user.username) { await database.updateUser(member.user.id, 'username', member.user.username); }
     if (user.discord.discriminator.current !== member.user.discriminator) { await database.updateUser(member.user.id, 'discriminator', member.user.discriminator); }
