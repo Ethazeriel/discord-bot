@@ -12,7 +12,7 @@ import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import * as seekable from 'play-dl';
 import { sendWebUpdate } from './webserver.js';
-
+logDebug('player presumably being imported');
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
 

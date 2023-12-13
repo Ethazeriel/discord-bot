@@ -11,7 +11,9 @@ const { functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../co
 
 let worker:null | Worker = null;
 
+logDebug('webserver presumably being imported');
 if (functions.web) {
+  logDebug('webserver workers being spawned');
   worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
   worker.on('exit', code => {
     logDebug(`Worker exited with code ${code}.`);
@@ -275,6 +277,7 @@ if (functions.web) {
   });
 }
 export async function sendWebUpdate(type:'player', data:PlayerStatus) {
+  logDebug('send web update is executing');
   if (!functions.web) {return;}
   if (!worker) {return;}
   if (type === 'player') {
