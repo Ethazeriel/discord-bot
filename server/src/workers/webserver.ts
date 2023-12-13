@@ -11,7 +11,7 @@ import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
 const { discord, spotify, napster, root_url } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
-import * as oauth2 from '../oauth2.js';
+import * as oauth2 from './webserver/oauth2.js';
 import { fileURLToPath, URL } from 'url';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
