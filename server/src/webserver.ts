@@ -277,7 +277,6 @@ if (functions.web) {
   });
 }
 export async function sendWebUpdate(type:'player', data:PlayerStatus) {
-  logDebug('send web update is executing');
   if (!functions.web) {return;}
   if (!worker) {return;}
   if (type === 'player') {
