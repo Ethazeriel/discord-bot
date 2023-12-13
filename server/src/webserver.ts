@@ -17,12 +17,12 @@ if (functions.web) {
   worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
   worker.on('exit', code => {
     logDebug(`Worker exited with code ${code}.`);
-    worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
+    // worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
   }); // if it exits just spawn a new one because that's good error handling, yes
 
   worker.on('error', code => {
     logDebug(`Worker threw error ${code.message}.`, '\n', code.stack);
-    worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
+    // worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
   }); // ehh fuck it, probably better than just crashing I guess
 
   worker.on('message', async (message:WebWorkerMessage) => {
