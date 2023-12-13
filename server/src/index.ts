@@ -2,7 +2,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { Client, Collection, GatewayIntentBits, VoiceChannel } from 'discord.js';
 import { fileURLToPath, URL } from 'url';
-const { discord, internal, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord, internal } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const token = discord.token;
 import { log, logCommand, logComponent, logDebug } from './logger.js';
 import * as database from './database.js';
@@ -65,9 +65,9 @@ client.once('ready', async () => {
   log('info', ['Ready!', `Node version: ${process.version}`]);
   database.printCount();
 
-  if (functions.web) { // this is bad code because it doesn't let things load asynchronously; consider revising
-    import('./webserver.js');
-  }
+  // if (functions.web) { // this is bad code because it doesn't let things load asynchronously; consider revising
+  //   import('./webserver.js');
+  // }
 
   for (const [guildId, guild] of client.guilds.cache) {
     for (const [channelId, channel] of guild.channels.cache) {

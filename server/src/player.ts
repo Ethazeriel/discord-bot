@@ -6,11 +6,12 @@ import { ButtonInteraction, CommandInteraction, BaseInteraction, GuildMember, At
 import * as db from './database.js';
 import { log, logDebug } from './logger.js';
 import { fileURLToPath, URL } from 'url';
-const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { youtube } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
 import * as seekable from 'play-dl';
+import { sendWebUpdate } from './webserver.js';
 
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
@@ -67,7 +68,7 @@ export default class Player {
         const diff = (this.#queue.tracks[this.#queue.playhead].status.pause) ? (this.#queue.tracks[this.#queue.playhead].status.pause! - this.#queue.tracks[this.#queue.playhead].status.start!) : 0;
         this.#queue.tracks[this.#queue.playhead].status.start = ((Date.now() / 1000) - (this.#queue.tracks[this.#queue.playhead].status.seek || 0)) - diff;
         if (this.#queue.tracks[this.#queue.playhead].status.seek) { this.#queue.tracks[this.#queue.playhead].status.seek = 0; }
-        if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
+        sendWebUpdate('player', this.getStatus());
       } else if (newState.status == AudioPlayerStatus.Idle) { // && this.#connection.state.status != VoiceConnectionStatus.Destroyed
         const track = this.#queue.tracks[this.#queue.playhead];
         if (track) {
@@ -942,7 +943,7 @@ export default class Player {
   }
 
   async sync(interaction:CommandInteraction | ButtonInteraction, type: 'queue'|'media', queueEmbed:InteractionReplyOptions | InteractionUpdateOptions, mediaEmbed?:InteractionReplyOptions | InteractionUpdateOptions) {
-    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
+    sendWebUpdate('player', this.getStatus());
     switch (type) {
       case 'queue': { // strip non-false parameter thing
         Object.keys(this.#embeds).map(async (id) => {
@@ -965,7 +966,7 @@ export default class Player {
   }
 
   async webSync(type: 'queue'|'media') {
-    if (functions.web) { (await import('./webserver.js')).sendWebUpdate('player', this.getStatus()); }
+    sendWebUpdate('player', this.getStatus());
     const keys = Object.keys(this.#embeds);
     if (keys.length) {
       // logDebug('have embeds');
