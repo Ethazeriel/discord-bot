@@ -1,4 +1,4 @@
-import Player from '../../player.js';
+import { Player } from '../../player.js';
 import { logDebug } from '../../logger.js';
 import { InteractionDeferUpdateOptions, ButtonInteraction } from 'discord.js';
 

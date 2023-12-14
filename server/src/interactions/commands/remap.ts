@@ -4,7 +4,7 @@ import { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js'
 import { sanitize, youtubePattern } from '../../regexes.js';
 import * as db from '../../database.js';
 import * as utils from '../../utils.js';
-import Player from '../../player.js';
+import { Player } from '../../player.js';
 import youtube from '../../workers/acquire/youtube.js';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';

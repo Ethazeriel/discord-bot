@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import Player from '../../player.js';
+import { Player } from '../../player.js';
 import { log } from '../../logger.js';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';

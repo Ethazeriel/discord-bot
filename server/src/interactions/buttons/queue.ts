@@ -1,5 +1,5 @@
 import { embedPage } from '../../regexes.js';
-import Player from '../../player.js';
+import { Player } from '../../player.js';
 import { logDebug } from '../../logger.js';
 import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
 

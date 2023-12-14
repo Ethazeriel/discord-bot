@@ -1,4 +1,4 @@
-import Translator from '../../translate.js';
+import { Translator } from '../../translate.js';
 import * as db from '../../database.js';
 import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
 export const name = 'translate';

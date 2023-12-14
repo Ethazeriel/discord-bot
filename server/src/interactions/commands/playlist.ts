@@ -1,10 +1,10 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import Player from '../../player.js';
+import { Player } from '../../player.js';
 import * as utils from '../../utils.js';
 import { log } from '../../logger.js';
 import * as database from '../../database.js';
 import { sanitize, sanitizePlaylists } from '../../regexes.js';
-import fetch from '../../acquire.js';
+import { fetch } from '../../acquire.js';
 import Workspace from '../../workspace.js';
 import validator from 'validator';
 import fs from 'fs';

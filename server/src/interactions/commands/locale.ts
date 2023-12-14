@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import Translator from '../../translate.js';
+import { Translator } from '../../translate.js';
 import * as db from '../../database.js';
 import { sanitize } from '../../regexes.js';
 import validator from 'validator';

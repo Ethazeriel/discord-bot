@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import Player from '../../player.js';
+import { Player } from '../../player.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { log, logDebug } from '../../logger.js';
 import * as db from '../../database.js';

@@ -1,6 +1,6 @@
 /* eslint-disable no-case-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
-import Translator from '../../translate.js';
+import { Translator } from '../../translate.js';
 import * as db from '../../database.js';
 import validator from 'validator';
 import fs from 'fs';
