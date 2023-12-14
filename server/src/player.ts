@@ -15,7 +15,7 @@ import * as seekable from 'play-dl';
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
 
-export default class Player {
+export class Player {
   // type definitions
   static #players:Record<string, Player> = {};
 

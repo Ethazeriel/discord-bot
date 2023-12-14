@@ -8,7 +8,7 @@ import validator from 'validator';
 import { ButtonInteraction, CommandInteraction, InteractionReplyOptions, Message, EmbedBuilder } from 'discord.js';
 import { DetectResult } from '@google-cloud/translate/build/src/v2';
 
-export default class Translator {
+export class Translator {
   // types
   id:string;
   subscribers:Record<string, {
