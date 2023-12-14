@@ -1,10 +1,12 @@
-import Player from './player.js';
 import { CommandInteraction, AttachmentBuilder, InteractionReplyOptions } from 'discord.js';
-import * as utils from './utils.js';
-import * as db from './database.js';
-import { logDebug } from './logger.js';
 
-export default class Workspace {
+// import Player from './player.js';
+// import * as utils from './utils.js';
+// import * as db from './database.js';
+// import { logDebug } from './logger.js';
+import { logDebug, Player, db, utils } from './internal.js';
+
+export class Workspace {
 
   list:Track[];
   id:string;

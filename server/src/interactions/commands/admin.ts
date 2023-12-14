@@ -1,12 +1,16 @@
-import { SlashCommandBuilder } from '@discordjs/builders';
-import { log } from '../../logger.js';
-import { sanitize, youtubePattern, sanitizePlaylists } from '../../regexes.js';
-import * as database from '../../database.js';
 import validator from 'validator';
 import fs from 'fs';
 import type { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 import { fileURLToPath, URL } from 'url';
-import { Player } from '../../player.js';
+import { SlashCommandBuilder } from '@discordjs/builders';
+
+
+// import { log } from '../../logger.js';
+// import { sanitize, youtubePattern, sanitizePlaylists } from '../../regexes.js';
+// import * as database from '../../database.js';
+// import { Player } from '../../player.js';
+import { log, sanitize, youtubePattern, sanitizePlaylists, db, Player } from '../../internal.js';
+
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -34,7 +38,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
 
       case 'removeplaylist': {
         const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '') || ''))?.trim();
-        const result = await database.removePlaylist(listname);
+        const result = await db.removePlaylist(listname);
         interaction.followUp({ content:`Removed ${listname} from the database; ${result} tracks.`, ephemeral: true });
         break;
       }
@@ -43,9 +47,9 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim() || '';
         if (youtubePattern.test(track)) {
           const match = track.match(youtubePattern);
-          const dbtrack = await database.getTrack({ 'youtube.0.id':match![2] });
+          const dbtrack = await db.getTrack({ 'youtube.0.id':match![2] });
           if (dbtrack) { Player.removeFromAll(dbtrack.goose.id); }
-          const result = await database.removeTrack(match![2]);
+          const result = await db.removeTrack(match![2]);
           interaction.followUp({ content:`Removed ${track} from the database; ${result} tracks.`, ephemeral: true });
         } else { await interaction.followUp({ content:'Invalid track URL', ephemeral: true });}
         break;

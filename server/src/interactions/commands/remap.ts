@@ -1,14 +1,17 @@
 /* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
-import { sanitize, youtubePattern } from '../../regexes.js';
-import * as db from '../../database.js';
-import * as utils from '../../utils.js';
-import { Player } from '../../player.js';
-import youtube from '../../workers/acquire/youtube.js';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
-// import Jimp from 'jimp';
+
+// import { sanitize, youtubePattern } from '../../regexes.js';
+// import * as db from '../../database.js';
+// import * as utils from '../../utils.js';
+// import { Player } from '../../player.js';
+import youtube from '../../workers/acquire/youtube.js';
+import { sanitize, youtubePattern, db, utils, Player } from '../../internal.js';
+
+
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 

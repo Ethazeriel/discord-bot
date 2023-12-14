@@ -1,14 +1,17 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Player } from '../../player.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import * as utils from '../../utils.js';
-import { log, logDebug } from '../../logger.js';
-import * as database from '../../database.js';
-import { fetch } from '../../acquire.js';
-import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { ChatInputCommandInteraction, GuildMemberRoleManager, InteractionUpdateOptions, InteractionReplyOptions } from 'discord.js';
+
+// import { Player } from '../../player.js';
+// import * as utils from '../../utils.js';
+// import { log, logDebug } from '../../logger.js';
+// import * as database from '../../database.js';
+// import { fetch } from '../../acquire.js';
+// import { youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../regexes.js';
+import { Player, utils, log, logDebug, db, fetch, youtubePattern, spotifyPattern, sanitize, sanitizePlaylists } from '../../internal.js';
+
+
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -77,7 +80,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
 
   if (internal) { // internal playlist
     search.replace(sanitizePlaylists, '');
-    getTracks = database.getPlaylist(search);
+    getTracks = db.getPlaylist(search);
   } else { // external resources
     getTracks = fetch(search, interaction.id);
     let queueEmbed;

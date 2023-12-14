@@ -1,15 +1,18 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Player } from '../../player.js';
-import * as utils from '../../utils.js';
-import { log } from '../../logger.js';
-import * as database from '../../database.js';
-import { sanitize, sanitizePlaylists } from '../../regexes.js';
-import { fetch } from '../../acquire.js';
-import Workspace from '../../workspace.js';
 import validator from 'validator';
 import fs from 'fs';
 import type { ChatInputCommandInteraction, GuildMemberRoleManager, InteractionReplyOptions } from 'discord.js';
 import { fileURLToPath, URL } from 'url';
+
+// import { Player } from '../../player.js';
+// import * as utils from '../../utils.js';
+// import { log } from '../../logger.js';
+// import * as database from '../../database.js';
+// import { sanitize, sanitizePlaylists } from '../../regexes.js';
+// import { fetch } from '../../acquire.js';
+// import Workspace from '../../workspace.js';
+import { Player, utils, log, db, sanitize, sanitizePlaylists, fetch, Workspace } from '../../internal.js';
+
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
@@ -114,7 +117,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       case 'save': {
         const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '') || '')).trim();
-        const result = await database.addPlaylist(workspace.list, listname);
+        const result = await db.addPlaylist(workspace.list, listname);
         if (result) {
           interaction.followUp({ content:result, ephemeral: true });
         } else {
@@ -130,7 +133,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       case 'load': {
         const listname = validator.escape(validator.stripLow(interaction.options.getString('playlist')?.replace(sanitizePlaylists, '') || '')).trim();
-        const result = await database.getPlaylist(listname);
+        const result = await db.getPlaylist(listname);
         workspace.addTracks(result, (workspace.list.length));
         interaction.followUp({ content:`Loaded playlist \`${listname}\` from the database: \`${result.length}\` items.`, ephemeral: true });
         break;
@@ -160,7 +163,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       case 'list': {
-        const lists = await database.listPlaylists();
+        const lists = await db.listPlaylists();
         let listStr = '```';
         for (const list of lists!) {
           const part = '\n' + list;

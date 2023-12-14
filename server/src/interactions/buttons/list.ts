@@ -1,6 +1,8 @@
-import { embedPage } from '../../regexes.js';
-import Workspace from '../../workspace.js';
 import { ButtonInteraction, GuildMember, InteractionDeferUpdateOptions, InteractionReplyOptions } from 'discord.js';
+
+// import { embedPage } from '../../regexes.js';
+// import Workspace from '../../workspace.js';
+import { embedPage, Workspace } from '../../internal.js';
 
 export const name = 'list';
 

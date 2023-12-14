@@ -1,11 +1,13 @@
 /* eslint-disable no-fallthrough */
 import { AttachmentBuilder, ChatInputCommandInteraction, InteractionReplyOptions } from 'discord.js';
-import { log } from './logger.js';
-// import Canvas from 'canvas';
 import Jimp from 'jimp';
 import crypto from 'crypto';
 import axios, { AxiosResponse } from 'axios';
-import * as db from './database.js';
+
+// import * as db from './database.js';
+// import { log } from './logger.js';
+import { log, db } from './internal.js';
+
 import type { IArtist, IArtistList } from 'musicbrainz-api';
 
 export function progressBar(size:number, duration:number, playhead:number, { start, end, barbefore, barafter, head }:ProgressBarOptions = {}):string {

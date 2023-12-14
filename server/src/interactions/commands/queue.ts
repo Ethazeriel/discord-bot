@@ -1,13 +1,15 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Player } from '../../player.js';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { log, logDebug } from '../../logger.js';
-import * as db from '../../database.js';
-import { seekTime as seekRegex } from '../../regexes.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { ChatInputCommandInteraction, GuildMemberRoleManager, Message } from 'discord.js';
+
+// import { Player } from '../../player.js';
+// import { log, logDebug } from '../../logger.js';
+// import * as db from '../../database.js';
+// import { seekTime as seekRegex } from '../../regexes.js';
+import { log, db, seekTime as seekRegex, Player } from '../../internal.js';
+
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 

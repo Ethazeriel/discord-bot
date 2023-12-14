@@ -1,11 +1,15 @@
 /* eslint-disable no-console */
 import fs from 'fs';
 import chalk from 'chalk';
-import { sanitize } from './regexes.js';
 import { fileURLToPath, URL } from 'url';
-const debugMode = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).debug;
 import { isMainThread } from 'worker_threads';
 import { ButtonInteraction, CommandInteraction, MessageContextMenuCommandInteraction, GuildMember, MessageInteraction, StringSelectMenuInteraction, ComponentType } from 'discord.js';
+
+// don't use internal import system here, as we call this from worker threads
+import { sanitize } from './regexes.js';
+// import { sanitize } from './internal.js';
+
+const debugMode = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8')).debug;
 
 if (!fs.existsSync('../logs')) {
   fs.mkdirSync('../logs');

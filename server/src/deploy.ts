@@ -7,6 +7,7 @@ const { client_id, guildId, token, scope } = JSON.parse(fs.readFileSync(fileURLT
 const commands:object[] = [];
 const commandFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/commands', import.meta.url).toString()), 'utf-8').filter(file => file.endsWith('.js'));
 const contextFiles = fs.readdirSync(fileURLToPath(new URL('./interactions/contexts', import.meta.url).toString()), 'utf-8').filter(file => file.endsWith('.js'));
+// we use direct imports in this file as its only ever loaded synchronously
 
 export async function deploy() {
   log('command', [`Deploying commands to ${scope} scope`]);

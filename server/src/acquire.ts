@@ -1,7 +1,8 @@
 import { Worker } from 'worker_threads';
 import crypto from 'crypto';
-import { log, logDebug } from './logger.js';
 import { fileURLToPath, URL } from 'url';
+// import { log, logDebug } from './logger.js';
+import { log, logDebug } from './internal.js';
 
 const sleep = (ms:number) => new Promise((resolve) => setTimeout(resolve, ms));
 let slowMode:boolean;

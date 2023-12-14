@@ -1,7 +1,10 @@
-import { embedPage } from '../../regexes.js';
-import { Player } from '../../player.js';
-import { logDebug } from '../../logger.js';
 import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
+
+// import { embedPage } from '../../regexes.js';
+// import { Player } from '../../player.js';
+// import { logDebug } from '../../logger.js';
+import { embedPage, Player, logDebug } from '../../internal.js';
+
 
 export const name = 'queue';
 

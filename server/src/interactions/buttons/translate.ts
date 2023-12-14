@@ -1,6 +1,10 @@
-import { Translator } from '../../translate.js';
-import * as db from '../../database.js';
 import { ButtonInteraction, InteractionDeferUpdateOptions } from 'discord.js';
+
+// import { Translator } from '../../translate.js';
+// import * as db from '../../database.js';
+import { Translator, db } from '../../internal.js';
+
+
 export const name = 'translate';
 
 export async function execute(interaction:ButtonInteraction, which:string) {

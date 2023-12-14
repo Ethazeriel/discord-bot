@@ -1,6 +1,8 @@
-import { Player } from '../../player.js';
-import { logDebug } from '../../logger.js';
 import { InteractionDeferUpdateOptions, ButtonInteraction } from 'discord.js';
+
+// import { Player } from '../../player.js';
+// import { logDebug } from '../../logger.js';
+import { Player, logDebug } from '../../internal.js';
 
 export const name = 'media';
 

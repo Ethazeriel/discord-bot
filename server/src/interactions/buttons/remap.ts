@@ -1,7 +1,9 @@
-import * as db from '../../database.js';
-import * as utils from '../../utils.js';
 import { ButtonInteraction, InteractionUpdateOptions, InteractionDeferUpdateOptions } from 'discord.js';
-import youtube from '../../workers/acquire/youtube.js';
+
+import youtube from '../../workers/acquire/youtube.js'; // dislike this, but keeping it until remap gets reworked
+// import * as db from '../../database.js';
+// import * as utils from '../../utils.js';
+import { db, utils } from '../../internal.js';
 
 export const name = 'remap';
 

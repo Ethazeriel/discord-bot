@@ -1,10 +1,13 @@
 import { ContextMenuCommandBuilder } from '@discordjs/builders';
-import * as db from '../../database.js';
-import { Translator } from '../../translate.js';
 import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import type { GuildMember, GuildMemberRoleManager, MessageContextMenuCommandInteraction } from 'discord.js';
+
+// import * as db from '../../database.js';
+// import { Translator } from '../../translate.js';
+import { db, Translator } from '../../internal.js';
+
 const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 

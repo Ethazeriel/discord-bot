@@ -1,13 +1,19 @@
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { Document, MongoClient } from 'mongodb';
-import type { Db, Filter, FindOptions, UpdateFilter } from 'mongodb';
-import { log } from './logger.js';
 import chalk from 'chalk';
-const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
-import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
-import Player from './player.js';
+const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+
+
+// this file needs to be as standalone as possible, exempt from single import styling as this is used in worker threads
+import { sanitizePlaylists } from './regexes.js';
+import { log } from './logger.js';
+// import Player from './player.js';
+// import { sanitizePlaylists, log, Player } from './internal.js';
+
+import type { Db, Filter, FindOptions, UpdateFilter } from 'mongodb';
+
 // Connection URL
 let url = mongo.url;
 const dbname = mongo.database;
@@ -408,7 +414,9 @@ export async function saveStash(userIDs:string[], playhead:number, queue:Track[]
   // logDebug(`stash before—playhead ${playhead}, queue length ${queue.length}`);
   for (let index = 0; index < queue.length; index++) {
     const track = queue[index];
-    if (!track.status.ephemeral && !Player.pending(track)) {
+    // this used to call Player.pending, but that means we load the entire player (and bot) in worker threads
+    // we don't want that, so I've copied the return of that function here instead
+    if (!track.status.ephemeral && !(track !== undefined && track.goose.id === '')) {
       idarray.push(track.goose.id);
     } else { playhead &&= --playhead; }
   }

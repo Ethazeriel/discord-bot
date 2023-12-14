@@ -1,6 +1,8 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import type { ChatInputCommandInteraction } from 'discord.js';
-import * as utils from '../../utils.js';
+
+// import * as utils from '../../utils.js';
+import { utils } from '../../internal.js';
 
 export const data = new SlashCommandBuilder()
   .setName('fish')
