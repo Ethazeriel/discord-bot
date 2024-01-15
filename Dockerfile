@@ -1,12 +1,15 @@
 # syntax=docker/dockerfile:1
 # build the react client package
-FROM node:18-alpine as clientbuild
+FROM node:20-alpine as clientbuild
 ENV NODE_ENV production
 WORKDIR /client
 COPY client/package* ./
+COPY client/vite.config.ts ./
+
 RUN npm install
 COPY client/public ./public
 COPY client/src ./src
+COPY client/index.html ./
 COPY @types ./src/@types
 COPY client/tsconfig.json ./tsconfig.json
 COPY client/.eslintrc.json ./.eslintrc.json
