@@ -2,8 +2,6 @@
   "name": "gooseclient",
   "version": "0.4.0",
   "private": true,
-  "proxy": "http://localhost:2468",
-  "homepage": ".",
   "type":"module",
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.3",
@@ -27,8 +25,7 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "vite build",
-    "test": "react-scripts test"
+    "build": "vite build"
   },
   "eslintConfig": {
     "extends": [
