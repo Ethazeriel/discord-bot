@@ -16,8 +16,9 @@ COPY client/.eslintrc.json ./.eslintrc.json
 RUN npm run build
 
 # separately build server code so we don't have to package typescript/etc in the final container
-FROM node:18-alpine3.17 as serverbuild
+FROM node:20-alpine as serverbuild
 RUN apk --no-cache add python3
+RUN apk --no-cache add --virtual .opus-deps ca-certificates git curl build-base python3 g++ make
 WORKDIR /server
 COPY server/package* ./
 RUN npm install
@@ -29,14 +30,17 @@ RUN npm run build
 
 # temporary- pin alpine to version 3.17 to allow use of prebuilt opus packages
 # once we've set up a build env that can make these, we can use that - or maybe the available binaries will update someday
-FROM node:18-alpine3.17
+FROM node:20-alpine
 ENV NODE_ENV production
-RUN apk add dumb-init
 # youtube-dl-exec needs python
 RUN apk --no-cache add python3
+RUN apk --no-cache add dumb-init
 WORKDIR /goose
 COPY --chown=node:node server/package.json server/package-lock.json ./
-RUN npm install
+# the add and del operations need to be in the same line or the final image is larger, needed for the @discordjs/opus package
+RUN apk --no-cache add --virtual .opus-deps ca-certificates git curl build-base python3 g++ make \
+ && npm install \
+ && apk del --purge .opus-deps
 COPY --chown=node:node  --from=serverbuild /server/build ./build
 WORKDIR /client-assets
 COPY --chown=node:node --from=clientbuild /client/build .
