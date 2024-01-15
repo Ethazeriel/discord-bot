@@ -1,14 +1,23 @@
+// eslint-disable-next-line spaced-comment
+/// <reference types="vite-plugin-svgr/client" />
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useReducer, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { timeDisplay } from './utils';
 
-import { ReactComponent as Shuffle } from './media/placeholder/shuffle.svg';
-import { ReactComponent as Prev } from './media/placeholder/prev.svg';
-import { ReactComponent as Play } from './media/placeholder/play.svg';
-import { ReactComponent as Pause } from './media/placeholder/pause.svg';
-import { ReactComponent as Next } from './media/placeholder/next.svg';
-import { ReactComponent as Loop } from './media/placeholder/loop.svg';
+// import { ReactComponent as Shuffle } from './media/placeholder/shuffle.svg';
+// import { ReactComponent as Prev } from './media/placeholder/prev.svg';
+// import { ReactComponent as Play } from './media/placeholder/play.svg';
+// import { ReactComponent as Pause } from './media/placeholder/pause.svg';
+// import { ReactComponent as Next } from './media/placeholder/next.svg';
+// import { ReactComponent as Loop } from './media/placeholder/loop.svg';
+
+import Shuffle from './media/placeholder/shuffle.svg?react';
+import Prev from './media/placeholder/prev.svg?react';
+import Play from './media/placeholder/play.svg?react';
+import Pause from './media/placeholder/pause.svg?react';
+import Next from './media/placeholder/next.svg?react';
+import Loop from './media/placeholder/loop.svg?react';
 import SlowMode from './media/placeholder/slowmode.png';
 
 import type { Track, PlayerStatus, PlayerClick } from './types';
