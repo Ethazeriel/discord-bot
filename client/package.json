@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "lint": "eslint src --ext js,ts,tsx --report-unused-disable-directives"
   },
   "eslintConfig": {
     "extends": [
