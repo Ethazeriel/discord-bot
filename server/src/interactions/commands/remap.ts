@@ -1,4 +1,3 @@
-/* eslint-disable no-inner-declarations */
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 import { sanitize, youtubePattern } from '../../regexes.js';

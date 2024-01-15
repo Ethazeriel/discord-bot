@@ -193,7 +193,6 @@ app.post('/player', async (req, res) => {
     const user = await db.getUserWeb(webId);
     if (user) {
       const action = validator.escape(validator.stripLow(req.body?.action?.replace(sanitize, '') || '')).trim();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const parameter = validator.escape(validator.stripLow(('' + req.body?.parameter)?.replace(sanitize, '') || '')).trim();
       log(req.method, [req.originalUrl, chalk.green(action)]);
       // log('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
@@ -292,7 +291,6 @@ wss.on('connection', async (ws, req) => {
       } else { ws.terminate(); }
     } else { ws.terminate(); }
   } else { ws.terminate(); }
-  // eslint-disable-next-line no-unused-vars
   ws.on('message', () => {
     // logDebug('WebSocketServer message from client—no handling in place');
   });

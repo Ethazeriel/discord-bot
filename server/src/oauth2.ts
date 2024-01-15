@@ -40,7 +40,7 @@ export async function flow(type:'discord' | 'spotify' | 'napster', code:string, 
       };
       break;}
 
-    default:{ return false; }
+    default: { return false; }
   }
 
   const AxToken:void | AxiosResponse<AccessTokenResponse> = await axios({
@@ -63,7 +63,7 @@ export async function flow(type:'discord' | 'spotify' | 'napster', code:string, 
       case 'discord': { userconfig = { url: 'https://discord.com/api/v9/oauth2/@me' }; break;}
       case 'spotify': { userconfig = { url: 'https://api.spotify.com/v1/me' }; break;}
       case 'napster': { userconfig = { url: 'https://api.napster.com/v2.2/me/account' }; break;}
-      default:{ return false; }
+      default: { return false; }
     }
     const AxUser:void | AxiosResponse<any> = await axios({
       url: userconfig.url,
@@ -96,7 +96,7 @@ export async function flow(type:'discord' | 'spotify' | 'napster', code:string, 
           await updateNapsterUser({ webClientId: webClientId }, user);
           break;}
 
-        default:{ return false; }
+        default: { return false; }
       }
       // if we haven't returned at this point everything should have worked
       return true;

@@ -9,7 +9,6 @@ const url = mongo.url;
 const dbname = mongo.database;
 const collname = mongo.collection;
 let db;
-// eslint-disable-next-line no-unused-vars
 let con;
 
 MongoClient.connect(url, function(err, client) {

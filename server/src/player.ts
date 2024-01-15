@@ -226,7 +226,7 @@ export default class Player {
         this.decommission(this.#embeds[userId].media!.interaction!, 'media', mediaEmbed, 'You left the channel');
       }
     }
-    delete this.#embeds[userId]; // eslint-disable-next-line max-statements-per-line
+    delete this.#embeds[userId];
     if (!this.#listeners.size) {
       logDebug(`Client ${client.user.username} id ${client.user.id} alone in channel; leaving voice`);
       this.#connection.destroy();
