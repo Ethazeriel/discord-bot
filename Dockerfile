@@ -5,7 +5,6 @@ ENV NODE_ENV production
 WORKDIR /client
 COPY client/package* ./
 COPY client/vite.config.ts ./
-
 RUN npm install
 COPY client/public ./public
 COPY client/src ./src
@@ -28,8 +27,6 @@ COPY server/tsconfig.json ./tsconfig.json
 COPY server/.eslintrc.json ./.eslintrc.json
 RUN npm run build
 
-# temporary- pin alpine to version 3.17 to allow use of prebuilt opus packages
-# once we've set up a build env that can make these, we can use that - or maybe the available binaries will update someday
 FROM node:20-alpine
 ENV NODE_ENV production
 # youtube-dl-exec needs python
