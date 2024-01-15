@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteTsconfigPaths from 'vite-tsconfig-paths';
 import svgr from 'vite-plugin-svgr';
+import browserslistToEsbuild from 'browserslist-to-esbuild';
 
 export default defineConfig({
   base: '',
@@ -23,5 +24,10 @@ export default defineConfig({
   },
   build: {
     outDir: './build',
+    target: browserslistToEsbuild([
+      '>0.2%',
+      'not dead',
+      'not op_mini all',
+    ]),
   },
 });
