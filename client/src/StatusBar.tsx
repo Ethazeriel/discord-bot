@@ -133,7 +133,7 @@ width: auto;
 margin-right:4px;
 `;
 function ConLogo(props:{ type:'spotify' | 'discord' | 'napster', active:boolean }) {
-  const loc = `${process.env.PUBLIC_URL}/media/connections/${props.type}/${props.active}.png`;
+  const loc = `/media/connections/${props.type}/${props.active}.png`;
   return (
     <>
       <LogoImg src={loc} />

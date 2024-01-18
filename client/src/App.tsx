@@ -94,7 +94,7 @@ export default class App extends React.Component<Record<string, never>, AppState
       // console.log(json);
     }).then(() => {
       const protocol = (window.location.hostname === 'localhost') ? 'ws' : 'wss';
-      const socket = new WebSocket(`${protocol}://${window.location.hostname}/websocket`); // this is not a problem
+      const socket = new WebSocket(`${protocol}://${window.location.hostname}:${window.location.port}/websocket`); // this is not a problem
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       socket.addEventListener('open', (event: any) => {
         console.log(`WebSocket open: ${JSON.stringify(event, null, 2)}`);

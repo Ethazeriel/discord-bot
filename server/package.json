@@ -9,6 +9,7 @@
     "build": "./node_modules/typescript/bin/tsc --build",
     "clean": "./node_modules/typescript/bin/tsc --build --clean",
     "start": "./node_modules/typescript/bin/tsc --build && node .",
+    "lint": "eslint src --ext js,ts --report-unused-disable-directives",
     "go": "node ."
   },
   "author": "Ethazeriel, Whuppee",

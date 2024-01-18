@@ -363,7 +363,7 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
   // search is a spotify url
   const match = search.match(spotifyPattern);
   switch (match![1]) {
-    case 'track':{
+    case 'track': {
       const track = await db.getTrack({ 'spotify.id': match![2] });
       if (track) {
         log('fetch', [`[0] have '${ track.goose.track.name }'`]);
@@ -377,7 +377,7 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
       return Array(newTrack);
     }
 
-    case 'album':{
+    case 'album': {
       const auth = await spotify.getCreds();
       const newTracks = await spotify.fromAlbum(auth, match![2]);
       const readyTracks:Array<Track | TrackSource> = [];
@@ -394,7 +394,7 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
       return readyTracks;
     }
 
-    case 'playlist':{
+    case 'playlist': {
       const auth = await spotify.getCreds();
       const newTracks = await spotify.fromPlaylist(auth, match![2]);
       const readyTracks:Array<Track | TrackSource> = [];
@@ -452,7 +452,7 @@ async function napsterSource(search:string):Promise<Array<TrackSource | Track> |
   // search is a napster url
   const match = search.match(napsterPattern);
   switch (match![2]) {
-    case 'track':{
+    case 'track': {
       const track = await db.getTrack({ 'napster.id': match![3] });
       if (track) {
         log('fetch', [`[0] have '${ track.goose.track.name }'`]);
@@ -465,7 +465,7 @@ async function napsterSource(search:string):Promise<Array<TrackSource | Track> |
       return Array(newTrack);
     }
 
-    case 'album':{
+    case 'album': {
       const newTracks = await napster.fromAlbum(match![1]);
       const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {
@@ -481,7 +481,7 @@ async function napsterSource(search:string):Promise<Array<TrackSource | Track> |
       return readyTracks;
     }
 
-    case 'playlist':{
+    case 'playlist': {
       const newTracks = await napster.fromPlaylist(match![1]);
       const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {

@@ -119,7 +119,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             break;
           }
 
-          case 'pendingIndex':{ // eslint-disable-next-line prefer-const
+          case 'pendingIndex': { // eslint-disable-next-line prefer-const
             let [stringIndex, query] = (message.parameter as string).split(' ');
             if (!(stringIndex && query)) {
               logDebug(`webparent queue—at least one parameter nullish; stringIndex contains [${stringIndex}], query contains [${query}]; message was [${message.parameter}]`);

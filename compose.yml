@@ -38,6 +38,9 @@ services:
     networks:
       - frontend
       - backend
+    depends_on:
+      - mongo
+      - nginx
 
 volumes:
   client-assets:
