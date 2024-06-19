@@ -35,7 +35,7 @@
     "musicbrainz-api": "^0.8.0",
     "play-dl": "^1.9.7",
     "validator": "^13.7.0",
-    "ws": "^8.6.0",
+    "ws": "^8.17.1",
     "youtube-dl-exec": "^2.4.6",
     "ytdl-core": "^4.11.2"
   },
