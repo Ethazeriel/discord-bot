@@ -1,23 +1,24 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Image } from 'expo-image';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { timeDisplay } from '@/components/utils';
+
 
 export function SimpleTrack({source, id}:{source:TrackSource, id:number}) {
   if (Object.keys(source).length) {
     return (
-      <ThemedView style={styles.trackStyle}>
+      <View style={styles.trackStyle}>
         <Image style={styles.image} source={source.art} contentFit="cover" transition={1000} />
-        <ThemedView style={styles.numContainer}>
+        <View style={styles.numContainer}>
           <ThemedText type="defaultSemiBold">{(id + 1)}</ThemedText>
-        </ThemedView>
-        <ThemedView style={styles.details}>
+        </View>
+        <View style={styles.details}>
           <ThemedText type="subtitle">{source.name}</ThemedText>
           <ThemedText type="default">{source.artist.name} - {source.album.name}</ThemedText>
-        </ThemedView>
+        </View>
         <ThemedText style={styles.playtime}>{timeDisplay(source.duration)}</ThemedText>
-      </ThemedView>
+      </View>
     );
   } else {return null;}
 }
