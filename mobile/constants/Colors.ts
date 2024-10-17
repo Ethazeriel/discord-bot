@@ -4,7 +4,7 @@
  */
 
 const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorDark = '#0a7ea4';
 
 export const Colors = {
   // light: {
@@ -32,3 +32,7 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 };
+// I'm doing this wrong
+// I never use dark mode on my phone
+// but all apps should be dark mode always
+//TODO: be better
