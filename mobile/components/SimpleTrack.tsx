@@ -1,24 +1,24 @@
 import { ThemedText } from '@/components/ThemedText';
 import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { timeDisplay } from '@/components/utils';
 import styled from 'styled-components/native';
 import React from 'react';
 
-export function SimpleTrack({source, id}:{source:Track, id:number}): React.JSX.Element | null
-export function SimpleTrack({source, id}:{source:TrackSource, id:number}): React.JSX.Element | null 
-export function SimpleTrack({source, id}:{source:any, id:number}): React.JSX.Element | null {
+export function SimpleTrack({ source, id }:{source:Track, id:number}): React.JSX.Element | null
+export function SimpleTrack({ source, id }:{source:TrackSource, id:number}): React.JSX.Element | null
+export function SimpleTrack({ source, id }:{source:any, id:number}): React.JSX.Element | null {
   if (Object.keys(source).length) {
 
-  const track = {
-    art:'',
-    name:'',
-    artist:'',
-    album:'',
-    duration:0,
-  };
+    const track = {
+      art:'',
+      name:'',
+      artist:'',
+      album:'',
+      duration:0,
+    };
 
-    if ( source.goose ) {
+    if (source.goose) {
       // source is Track
       track.art = source.goose.track.art;
       track.name = source.goose.track.name;
@@ -36,7 +36,7 @@ export function SimpleTrack({source, id}:{source:any, id:number}): React.JSX.Ele
 
 
     return (
-      <Track style={ id%2 ? styles.even : styles.odd}>
+      <Track style={ id % 2 ? styles.even : styles.odd}>
         <Image style={styles.image} source={track.art} contentFit="cover" transition={1000} />
         <VertCon>
           <ThemedText type="defaultSemiBold">{(id + 1)}</ThemedText>
@@ -67,15 +67,15 @@ const styles = StyleSheet.create({
   }
 });
 
-const Art = styled.Image`
-  height:6.4vh;
-  width:6.4vh;
-  background-color:#00868633;
-  margin-left:0.5%;
-  margin-right:0.5%;
-  object-fit:cover;
-  transition:1000ms;
-`; // TODO - can't define image source if we use this
+// const Art = styled.Image`
+//   height:6.4vh;
+//   width:6.4vh;
+//   background-color:#00868633;
+//   margin-left:0.5%;
+//   margin-right:0.5%;
+//   object-fit:cover;
+//   transition:1000ms;
+// `; // TODO - can't define image source if we use this
 const Track = styled.View`
   display:flex;
   flex-direction:row;

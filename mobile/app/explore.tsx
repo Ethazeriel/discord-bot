@@ -1,15 +1,19 @@
-import { Text, View } from "react-native";
+import { StatusBar } from 'react-native';
+import { ThemedView } from '@/components/ThemedView';
+import { TrackList } from '@/components/TrackList';
 
 export default function Explore() {
   return (
-    <View
+    <ThemedView
       style={{
         flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%'
       }}
     >
-      <Text>Explorers only.</Text>
-    </View>
+      <StatusBar translucent={false} />
+      <TrackList listname='horses' target='playlist' />
+    </ThemedView>
   );
 }
