@@ -4,8 +4,25 @@ import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import { timeDisplay } from '@/components/utils';
 
+export function SimpleTrackFromTrack({source, id}:{source:Track, id:number}) {
+  if (Object.keys(source).length) {
+    return (
+      <View style={styles.trackStyle}>
+        <Image style={styles.image} source={source.goose.track.art} contentFit="cover" transition={1000} />
+        <View style={styles.numContainer}>
+          <ThemedText type="defaultSemiBold">{(id + 1)}</ThemedText>
+        </View>
+        <View style={styles.details}>
+          <ThemedText type="subtitle">{source.goose.track.name}</ThemedText>
+          <ThemedText type="default">{source.goose.artist.name} - {source.goose.album.name}</ThemedText>
+        </View>
+        <ThemedText style={styles.playtime}>{timeDisplay(source.goose.track.duration)}</ThemedText>
+      </View>
+    );
+  } else {return null;}
+}
 
-export function SimpleTrack({source, id}:{source:TrackSource, id:number}) {
+export function SimpleTrackFromSource({source, id}:{source:TrackSource, id:number}) {
   if (Object.keys(source).length) {
     return (
       <View style={styles.trackStyle}>
@@ -37,6 +54,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: 'center',
     backgroundColor: '#242627',
+    
 
   },
   numContainer: {
