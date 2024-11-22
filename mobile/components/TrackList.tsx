@@ -4,7 +4,7 @@ import { FlatList, View } from 'react-native';
 
 export function TrackList({ target }:{target:'player'}):React.JSX.Element | null
 export function TrackList({ listname, target }:{listname:string, target:'playlist'|'spotify'}):React.JSX.Element | null
-export function TrackList({ listname, target }:{listname?:string, target:string}):React.JSX.Element | null {
+export function TrackList({ listname, target }:{listname?:string, target:'player'|'playlist'|'spotify'}):React.JSX.Element | null {
   const [sources, setSources] = useState<Array<Track>>([]);
 
   let url = '';
@@ -16,13 +16,13 @@ export function TrackList({ listname, target }:{listname?:string, target:string}
   // not sure I love this here, but here it is for now
   useEffect(() => {
     (async () => {
-      const list = await fetch(url, { method: 'GET', credentials: 'include' });
+      const list = await fetch(url, { method: 'GET', credentials: 'include' }); // TODO - what if the server isn't reachable
       const json = await list.json();
       let result:Array<Track> = [];
       switch (target) {
-        case 'playlist': result = json; break;
-        case 'player': result = json.player?.tracks; break;
-        case 'spotify': result = json; break;
+        case 'playlist': result = json || []; break;
+        case 'player': result = json?.player?.tracks || []; break;
+        case 'spotify': result = json || []; break;
       }
       setSources(result);
     })();
@@ -55,12 +55,12 @@ export function TrackList({ listname, target }:{listname?:string, target:string}
   }
 }
 
-export async function LoadList() {
-  try {
-    const response = await fetch('http://172.16.12.119:2468/playlist/okay', { method: 'GET', credentials: 'include' });
-    console.log(response);
-    const json = await response.json();
-    console.log(JSON.stringify(json, null, 2));
-    return json;
-  } catch (error) { console.error(error); }
-}
+// export async function LoadList() {
+//   try {
+//     const response = await fetch('http://172.16.12.119:2468/playlist/okay', { method: 'GET', credentials: 'include' });
+//     console.log(response);
+//     const json = await response.json();
+//     console.log(JSON.stringify(json, null, 2));
+//     return json;
+//   } catch (error) { console.error(error); }
+// }
