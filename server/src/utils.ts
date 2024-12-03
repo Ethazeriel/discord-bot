@@ -2,7 +2,7 @@
 import { AttachmentBuilder, ChatInputCommandInteraction, InteractionReplyOptions } from 'discord.js';
 import { log } from './logger.js';
 // import Canvas from 'canvas';
-import Jimp from 'jimp';
+import { Jimp } from 'jimp';
 import crypto from 'crypto';
 import axios, { AxiosResponse } from 'axios';
 import * as db from './database.js';
@@ -63,8 +63,9 @@ export async function prideSticker(interaction:ChatInputCommandInteraction, type
     };
   }
   const prideimg = await Jimp.read(result.url);
-  prideimg.resize(size[type].width, size[type].height);
-  const attachment = new AttachmentBuilder(await prideimg.getBufferAsync(prideimg.getMIME()), { name:`${type}_${result.name}.png`, description:`${result.name} ${type}` });
+  prideimg.resize({ w: size[type].width, h: size[type].height });
+  // mime type is a bit hacky, but have to reconcile what d.js expects with what jimp provides somehow
+  const attachment = new AttachmentBuilder(await prideimg.getBuffer(prideimg.mime as 'image/png'), { name:`${type}_${result.name}.png`, description:`${result.name} ${type}` });
   // console.log(attachment.description);
   await interaction.reply({ files: [attachment] });
 
