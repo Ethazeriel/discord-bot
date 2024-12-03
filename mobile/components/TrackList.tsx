@@ -9,9 +9,9 @@ export function TrackList({ listname, target }:{listname?:string, target:'player
 
   let url = '';
   switch (target) {
-    case 'playlist': url = `http://172.16.12.119:2468/playlist/${listname}`; break;
-    case 'player': url = 'http://172.16.12.119:2468/load'; break;
-    case 'spotify': url = `http://172.16.12.119:2468/spotify-playlist/${listname}`; break;
+    case 'playlist': url = `http://10.5.0.9:2468/playlist/${listname}`; break;
+    case 'player': url = 'http://10.5.0.9:2468/load'; break;
+    case 'spotify': url = `http://10.5.0.9:2468/spotify-playlist/${listname}`; break;
   }
   // not sure I love this here, but here it is for now
   useEffect(() => {

@@ -1,6 +1,6 @@
 export async function LoadGoose() {
   try {
-    const response = await fetch('http://172.16.12.119:2468/load', { method: 'GET', credentials: 'include' });
+    const response = await fetch('http://10.5.0.9:2468/load', { method: 'GET', credentials: 'include' });
     // console.log(response);
     const json = await response.json();
     // console.log(JSON.stringify(json, null, 2));
