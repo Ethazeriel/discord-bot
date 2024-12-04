@@ -29,7 +29,7 @@
     "fs": "^0.0.1-security",
     "googleapis": "^87.0.0",
     "helmet": "^5.0.2",
-    "jimp": "^0.22.10",
+    "jimp": "^1.6.0",
     "libsodium-wrappers": "^0.7.9",
     "mongodb": "^5.8.0",
     "musicbrainz-api": "^0.8.0",
@@ -38,9 +38,6 @@
     "ws": "^8.17.1",
     "youtube-dl-exec": "^2.4.6",
     "ytdl-core": "^4.11.2"
-  },
-  "overrides": {
-    "xml2js": "^0.5.0"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.1",
