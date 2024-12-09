@@ -125,6 +125,7 @@ interface Track {
 	keys: Array<string>
 	playlists: Record<string, number>
 	youtube: Array<TrackYoutubeSource>
+	audioSource?: AtLeastOne<AudioSources>	
 	bar?: ProgressBarOptions
 	spotify?: TrackSource
 	napster?: TrackSource
@@ -170,4 +171,15 @@ interface SpotifyPlaylist {
 	name: string
 	owner: string
 	description: string
+}
+
+
+type AtLeastOne<T, U = {[K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U]
+// stolen from https://stackoverflow.com/questions/48230773/how-to-create-a-partial-like-that-requires-a-single-property-to-be-set
+// I won't pretend to understand this at all
+
+type AudioSources = {
+	youtube: Array<TrackYoutubeSource>
+	subsonic: any
+	soundcloud: any
 }
