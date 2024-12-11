@@ -10,7 +10,7 @@ const { subsonic } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../
 
 async function fromTrack(id:string):Promise<TrackSource> {
   log('fetch', [`subsonicFromTrack: ${id}`]);
-  const salt = 'SweetSurprise';
+  const salt = crypto.randomBytes(10).toString('hex');
   const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
   const subsonicResultAxios:AxiosResponse<SubsonicSongResponse> = await axios({
     url: `${subsonic.endpoint_uri}/rest/getSong?id=${id}&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&f=json&v=1.16.1`,
@@ -45,7 +45,7 @@ async function fromTrack(id:string):Promise<TrackSource> {
 
 async function fromAlbum(id:string):Promise<Array<TrackSource>> {
   log('fetch', [`subsonicFromAlbum: ${id}`]);
-  const salt = 'SweetSurprise';
+  const salt = crypto.randomBytes(10).toString('hex');
   const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
   const subsonicResultAxios:AxiosResponse<SubsonicAlbumResponse> = await axios({
     url: `${subsonic.endpoint_uri}/rest/getAlbum?id=${id}&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&f=json&v=1.16.1`,
@@ -81,7 +81,7 @@ async function fromAlbum(id:string):Promise<Array<TrackSource>> {
 
 async function fromPlaylist(id:string):Promise<Array<TrackSource>> {
   log('fetch', [`subsonicFromPlaylist: ${id}`]);
-  const salt = 'SweetSurprise';
+  const salt = crypto.randomBytes(10).toString('hex');
   const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
   const subsonicResultAxios:AxiosResponse<SubsonicPlaylistResponse> = await axios({
     url: `${subsonic.endpoint_uri}/rest/getPlaylist?id=${id}&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&f=json&v=1.16.1`,
@@ -115,4 +115,39 @@ async function fromPlaylist(id:string):Promise<Array<TrackSource>> {
   return sources;
 }
 
-export default { fromTrack, fromAlbum, fromPlaylist };
+async function fromText(search:string):Promise<TrackSource | null> {
+  log('fetch', [`subsonicFromText: ${search}`]);
+  const salt = crypto.randomBytes(10).toString('hex');
+  const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
+  const subsonicResultAxios:AxiosResponse<SubsonicSearchResponse> = await axios({
+    url: `${subsonic.endpoint_uri}/rest/search2?query=${search}&artistCount=0&albumCount=0&songCount=5&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&f=json&v=1.16.1`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    timeout: 10000,
+  });
+  const subsonicResult = subsonicResultAxios.data['subsonic-response'];
+  if (Object.keys(subsonicResult.searchResult2).length === 0) { return null; }
+  // at this point we should have a result, now construct the TrackSource
+  const source:TrackSource = {
+    id: Array(subsonicResult.searchResult2.song[0].id),
+    name: subsonicResult.searchResult2.song[0].title,
+    art: 'not yet implemented', // TODO
+    duration: subsonicResult.searchResult2.song[0].duration,
+    url: 'http://localhost',
+    album: {
+      id: subsonicResult.searchResult2.song[0].albumId,
+      name: subsonicResult.searchResult2.song[0].album,
+      trackNumber: subsonicResult.searchResult2.song[0].track,
+    },
+    artist: {
+      id: subsonicResult.searchResult2.song[0].artistId,
+      name: subsonicResult.searchResult2.song[0].artist,
+    },
+  };
+  return source;
+}
+
+export default { fromTrack, fromAlbum, fromPlaylist, fromText };

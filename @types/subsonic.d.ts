@@ -35,6 +35,19 @@ type SubsonicPlaylistResponse = {
   }
 }
 
+type SubsonicSearchResponse = {
+  "subsonic-response": {
+    status: string,
+    version: string,
+    type: string,
+    serverVersion: string,
+    openSubsonic: boolean,
+    searchResult2: { // will be empty object if no results
+      song: Array<SubsonicSong>
+    }
+  }
+}
+
 type SubsonicAlbum = {
   id: string,
   name: string,
