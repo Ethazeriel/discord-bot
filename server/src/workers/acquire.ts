@@ -27,6 +27,11 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   // if playlist/album, do the above for each track
   // return array of Track objects
 
+  // Requirements for sources:
+  // support searching by track, playlist, album, text (where applicable)
+  // return standard TrackSource
+  // if source supports direct playback (youtube, subsonic, soundcloud), return ?
+
   search = search.replace(sanitize, '').trim();
 
   let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;

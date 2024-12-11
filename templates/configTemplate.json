@@ -1,10 +1,11 @@
 {
     "debug": false,
     "functions": {
-        "web": true,
-        "music": true,
-        "translate": true
-      },
+      "web": true,
+      "music": true,
+      "translate": true
+    },
+    "root_url": "http://localhost",
     "discord": {
         "token": "yourbotaccesstoken",
         "client_id": "yourbotclientid",
@@ -15,17 +16,28 @@
             "dj":"DJ",
             "admin":"Admin",
             "translate":"Limited Participation"
-          },
-          "redirect_uri":"http://localhost:2468/oauth2?type=discord"
+        },
+        "redirect_uri":"http://localhost/oauth2?type=discord"
     },
     "spotify": {
         "client_id": "yourclientid",
         "client_secret": "yourclientsecret",
-        "redirect_uri":"http://localhost:2468/oauth2?type=spotify"
+        "redirect_uri":"http://localhost/oauth2?type=spotify"
+    },
+    "napster": {
+        "client_id": "yourclientid",
+        "client_secret": "yourclientsecret",
+        "redirect_uri": "http://localhost/oauth2?type=napster"
     },
     "youtube": {
         "apiKey": "youryoutubeapikey",
         "useragent": "yourbrowseruseragentstring"
+    },
+    "subsonic": {
+        "username": "username",
+        "password": "password",
+        "client_id": "goose",
+        "endpoint_uri": "http://subsonic.example.com"
     },
     "mongo": {
         "url": "mongodb://username:password@localhost:27017/?authSource=admin",
