@@ -789,7 +789,7 @@ export default class Player {
       barafter: track?.bar?.barafter || '-',
       head: track?.bar?.head || '#',
     };
-    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
+    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official && !Player.pending(track))) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';
