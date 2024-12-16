@@ -273,7 +273,7 @@ client.on('messageCreate', async message => {
 client.login(token);
 
 // handle exits
-process.on('SIGINT' || 'SIGTERM', async () => {
+process.on('SIGTERM', async () => {
   log('info', ['received termination command, exiting']);
   await database.closeDB();
   process.exit();

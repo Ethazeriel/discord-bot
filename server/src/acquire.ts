@@ -45,6 +45,6 @@ export default async function fetch(search:string, id = crypto.randomBytes(5).to
   return promise as Promise<Track[]>;
 }
 
-process.on('SIGINT' || 'SIGTERM', async () => {
+process.on('SIGTERM', async () => {
   worker.postMessage({ action:'exit' });
 });

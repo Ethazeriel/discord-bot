@@ -58,7 +58,7 @@ async function stepone() {
 stepone();
 
 
-process.on('SIGINT' || 'SIGTERM', async () => {
+process.on('SIGTERM', async () => {
   log('info', ['received termination command, exiting']);
   try {
     log('database', ['Closing connection']);
