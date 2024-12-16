@@ -16,7 +16,7 @@
   "license": "CC BY-NC-SA 4.0",
   "dependencies": {
     "@discordjs/voice": "^0.18.0",
-    "@google-cloud/translate": "^8.2.0",
+    "@google-cloud/translate": "^8.5.0",
     "axios": "^1.7.9",
     "chalk": "^5.0.0",
     "cookie": "^1.0.0",
@@ -26,7 +26,7 @@
     "express": "^4.21.2",
     "ffmpeg-static": "^4.4.0",
     "fs": "^0.0.1-security",
-    "googleapis": "^87.0.0",
+    "googleapis": "^144.0.0",
     "helmet": "^5.0.2",
     "jimp": "^1.6.0",
     "libsodium-wrappers": "^0.7.9",
@@ -36,7 +36,7 @@
     "play-dl": "^1.9.7",
     "validator": "^13.7.0",
     "ws": "^8.17.1",
-    "youtube-dl-exec": "^2.4.6",
+    "youtube-dl-exec": "^3.0.10",
     "ytdl-core": "^4.11.2"
   },
   "devDependencies": {
