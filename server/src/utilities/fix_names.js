@@ -97,7 +97,7 @@ async function dothing() {
 dothing();
 
 
-process.on('SIGINT' || 'SIGTERM', async () => {
+process.on('SIGTERM', async () => {
   log('info', ['received termination command, exiting']);
   try {
     log('database', [`Closing connection: ${dbname}`]);

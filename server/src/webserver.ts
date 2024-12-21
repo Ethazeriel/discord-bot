@@ -272,6 +272,6 @@ export async function sendWebUpdate(type:'player', data:PlayerStatus) {
   }
 }
 
-process.on('SIGINT' || 'SIGTERM', async () => {
+process.on('SIGTERM', async () => {
   worker.postMessage({ action:'exit' });
 });
