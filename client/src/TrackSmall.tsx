@@ -10,7 +10,7 @@ import { timeDisplay, allowExternal, allowedExternalTypes } from './utils';
 
 import './App.css';
 
-import type { Track, PlayerClick } from './types';
+import type { PlayerClick } from './types';
 type Action = 'jump' | 'remove' | 'move' | 'pendingIndex';
 
 // yep, still haven't learned how to type this

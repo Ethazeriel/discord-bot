@@ -13,7 +13,7 @@ import Next from './media/placeholder/next.svg?react';
 import Loop from './media/placeholder/loop.svg?react';
 import SlowMode from './media/placeholder/slowmode.png';
 
-import type { Track, PlayerStatus, PlayerClick } from './types';
+import type { PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
 type MediaState = {
   seek:number,

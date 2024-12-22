@@ -1,5 +1,4 @@
 import * as React from 'react';
-import type { Track } from './types';
 import styled from 'styled-components';
 
 export default function TrackEditor() {

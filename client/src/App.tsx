@@ -1,7 +1,7 @@
 import './App.css';
 import * as React from 'react';
 import { TrackSmall, DraggedTrack } from './TrackSmall';
-import type { PlayerClick, PlayerStatus, User } from './types';
+import type { PlayerClick, User } from './types';
 import { StatusBar } from './StatusBar';
 import { MediaBar } from './MediaBar';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
