@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable no-console */
+// @ts-nocheck
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { MongoClient } from 'mongodb';
