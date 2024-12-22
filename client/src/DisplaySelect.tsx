@@ -1,5 +1,4 @@
 import * as React from 'react';
-import type { Track } from './types';
 import { BasicTrack, SourceAsTrack } from './BasicTrack';
 import TrackEditor from './TrackEditor';
 

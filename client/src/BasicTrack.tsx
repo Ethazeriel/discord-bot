@@ -1,7 +1,6 @@
 import * as React from 'react';
 import styled from 'styled-components';
 import { timeDisplay } from './utils';
-import type { Track } from './types';
 
 
 export function BasicTrack(props:{track:Track, id:number}) {

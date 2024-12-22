@@ -1,6 +1,6 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import type { User, PlayerStatus } from './types';
+import type { User } from './types';
 
 type Status = {
   user: User
