@@ -8,6 +8,11 @@ const { subsonic } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../
 // TODO: do I need to return anything else to have stream support, or can we figure out what we need from just a tracksource?
 // I suspect just the ID tells us what we need to know
 
+// context: I want to be able to stream media from subsonic rather than youtube if the media is present
+// this will save on quota (not requesting youtube at all if subsonic present)
+// should also allow for higher-fidelity streams (on supported platforms, if I ever get to a multiplatform refactor)
+// also a target for federation with additional details like listenbrainz
+
 async function fromTrack(id:string):Promise<TrackSource> {
   log('fetch', [`subsonicFromTrack: ${id}`]);
   const salt = crypto.randomBytes(10).toString('hex');
@@ -150,4 +155,10 @@ async function fromText(search:string):Promise<TrackSource | null> {
   return source;
 }
 
-export default { fromTrack, fromAlbum, fromPlaylist, fromText };
+const searchRegex = /(?:srv2\.eth\.ducks:4533|172\.16\.12\.50:4533)(?:\/app\/#\/)((?:track|playlist|album){1})(?:\/)([a-f0-9-]{32,36})(?:\/show)/;
+// match[1] is search type, match[2] is id
+// TODO: split up this regex and pull server address from config?
+// or just dockerize and assume navidrome is at whatever arbitrary hostname?
+// dunno, don't love this
+
+export default { fromTrack, fromAlbum, fromPlaylist, fromText, searchRegex };

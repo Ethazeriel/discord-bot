@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useReducer, useState, useMemo } from 'react';
 import styled from 'styled-components';
-import { timeDisplay } from './utils';
+import { timeDisplay, chooseAudioSource } from './utils';
 
 import Shuffle from './media/placeholder/shuffle.svg?react';
 import Prev from './media/placeholder/prev.svg?react';
@@ -110,7 +110,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
 
   const paused = player?.paused as boolean;
   const elapsed = (paused) ? pause - start : now - start;
-  const duration = track?.youtube[0]?.duration || 0;
+  const duration = track ? chooseAudioSource(track).duration : 0;
 
   const initialState:MediaState = {
     seek: seek,

@@ -89,7 +89,7 @@ export default class Workspace {
       const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id });
       let songName = dbtrack!.goose.track.name || 'Unnamed Track';
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
-      const part = `**${((page - 1) * 10 + (i + 1))}. **${(dbtrack!.goose.artist.name || ' ')} - [${songName}](${dbtrack?.youtube[0].url}) - ${utils.timeDisplay(dbtrack?.youtube[0].duration || 0)} \n`;
+      const part = `**${((page - 1) * 10 + (i + 1))}. **${(dbtrack!.goose.artist.name || ' ')} - [${songName}](${dbtrack ? utils.chooseAudioSource(dbtrack).url : ''}) - ${utils.timeDisplay(dbtrack ? utils.chooseAudioSource(dbtrack).duration : 0)} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;
