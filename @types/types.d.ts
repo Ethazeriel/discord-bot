@@ -124,8 +124,7 @@ interface Track {
 	}
 	keys: Array<string>
 	playlists: Record<string, number>
-	youtube: Array<TrackYoutubeSource>
-	audioSource?: AtLeastOne<AudioSources>	
+	audioSource: AtLeastOne<AudioSources>	
 	bar?: ProgressBarOptions
 	spotify?: TrackSource
 	napster?: TrackSource

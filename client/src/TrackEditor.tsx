@@ -54,17 +54,17 @@ export default function TrackEditor() {
           </TrackPart>
           <TrackPart>
             <h3>Youtube</h3>
-            <label>id:<input readOnly={true} value={track.youtube[0].id}/></label>
-            <label>name:<input readOnly={true} value={track.youtube[0].name}/></label>
-            <label>duration:<input readOnly={true} value={track.youtube[0].duration}/></label>
-            <label>art:<input readOnly={true} value={track.youtube[0].art}/></label>
+            <label>id:<input readOnly={true} value={track.audioSource.youtube![0].id}/></label>
+            <label>name:<input readOnly={true} value={track.audioSource.youtube![0].name}/></label>
+            <label>duration:<input readOnly={true} value={track.audioSource.youtube![0].duration}/></label>
+            <label>art:<input readOnly={true} value={track.audioSource.youtube![0].art}/></label>
           </TrackPart>
           <TrackPart>
             <h3>Alternates</h3>
-            <label>1:<input readOnly={true} value={track.youtube[1].id}/></label>
-            <label>2:<input readOnly={true} value={track.youtube[2].id}/></label>
-            <label>3:<input readOnly={true} value={track.youtube[3].id}/></label>
-            <label>4:<input readOnly={true} value={track.youtube[4].id}/></label>
+            <label>1:<input readOnly={true} value={track.audioSource.youtube![1].id}/></label>
+            <label>2:<input readOnly={true} value={track.audioSource.youtube![2].id}/></label>
+            <label>3:<input readOnly={true} value={track.audioSource.youtube![3].id}/></label>
+            <label>4:<input readOnly={true} value={track.audioSource.youtube![4].id}/></label>
           </TrackPart>
         </WholeTrack>
       </div>

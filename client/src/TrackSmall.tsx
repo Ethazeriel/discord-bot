@@ -6,7 +6,7 @@ import removeButton from './media/placeholder/dark_remove.png';
 import dragHandle from './media/placeholder/dark_drag.png';
 import dragImage from './media/placeholder/dragImage.png';
 
-import { timeDisplay, allowExternal, allowedExternalTypes } from './utils';
+import { timeDisplay, allowExternal, allowedExternalTypes, chooseAudioSource } from './utils';
 
 import './App.css';
 
@@ -276,7 +276,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
           <Title>{props.track.goose.track.name}</Title>
           <AlbumInfo>{props.track.goose.artist.name} - <em>{props.track.goose.album.name}</em></AlbumInfo>
         </Details>
-        <Duration>{timeDisplay(props.track?.youtube[0]?.duration)}</Duration>
+        <Duration>{timeDisplay(chooseAudioSource(props.track).duration)}</Duration>
       </TrackStyle>
       <InsertionMarker visible={state.nearerBottom} invalid={state.invalid} />
     </Wrapper>

@@ -43,7 +43,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
         const track = interaction.options.getString('track')?.replace(sanitize, '')?.trim() || '';
         if (youtubePattern.test(track)) {
           const match = track.match(youtubePattern);
-          const dbtrack = await database.getTrack({ 'youtube.0.id':match![2] });
+          const dbtrack = await database.getTrack({ 'audioSource.youtube.0.id':match![2] });
           if (dbtrack) { Player.removeFromAll(dbtrack.goose.id); }
           const result = await database.removeTrack(match![2]);
           interaction.followUp({ content:`Removed ${track} from the database; ${result} tracks.`, ephemeral: true });

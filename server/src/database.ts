@@ -84,12 +84,12 @@ export async function insertTrack(track:Track):Promise<object | undefined> {// a
   const tracks = db.collection<Track>(trackcol);
   // check if we already have this url
   const test = await tracks.findOne({ 'goose.id': track.goose.id }, { projection: { _id: 0 } });
-  if (test == null || (test.youtube[0].id != track.youtube[0].id && test.goose.id != track.goose.id)) {
+  if (test == null || ((test.audioSource.youtube && track.audioSource.youtube && test.audioSource.youtube[0].id != track.audioSource.youtube[0].id) && test.goose.id != track.goose.id)) {
     // we don't have this in our database yet, so
     const result = await tracks.insertOne(track);
     log('database', [`Adding track ${chalk.green(track.goose.track.name)} by ${chalk.green(track.goose.artist.name)} to database`]);
     return result;
-  } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.youtube[0].id})`);}
+  } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.audioSource.youtube ? track.audioSource.youtube[0].id : 'none'})`);}
   // I've removed the try/catch block here so this error is actually meaningful
   // shouldn't matter, but leaving this comment just in case
 }
@@ -123,11 +123,37 @@ export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster
 }
 // addSourceId({ 'goose.id': '12345abcde' }, 'spotify', '6i71OngJrJDr6hQIFmzYI0');
 
+export async function addPlayableSourceId(query:Filter<Track>, type:'subsonic', newid:string) {// acquire2
+  // adds a new id of the specified type to a track we already have
+  // silently fails if we don't have the track in the DB already
+  const db = await getDb();
+  try {
+    const tracks = db.collection<Track>(trackcol);
+    const target = `audioSource.${type}.id`;
+    await tracks.updateOne(query, { $addToSet: { [target]: newid } });
+    log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(JSON.stringify(query))}`]);
+  } catch (error:any) {
+    log('error', ['database error:', error.stack]);
+  }
+}
+
 export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'napster', source:TrackSource) {// acquire2
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
     await tracks.updateOne(query, { $set: { [type]: source } } as UpdateFilter<Track>);
+    log('database', [`Adding ${type} source to ${chalk.green(query)}`]);
+  } catch (error:any) {
+    log('error', ['database error:', error.stack]);
+  }
+}
+
+export async function addPlayableTrackSource(query:Filter<Track>, type:'subsonic', source:TrackSource) {// acquire2
+  const db = await getDb();
+  try {
+    const tracks = db.collection<Track>(trackcol);
+    const target = `audioSource.${type}`;
+    await tracks.updateOne(query, { $set: { [target]: source } } as UpdateFilter<Track>);
     log('database', [`Adding ${type} source to ${chalk.green(query)}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
@@ -210,7 +236,7 @@ export async function removeTrack(query:string) { // acquire2
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
-    const track = await tracks.deleteOne({ 'youtube.0.id':query });
+    const track = await tracks.deleteOne({ 'audioSource.youtube.0.id':query });
     if (track.deletedCount === 1) {
       log('database', [`Removed track ${chalk.red(query)} from DB.`]);
     } else {
@@ -228,24 +254,24 @@ export async function switchAlternate(query:string, alternate:number | TrackYout
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
-    const search = { 'youtube.0.id':query };
+    const search = { 'audioSource.youtube.0.id':query };
     const track:Track | null = await tracks.findOne(search);
-    if (track) {
-      const original = track.youtube[0].id;
+    if (track && track.audioSource.youtube) {
+      const original = track.audioSource.youtube[0].id;
       if (typeof alternate === 'number') {
-        const newmain = track.youtube.splice(alternate, 1, track.youtube[0]);
-        track.youtube.shift();
-        track.youtube.unshift(newmain[0]);
+        const newmain = track.audioSource.youtube.splice(alternate, 1, track.audioSource.youtube[0]);
+        track.audioSource.youtube.shift();
+        track.audioSource.youtube.unshift(newmain[0]);
       } else {
-        track.youtube.unshift(alternate);
-        track.youtube.pop();
+        track.audioSource.youtube.unshift(alternate);
+        track.audioSource.youtube.pop();
       }
       const update = {
-        $set: { 'youtube':track.youtube, 'goose.track.duration':track.youtube[0].duration },
+        $set: { 'youtube':track.audioSource.youtube, 'goose.track.duration':track.audioSource.youtube[0].duration },
       };
       const result = await tracks.updateOne(search, update);
       if (result.modifiedCount == 1) {
-        log('database', [`Remapped track ${chalk.green(original)} to ${chalk.green(track.youtube[0].id)}`]);
+        log('database', [`Remapped track ${chalk.green(original)} to ${chalk.green(track.audioSource.youtube[0].id)}`]);
       } else {log('database', [`Failed to remap ${chalk.red(original)} - is this a valid ID?`]);}
       return result.modifiedCount;
     } else {return 0;}

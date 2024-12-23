@@ -237,7 +237,7 @@ export default class Player {
   async play() {
     let track = this.getCurrent();
     if (track && !Player.pending(track)) {
-      let ephemeral; // TO DO remove db stuff
+      let ephemeral; // TODO remove db stuff
       let UUID;
       if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
       track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
@@ -246,7 +246,7 @@ export default class Player {
       if (this.getPause()) { this.togglePause({ force: false }); }
       if (track) {
         try {
-          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.audioSource.youtube![0].id}`, {
             output: '-',
             quiet: true,
             forceIpv4: true,
@@ -269,7 +269,7 @@ export default class Player {
   async seek(time:number) {
     let track = this.getCurrent();
     if (track && !Player.pending(track)) {
-      let ephemeral; // TO DO remove db stuff
+      let ephemeral; // TODO remove db stuff
       let UUID;
       if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
       track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
@@ -283,7 +283,7 @@ export default class Player {
           }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
           // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
           // const resource = createAudioResource(source.stream, { inputType: source.type });
-          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.audioSource.youtube![0].id}`, {
             output: '-',
             quiet: true,
             forceIpv4: true,
@@ -458,15 +458,16 @@ export default class Player {
         'pending',
       ],
       'playlists': {},
-      'youtube': [
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-      ],
+      audioSource: {
+        'youtube': [
+          {
+            'id': 'OVL3MYasc-k',
+            'name': 'Elk Bugle up close.',
+            'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+            'duration': 232,
+            'url': 'https://youtu.be/OVL3MYasc-k',
+          },
+        ] },
       'status': {},
     });
   }
@@ -718,7 +719,7 @@ export default class Player {
       author: { name: messageTitle, icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
-        { name: '\u200b', value: (track) ? `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url})\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.' },
+        { name: '\u200b', value: (track) ? `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${utils.chooseAudioSource(track).url})\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.' },
         { name: (track) ? `\` ${utils.progressBar(45, (track.goose.track.duration), elapsedTime, bar)} \`` : utils.progressBar(45, 100, 0), value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.goose.track.duration || 0)}` },
       ],
     };
@@ -773,7 +774,7 @@ export default class Player {
       const dbtrack = (!Player.pending(queuePart[i])) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
       let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
-      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${dbtrack.youtube[0].url}) - ${utils.timeDisplay(dbtrack.youtube[0].duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
+      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${utils.chooseAudioSource(dbtrack).url}) - ${utils.timeDisplay(utils.chooseAudioSource(dbtrack).duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;
@@ -801,7 +802,7 @@ export default class Player {
       color: 0x3277a8,
       author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
-      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url}) - ${utils.timeDisplay(track.youtube[0].duration)}\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
+      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${utils.chooseAudioSource(track).url}) - ${utils.timeDisplay(utils.chooseAudioSource(track).duration)}\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
       fields: [
         { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },

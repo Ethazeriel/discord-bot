@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
+import { chooseAudioSource } from '../../utils.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { log, logDebug } from '../../logger.js';
 import * as db from '../../database.js';
@@ -130,7 +131,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
               if (match![2]) {time = (Number(match![2]) * 60) + time;}
               if (match![1]) {time = (Number(match![1]) * 3600) + time;}
 
-              if (time > track.youtube[0].duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
+              if (time > chooseAudioSource(track).duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
                 await player.seek(time);
                 const mediaEmbed = await player.mediaEmbed(true, 'Seeking...');
                 const queueEmbed = await player.queueEmbed();
