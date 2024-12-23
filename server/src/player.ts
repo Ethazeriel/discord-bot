@@ -246,7 +246,7 @@ export default class Player {
       if (this.getPause()) { this.togglePause({ force: false }); }
       if (track) {
         try {
-          const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
             output: '-',
             quiet: true,
             forceIpv4: true,
@@ -254,7 +254,9 @@ export default class Player {
             limitRate: '100K',
             cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
             userAgent: useragent,
-          }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
+          }, { stdio: ['ignore', 'pipe', 'ignore'] });
+          youtubeStream.catch(err => {});
+          const resource = createAudioResource(youtubeStream.stdout!);
           this.#audioPlayer.play(resource);
           log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
         } catch (error:any) {
@@ -279,19 +281,20 @@ export default class Player {
           seekable.setToken({
             useragent : [useragent],
           }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
-          const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
-          const resource = createAudioResource(source.stream, { inputType: source.type });
-          // const resource = createAudioResource(youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
-          //   output: '-',
-          //   quiet: true,
-          //   forceIpv4: true,
-          //   format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-          //   limitRate: '100K',
-          //   // @ts-expect-error wrapper types are out of date
-          //   downloadSections : `*${time}-inf`,
-          //   cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-          //   userAgent: useragent,
-          // }, { stdio: ['ignore', 'pipe', 'ignore'] }).stdout!);
+          // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
+          // const resource = createAudioResource(source.stream, { inputType: source.type });
+          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
+            output: '-',
+            quiet: true,
+            forceIpv4: true,
+            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+            limitRate: '100K',
+            downloadSections : `*${time}-inf`,
+            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+            userAgent: useragent,
+          }, { stdio: ['ignore', 'pipe', 'ignore'] });
+          youtubeStream.catch(err => {});
+          const resource = createAudioResource(youtubeStream.stdout!);
           this.#audioPlayer.play(resource);
           log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
         } catch (error:any) {
