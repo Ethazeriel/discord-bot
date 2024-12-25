@@ -31,7 +31,6 @@
     "jimp": "^1.6.0",
     "libsodium-wrappers": "^0.7.9",
     "mongodb": "^6.12.0",
-    "musicbrainz-api": "^0.8.0",
     "opusscript": "^0.0.8",
     "play-dl": "^1.9.7",
     "validator": "^13.7.0",
@@ -51,6 +50,7 @@
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.17.0",
     "globals": "^15.13.0",
+    "musicbrainz-api": "^0.19.1",
     "typescript": "^5.7.2"
   }
 }
