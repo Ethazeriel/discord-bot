@@ -30,7 +30,7 @@
     "helmet": "^5.0.2",
     "jimp": "^1.6.0",
     "libsodium-wrappers": "^0.7.9",
-    "mongodb": "^5.8.0",
+    "mongodb": "^6.12.0",
     "musicbrainz-api": "^0.8.0",
     "opusscript": "^0.0.8",
     "play-dl": "^1.9.7",
