@@ -4,10 +4,7 @@ import crypto from 'crypto';
 import { log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
 import stream from 'node:stream';
-const { subsonic } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
-
-// TODO: do I need to return anything else to have stream support, or can we figure out what we need from just a tracksource?
-// I suspect just the ID tells us what we need to know
+const { subsonic, root_url } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 // context: I want to be able to stream media from subsonic rather than youtube if the media is present
 // this will save on quota (not requesting youtube at all if subsonic present)
@@ -33,7 +30,7 @@ async function fromTrack(id:string):Promise<TrackSource> {
   const source:TrackSource = {
     id: Array(subsonicResult.song.id),
     name: subsonicResult.song.title,
-    art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO: this requires auth, so we'll need to make a proxy endpoint
+    art: `${root_url}/subsonic-art/${subsonicResult.song.id}`,
     duration: subsonicResult.song.duration,
     url: 'http://localhost', // TODO: needs auth too, probably just won't include for subsonic
     album: {
@@ -68,7 +65,7 @@ async function fromAlbum(id:string):Promise<Array<TrackSource>> {
     sources.push({
       id: Array(song.id),
       name: song.title,
-      art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO: this requires auth, so we'll need to make a proxy endpoint
+      art: `${root_url}/subsonic-art/${song.id}`,
       duration: song.duration,
       url: 'http://localhost', // TODO: needs auth too, probably just won't include for subsonic
       album: {
@@ -104,7 +101,7 @@ async function fromPlaylist(id:string):Promise<Array<TrackSource>> {
     sources.push({
       id: Array(song.id),
       name: song.title,
-      art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO: this requires auth, so we'll need to make a proxy endpoint
+      art: `${root_url}/subsonic-art/${song.id}`,
       duration: song.duration,
       url: 'http://localhost', // TODO: needs auth too, probably just won't include for subsonic
       album: {
@@ -140,7 +137,7 @@ async function fromText(search:string):Promise<TrackSource | null> {
   const source:TrackSource = {
     id: Array(subsonicResult.searchResult2.song[0].id),
     name: subsonicResult.searchResult2.song[0].title,
-    art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO
+    art: `${root_url}/subsonic-art/${subsonicResult.searchResult2.song[0].id}`,
     duration: subsonicResult.searchResult2.song[0].duration,
     url: 'http://localhost',
     album: {
@@ -162,8 +159,7 @@ const searchRegex = /(?:srv2\.eth\.ducks:4533|172\.16\.12\.50:4533)(?:\/app\/#?\
 // or just dockerize and assume navidrome is at whatever arbitrary hostname?
 // dunno, don't love this
 
-async function getStream(id:string, offset:number = 0) {
-  log('fetch', [`subsonicStream: ${id}`]);
+async function getStream(id:string, offset:number = 0):Promise<stream.Readable | undefined> {
   const salt = crypto.randomBytes(10).toString('hex');
   const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
   // timeOffset may or may not be supported as the base subsonic api only supports this for video
@@ -176,4 +172,13 @@ async function getStream(id:string, offset:number = 0) {
   }
 }
 
-export default { fromTrack, fromAlbum, fromPlaylist, fromText, searchRegex, getStream };
+async function getArtPath(id:string) {
+  const salt = crypto.randomBytes(10).toString('hex');
+  const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
+  const path = `/rest/getCoverArt?id=${id}&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&v=1.16.1`;
+  return path;
+}
+
+const endpoint_uri = subsonic.endpoint_uri;
+
+export default { fromTrack, fromAlbum, fromPlaylist, fromText, searchRegex, getStream, getArtPath, endpoint_uri };

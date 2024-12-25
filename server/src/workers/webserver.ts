@@ -16,6 +16,8 @@ import { fileURLToPath, URL } from 'url';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import * as spotifyactions from './webserver/spotify.js';
+import subsonic from './acquire/subsonic.js';
+import proxy from 'express-http-proxy';
 
 
 parentPort!.on('message', async data => {
@@ -248,6 +250,10 @@ app.get('/spotify-playlist/:id([a-zA-Z0-9]{22})', async (req, res) => {
     }
   }
 });
+
+// proxy art requests to subsonic
+app.use('/subsonic-art/:id([a-f0-9]{32})', proxy(subsonic.endpoint_uri, { proxyReqPathResolver: (req) => { return subsonic.getArtPath(req.params.id); } }));
+
 
 // Websocket
 
