@@ -255,7 +255,7 @@ export default class Player {
             cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
             userAgent: useragent,
           }, { stdio: ['ignore', 'pipe', 'ignore'] });
-          youtubeStream.catch(err => {});
+          youtubeStream.catch(err => { err; });
           const resource = createAudioResource(youtubeStream.stdout!);
           this.#audioPlayer.play(resource);
           log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
@@ -293,7 +293,7 @@ export default class Player {
             cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
             userAgent: useragent,
           }, { stdio: ['ignore', 'pipe', 'ignore'] });
-          youtubeStream.catch(err => {});
+          youtubeStream.catch(err => { err; });
           const resource = createAudioResource(youtubeStream.stdout!);
           this.#audioPlayer.play(resource);
           log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
