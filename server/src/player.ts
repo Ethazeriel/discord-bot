@@ -10,7 +10,8 @@ const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL(
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
-import * as seekable from 'play-dl';
+// import * as seekable from 'play-dl';
+import subsonic from './workers/acquire/subsonic.js';
 
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
@@ -246,18 +247,15 @@ export default class Player {
       if (this.getPause()) { this.togglePause({ force: false }); }
       if (track) {
         try {
-          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.audioSource.youtube![0].id}`, {
-            output: '-',
-            quiet: true,
-            forceIpv4: true,
-            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-            limitRate: '100K',
-            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-            userAgent: useragent,
-          }, { stdio: ['ignore', 'pipe', 'ignore'] });
-          youtubeStream.catch(err => { err; });
-          const resource = createAudioResource(youtubeStream.stdout!);
-          this.#audioPlayer.play(resource);
+          const stream = await this.#getStream(track);
+          if (stream) {
+            const resource = createAudioResource(stream);
+            this.#audioPlayer.play(resource);
+          } else {
+            log('error', ['play failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
+            this.next();
+            return;
+          }
           log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
         } catch (error:any) {
           log('error', [error.stack]);
@@ -278,24 +276,20 @@ export default class Player {
       if (this.getPause()) { this.togglePause({ force: false }); }
       if (track) {
         try {
-          seekable.setToken({
-            useragent : [useragent],
-          }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
+          // seekable.setToken({
+          //   useragent : [useragent],
+          // }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
           // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
           // const resource = createAudioResource(source.stream, { inputType: source.type });
-          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.audioSource.youtube![0].id}`, {
-            output: '-',
-            quiet: true,
-            forceIpv4: true,
-            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-            limitRate: '100K',
-            downloadSections : `*${time}-inf`,
-            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-            userAgent: useragent,
-          }, { stdio: ['ignore', 'pipe', 'ignore'] });
-          youtubeStream.catch(err => { err; });
-          const resource = createAudioResource(youtubeStream.stdout!);
-          this.#audioPlayer.play(resource);
+          const stream = await this.#getStream(track, time);
+          if (stream) {
+            const resource = createAudioResource(stream);
+            this.#audioPlayer.play(resource);
+          } else {
+            log('error', ['seek failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
+            this.next();
+            return;
+          }
           log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
         } catch (error:any) {
           log('error', [error.stack]);
@@ -304,6 +298,31 @@ export default class Player {
         track.status.start = (Date.now() / 1000) - (time || 0);
       } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
     } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
+  }
+
+  async #getStream(track:Track, offset:number = 0) {
+    if (track.audioSource.subsonic) {
+      const stream = await subsonic.getStream(track.audioSource.subsonic.id[0], offset);
+      if (stream) {
+        return stream;
+      } else {
+        log('error', ['unable to retrieve stream for subsonic id:', track.audioSource.subsonic.id[0]]);
+        return;
+      }
+    } else {
+      const stream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.audioSource.youtube![0].id}`, {
+        output: '-',
+        quiet: true,
+        forceIpv4: true,
+        format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+        limitRate: '100K',
+        downloadSections : `*${offset}-inf`,
+        cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+        userAgent: useragent,
+      }, { stdio: ['ignore', 'pipe', 'ignore'] });
+      stream.catch(err => { err; });
+      return stream.stdout!;
+    }
   }
 
   prev(play = true) { // prior, loop or restart current

@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'url';
 import crypto from 'crypto';
 import { log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
+import stream from 'node:stream';
 const { subsonic } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 // TODO: do I need to return anything else to have stream support, or can we figure out what we need from just a tracksource?
@@ -32,7 +33,7 @@ async function fromTrack(id:string):Promise<TrackSource> {
   const source:TrackSource = {
     id: Array(subsonicResult.song.id),
     name: subsonicResult.song.title,
-    art: 'not yet implemented', // TODO: this requires auth, so we'll need to make a proxy endpoint
+    art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO: this requires auth, so we'll need to make a proxy endpoint
     duration: subsonicResult.song.duration,
     url: 'http://localhost', // TODO: needs auth too, probably just won't include for subsonic
     album: {
@@ -67,7 +68,7 @@ async function fromAlbum(id:string):Promise<Array<TrackSource>> {
     sources.push({
       id: Array(song.id),
       name: song.title,
-      art: 'not yet implemented', // TODO: this requires auth, so we'll need to make a proxy endpoint
+      art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO: this requires auth, so we'll need to make a proxy endpoint
       duration: song.duration,
       url: 'http://localhost', // TODO: needs auth too, probably just won't include for subsonic
       album: {
@@ -103,7 +104,7 @@ async function fromPlaylist(id:string):Promise<Array<TrackSource>> {
     sources.push({
       id: Array(song.id),
       name: song.title,
-      art: 'not yet implemented', // TODO: this requires auth, so we'll need to make a proxy endpoint
+      art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO: this requires auth, so we'll need to make a proxy endpoint
       duration: song.duration,
       url: 'http://localhost', // TODO: needs auth too, probably just won't include for subsonic
       album: {
@@ -139,7 +140,7 @@ async function fromText(search:string):Promise<TrackSource | null> {
   const source:TrackSource = {
     id: Array(subsonicResult.searchResult2.song[0].id),
     name: subsonicResult.searchResult2.song[0].title,
-    art: 'not yet implemented', // TODO
+    art: 'https://ethazeriel.net/pride/sprites/heart_progressive.png', // TODO
     duration: subsonicResult.searchResult2.song[0].duration,
     url: 'http://localhost',
     album: {
@@ -155,10 +156,24 @@ async function fromText(search:string):Promise<TrackSource | null> {
   return source;
 }
 
-const searchRegex = /(?:srv2\.eth\.ducks:4533|172\.16\.12\.50:4533)(?:\/app\/#\/)((?:track|playlist|album){1})(?:\/)([a-f0-9-]{32,36})(?:\/show)/;
+const searchRegex = /(?:srv2\.eth\.ducks:4533|172\.16\.12\.50:4533)(?:\/app\/#?\/)((?:track|playlist|album){1})(?:\/)([a-f0-9-]{32,36})(?:\/show)/;
 // match[1] is search type, match[2] is id
 // TODO: split up this regex and pull server address from config?
 // or just dockerize and assume navidrome is at whatever arbitrary hostname?
 // dunno, don't love this
 
-export default { fromTrack, fromAlbum, fromPlaylist, fromText, searchRegex };
+async function getStream(id:string, offset:number = 0) {
+  log('fetch', [`subsonicStream: ${id}`]);
+  const salt = crypto.randomBytes(10).toString('hex');
+  const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
+  // timeOffset may or may not be supported as the base subsonic api only supports this for video
+  // navidrome implements the transcodeOffset opensubsonic extension, which means this works - but only if we're transcoding
+  // not for raw audio streams - may or may not be reliable, in other words
+  const streamresult = await fetch(`${subsonic.endpoint_uri}/rest/stream?id=${id}&timeOffset=${offset}&format=opus&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&v=1.16.1`);
+  // TODO: consult the result field to confirm we got an ok, not an error
+  if (streamresult.body) {
+    return stream.Readable.fromWeb(streamresult.body);
+  }
+}
+
+export default { fromTrack, fromAlbum, fromPlaylist, fromText, searchRegex, getStream };
