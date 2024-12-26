@@ -196,7 +196,10 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
             // sanitize this query so youtube doesn't get mad about invalid characters
             query = query.replace(sanitize, '');
             query = query.replace(/(-)+/g, ' ');
-            const ytArray = await youtube.fromSearch(query);
+            // TODO: subsonic first, youtube second
+            const subsonicResult = await subsonic.fromText(query);
+            let ytArray;
+            if (!subsonicResult) { ytArray = await youtube.fromSearch(query);}
             const finishedTrack:Track = {
               goose: {
                 id: await genNewGooseId(),
@@ -212,13 +215,13 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
                 },
                 track: {
                   name: track.name,
-                  duration: ytArray[0].duration,
+                  duration: subsonicResult ? subsonicResult.duration : ytArray![0].duration,
                   art: track.art,
                 },
               },
               keys: (sourceType === 'text') ? [search] : [],
               playlists: {},
-              audioSource: { youtube: ytArray },
+              audioSource: subsonicResult ? { subsonic: subsonicResult } : { youtube: ytArray! },
               status: {},
             };
             if (sourceType === 'spotify' || sourceType === 'text') {finishedTrack.spotify = track;}
