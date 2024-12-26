@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # build the react client package
-FROM node:20-alpine AS clientbuild
+FROM node:22-alpine AS clientbuild
 ENV NODE_ENV=production
 WORKDIR /client
 COPY client/package* ./
@@ -15,7 +15,7 @@ COPY client/.eslintrc.json ./.eslintrc.json
 RUN npm run build
 
 # separately build server code so we don't have to package typescript/etc in the final container
-FROM node:20-alpine AS serverbuild
+FROM node:22-alpine AS serverbuild
 RUN apk --no-cache add python3
 WORKDIR /server
 COPY server/package* ./
@@ -26,7 +26,7 @@ COPY server/tsconfig.json ./tsconfig.json
 COPY server/eslint.config.mjs ./.eslint.config.mjs
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 ENV NODE_ENV=production
 # youtube-dl-exec needs python
 RUN apk --no-cache add python3
