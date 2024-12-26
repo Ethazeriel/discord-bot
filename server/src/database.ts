@@ -4,7 +4,7 @@ import { Document, MongoClient } from 'mongodb';
 import type { Db, Filter, FindOptions, UpdateFilter } from 'mongodb';
 import { log } from './logger.js';
 import chalk from 'chalk';
-const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { mongo }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
 import Player from './player.js';
@@ -13,7 +13,7 @@ let url = mongo.url;
 const dbname = mongo.database;
 const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
-if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR; }
+if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR!; }
 let globalDb:Db | undefined;
 const con = await MongoClient.connect(url, { ignoreUndefined: true });
 globalDb = con.db(dbname);

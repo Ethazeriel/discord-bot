@@ -2,7 +2,7 @@ import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
-const { napster } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { napster }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 async function fromTrack(id:string):Promise<TrackSource> {
   log('fetch', [`napsterFromTrack: ${id}`]);

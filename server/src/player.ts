@@ -6,7 +6,7 @@ import { ButtonInteraction, CommandInteraction, BaseInteraction, GuildMember, At
 import * as db from './database.js';
 import { log, logDebug } from './logger.js';
 import { fileURLToPath, URL } from 'url';
-const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { youtube, functions }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';

@@ -141,3 +141,59 @@ type AudioSources = {
 	youtube: Array<TrackYoutubeSource>
 	subsonic: TrackSource
 }
+
+interface GooseConfig {
+	debug: boolean,
+	functions: { // TODO - should we keep this?
+		web: boolean,
+		music: boolean,
+		translate: boolean,
+	}
+	root_url: string,
+	discord: {
+		token: string,
+		client_id: string,
+		guildId: string,
+		secret: string,
+		scope: 'guild' | 'global',
+		roles: {
+			dj: string,
+			admin: string,
+			translate: string
+		},
+		redirect_uri: string
+	},
+	spotify: {
+		client_id: string,
+		client_secret: string,
+		redirect_uri: string
+	},
+	napster: {
+		client_id: string,
+		client_secret: string,
+		redirect_uri: string
+	},
+	youtube: {
+		apiKey: string,
+		useragent: string
+	},
+	subsonic: {
+		username: string,
+		password: string,
+		client_id: string,
+		endpoint_uri: string,
+		regex: string
+	},
+	mongo: {
+		url: string,
+		database: string,
+		trackcollection: string,
+		usercollection: string
+	},
+	translate: {
+		apiKey: string
+	},
+	internal?: {
+		deployedHash: string
+	}
+}

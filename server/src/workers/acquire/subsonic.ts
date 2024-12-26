@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
 import stream from 'node:stream';
-const { subsonic, root_url } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { subsonic, root_url }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 // context: I want to be able to stream media from subsonic rather than youtube if the media is present
 // this will save on quota (not requesting youtube at all if subsonic present)

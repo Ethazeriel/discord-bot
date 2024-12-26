@@ -7,7 +7,7 @@ import fs from 'fs';
 import type { ChatInputCommandInteraction, GuildMemberRoleManager } from 'discord.js';
 import { fileURLToPath, URL } from 'url';
 import Player from '../../player.js';
-const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 
