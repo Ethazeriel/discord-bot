@@ -37,7 +37,8 @@
         "username": "username",
         "password": "password",
         "client_id": "goose",
-        "endpoint_uri": "http://subsonic.example.com"
+        "endpoint_uri": "http://subsonic.example.com",
+        "regex": "(?:subsonic\\.example\\.com:4533|192\\.168\\.0\\.1:4533)(?:\\\/app\\\/#?\\\/)((?:track|playlist|album){1})(?:\\\/)([a-f0-9-]{32,36})(?:\\\/show)"
     },
     "mongo": {
         "url": "mongodb://username:password@localhost:27017/?authSource=admin",

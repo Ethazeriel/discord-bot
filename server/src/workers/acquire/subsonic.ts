@@ -153,11 +153,12 @@ async function fromText(search:string):Promise<TrackSource | null> {
   return source;
 }
 
-const searchRegex = /(?:srv2\.eth\.ducks:4533|172\.16\.12\.50:4533)(?:\/app\/#?\/)((?:track|playlist|album){1})(?:\/)([a-f0-9-]{32,36})(?:\/show)/;
+const searchRegex = new RegExp(subsonic.regex);
+// (?:subsonic\.example\.com:4533|192\.168\.0\.1:4533)(?:\/app\/#?\/)((?:track|playlist|album){1})(?:\/)([a-f0-9-]{32,36})(?:\/show)
 // match[1] is search type, match[2] is id
-// TODO: split up this regex and pull server address from config?
-// or just dockerize and assume navidrome is at whatever arbitrary hostname?
-// dunno, don't love this
+// TODO: include setup instructions to generate your own regex, which can be pulled from config
+// basically, take the above and feed it to https://www.freeformatter.com/json-escape.html#ad-output
+// for docker, do like mongo and include an env var to pull from set hostname?
 
 async function getStream(id:string, offset:number = 0):Promise<stream.Readable | undefined> {
   const salt = crypto.randomBytes(10).toString('hex');
