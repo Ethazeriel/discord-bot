@@ -26,7 +26,6 @@ async function fromTrack(id:string):Promise<TrackSource> {
   });
   const subsonicResult = subsonicResultAxios.data['subsonic-response'];
   // TODO: consult the result field to confirm we got an ok, not an error
-  // at this point we should have a result, now construct the TrackSource
   const source:TrackSource = {
     id: Array(subsonicResult.song.id),
     name: subsonicResult.song.title,
@@ -133,7 +132,6 @@ async function fromText(search:string):Promise<TrackSource | null> {
   });
   const subsonicResult = subsonicResultAxios.data['subsonic-response'];
   if (Object.keys(subsonicResult.searchResult2).length === 0) { return null; }
-  // at this point we should have a result, now construct the TrackSource
   const source:TrackSource = {
     id: Array(subsonicResult.searchResult2.song[0].id),
     name: subsonicResult.searchResult2.song[0].title,
@@ -167,7 +165,6 @@ async function getStream(id:string, offset:number = 0):Promise<stream.Readable |
   // navidrome implements the transcodeOffset opensubsonic extension, which means this works - but only if we're transcoding
   // not for raw audio streams - may or may not be reliable, in other words
   const streamresult = await fetch(`${subsonic.endpoint_uri}/rest/stream?id=${id}&timeOffset=${offset}&format=opus&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&v=1.16.1`);
-  // TODO: consult the result field to confirm we got an ok, not an error
   if (streamresult.body) {
     return stream.Readable.fromWeb(streamresult.body);
   }

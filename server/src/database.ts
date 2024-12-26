@@ -15,17 +15,6 @@ const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
 if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR; }
 let globalDb:Db | undefined;
-// let con:MongoClient | undefined;
-// MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
-//   if (err) throw err;
-//   con = client;
-//   globalDb = client?.db(dbname);
-//   if (isMainThread) {
-//     log('database', [`Main thread connected to db: ${dbname}`]);
-//   } else {
-//     log('database', [`${workerData?.name} worker connected to database: ${dbname}`]);
-//   }
-// });
 const con = await MongoClient.connect(url, { ignoreUndefined: true });
 globalDb = con.db(dbname);
 if (isMainThread) {
@@ -58,7 +47,7 @@ export async function closeDB():Promise<object | undefined> {
   }
 }
 
-export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {// acquire2
+export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {
   // returns the first track object that matches the query
   const db = await getDb();
   try {
@@ -77,7 +66,7 @@ export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {
   */
 
 
-export async function insertTrack(track:Track):Promise<object | undefined> {// acquire2
+export async function insertTrack(track:Track):Promise<object | undefined> {
   // inserts a single track object into the database
   track.status = {}; // track status should be null, but just in case
   const db = await getDb();
@@ -94,7 +83,7 @@ export async function insertTrack(track:Track):Promise<object | undefined> {// a
   // shouldn't matter, but leaving this comment just in case
 }
 
-export async function addKey(query:Filter<Track>, newkey:string) {// acquire2
+export async function addKey(query:Filter<Track>, newkey:string) {
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
   const db = await getDb();
@@ -108,7 +97,7 @@ export async function addKey(query:Filter<Track>, newkey:string) {// acquire2
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
-export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster', newid:string) {// acquire2
+export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster', newid:string) {
   // adds a new id of the specified type to a track we already have
   // silently fails if we don't have the track in the DB already
   const db = await getDb();
@@ -123,7 +112,7 @@ export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster
 }
 // addSourceId({ 'goose.id': '12345abcde' }, 'spotify', '6i71OngJrJDr6hQIFmzYI0');
 
-export async function addPlayableSourceId(query:Filter<Track>, type:'subsonic', newid:string) {// acquire2
+export async function addPlayableSourceId(query:Filter<Track>, type:'subsonic', newid:string) {
   // adds a new id of the specified type to a track we already have
   // silently fails if we don't have the track in the DB already
   const db = await getDb();
@@ -137,7 +126,7 @@ export async function addPlayableSourceId(query:Filter<Track>, type:'subsonic', 
   }
 }
 
-export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'napster', source:TrackSource) {// acquire2
+export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'napster', source:TrackSource) {
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
@@ -148,7 +137,7 @@ export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'naps
   }
 }
 
-export async function addPlayableTrackSource(query:Filter<Track>, type:'subsonic', source:TrackSource) {// acquire2
+export async function addPlayableTrackSource(query:Filter<Track>, type:'subsonic', source:TrackSource) {
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
@@ -160,7 +149,7 @@ export async function addPlayableTrackSource(query:Filter<Track>, type:'subsonic
   }
 }
 
-export async function addPlaylist(trackarray:Track[], listname:string) {// acquire2
+export async function addPlaylist(trackarray:Track[], listname:string) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
   const name = listname.replace(sanitizePlaylists, '');
@@ -230,7 +219,7 @@ export async function updateTrack(query:Filter<Track>, update:UpdateFilter<Track
   }
 }
 
-export async function removeTrack(query:string) { // acquire2
+export async function removeTrack(query:string) {
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
   const db = await getDb();
@@ -249,7 +238,7 @@ export async function removeTrack(query:string) { // acquire2
 }
 // usage: await db.removeTrack('DjaE3w8j6vY');
 
-export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource):Promise<number> { // acquire2
+export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource):Promise<number> {
   // returns the first track object that matches the query
   const db = await getDb();
   try {
@@ -325,7 +314,7 @@ export async function logPlay(id:string, success = true):Promise<void> {
   }
 }
 
-export async function updateOfficial(id:string, link:string) {// acquire2
+export async function updateOfficial(id:string, link:string) {
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);

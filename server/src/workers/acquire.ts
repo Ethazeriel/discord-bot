@@ -69,7 +69,6 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
     // build an array of promises so we can return them all at once
     promiseArray.push((async () => {
       if (!isTrack(track)) {
-      // finishedArray.push(null);
       // goose does not exist, this is a new track source
       // at this point we should have already checked if we have this track from a different source
       // let's construct a new track
@@ -193,10 +192,8 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
             return finishedTrack;
           } else {
             let query = `${track.name} ${track.artist.name}`;
-            // sanitize this query so youtube doesn't get mad about invalid characters
             query = query.replace(sanitize, '');
             query = query.replace(/(-)+/g, ' ');
-            // TODO: subsonic first, youtube second
             const subsonicResult = await subsonic.fromText(query);
             let ytArray;
             if (!subsonicResult) { ytArray = await youtube.fromSearch(query);}

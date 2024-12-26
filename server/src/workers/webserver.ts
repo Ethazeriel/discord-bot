@@ -256,8 +256,6 @@ app.use('/subsonic-art/:id([a-f0-9]{32})', proxy(subsonic.endpoint_uri, { proxyR
 
 
 // Websocket
-
-
 const httpServer = app.listen(port, () => {
   log('info', [`Web server active at http://localhost:${port}`]);
 });
