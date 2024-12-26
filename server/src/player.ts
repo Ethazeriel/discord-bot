@@ -236,67 +236,50 @@ export default class Player {
 
   // playback
   async play() {
-    let track = this.getCurrent();
+    const track = this.getCurrent();
     if (track && !Player.pending(track)) {
-      let ephemeral; // TODO remove db stuff
-      let UUID;
-      if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
-      track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-      if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
-      this.#queue.tracks[this.#queue.playhead] &&= track;
       if (this.getPause()) { this.togglePause({ force: false }); }
-      if (track) {
-        try {
-          const stream = await this.#getStream(track);
-          if (stream) {
-            const resource = createAudioResource(stream);
-            this.#audioPlayer.play(resource);
-          } else {
-            log('error', ['play failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
-            this.next();
-            return;
-          }
-          log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
-        } catch (error:any) {
-          log('error', [error.stack]);
+      try {
+        const stream = await this.#getStream(track);
+        if (stream) {
+          const resource = createAudioResource(stream);
+          this.#audioPlayer.play(resource);
+        } else {
+          log('error', ['play failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
+          this.next();
+          return;
         }
-      } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
+        log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
+      } catch (error:any) {
+        log('error', [error.stack]);
+      }
     } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
   async seek(time:number) {
-    let track = this.getCurrent();
+    const track = this.getCurrent();
     if (track && !Player.pending(track)) {
-      let ephemeral; // TODO remove db stuff
-      let UUID;
-      if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
-      track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-      if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
-      this.#queue.tracks[this.#queue.playhead] &&= track;
       if (this.getPause()) { this.togglePause({ force: false }); }
-      if (track) {
-        try {
-          // seekable.setToken({
-          //   useragent : [useragent],
-          // }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
-          // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
-          // const resource = createAudioResource(source.stream, { inputType: source.type });
-          const stream = await this.#getStream(track, time);
-          if (stream) {
-            const resource = createAudioResource(stream);
-            this.#audioPlayer.play(resource);
-          } else {
-            log('error', ['seek failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
-            this.next();
-            return;
-          }
-          log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
-        } catch (error:any) {
-          log('error', [error.stack]);
+      try {
+        // seekable.setToken({
+        //   useragent : [useragent],
+        // }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
+        // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
+        const stream = await this.#getStream(track, time);
+        if (stream) {
+          const resource = createAudioResource(stream);
+          this.#audioPlayer.play(resource);
+        } else {
+          log('error', ['seek failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
+          this.next();
+          return;
         }
-        track.status.seek = time;
-        track.status.start = (Date.now() / 1000) - (time || 0);
-      } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
+        log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
+      } catch (error:any) {
+        log('error', [error.stack]);
+      }
+      track.status.seek = time;
+      track.status.start = (Date.now() / 1000) - (time || 0);
     } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
