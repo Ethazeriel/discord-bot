@@ -1,11 +1,14 @@
+import fs from 'fs';
 import { Worker } from 'worker_threads';
 import { log, logDebug } from './logger.js';
 import Player from './player.js';
 import fetch from './acquire.js';
 import { toggleSlowMode } from './acquire.js';
-import { seekTime as seekRegex } from './regexes.js';
+import { seekTime as seekRegex, subsonicPathExtractor } from './regexes.js';
 import validator from 'validator';
 import { fileURLToPath, URL } from 'url';
+const { subsonic }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+// import { default as subsonicWorker } from './workers/acquire/subsonic.js';
 
 let worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 worker.on('exit', code => {
@@ -133,10 +136,24 @@ worker.on('message', async (message:WebWorkerMessage) => {
               return;
             }
             // I could do this right or I could get it working and sleep
+            // okay look, this wasn't meant to live past the very next day, but hear me out—
             const shittify = /(?:spotify\.com|spotify).+((?:track|playlist|album){1}).+([a-zA-Z0-9]{22})/;
+            const shittifySubsonic = /(?:app).+((?:track|playlist|album){1}).+(?:;)([a-zA-Z0-9-]{32,36})/;
             if (shittify.test(query)) {
               const match = query.match(shittify);
               query = `spotify.com/${match![1]}/${match![2]}`;
+            } else if (shittifySubsonic.test(query)) {
+              // yes
+              const path = subsonic.regex.match(subsonicPathExtractor);
+              if (!path || (path && !path.length)) {
+                logDebug('how could this fail');
+                worker.postMessage({ id:message.id, error: 'I\'ll fix this, uh, after an amount of time' });
+                return;
+              }
+              const match = query.match(shittifySubsonic);
+              query = `${path[1].replaceAll('\\', '')}/app/#/${match![1]}/${match![2]}`;
+              // logDebug(query);
+              // logDebug(subsonicWorker.searchRegex.test(query));
             } else {
               logDebug(`webparent queue—shitty bandaid failed; ${query} does not match regex`);
               worker.postMessage({ id:message.id, error: 'I\'ll fix this once I sleep <3' });
