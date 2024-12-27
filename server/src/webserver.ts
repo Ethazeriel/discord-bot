@@ -142,28 +142,27 @@ worker.on('message', async (message:WebWorkerMessage) => {
             if (shittify.test(query)) {
               const match = query.match(shittify);
               query = `spotify.com/${match![1]}/${match![2]}`;
-            } else if (shittifySubsonic.test(query)) {
-              // yes
+            } else if (shittifySubsonic.test(query)) { // yes. this comment was funnier before it got worse
               const subsonicPaths = subsonic.regex.match(subsonicPathExtractor);
-              // logDebug(subsonicPaths);
+              // logDebug(`subsonic config paths are: ${subsonicPaths}`);
               if (!subsonicPaths || (subsonicPaths && !subsonicPaths.length)) {
                 logDebug('how could this fail');
                 worker.postMessage({ id:message.id, error: 'I\'ll fix this, uh, after an amount of time' });
                 return;
               }
-              // logDebug(query);
+              // logDebug(`sanitized client query is: ${query}`);
               const clientPath = query.split(/(?:;)([a-z0-9-\\.:]+)(?:&)/)[1];
-              // logDebug(clientPath);
+              // logDebug(`desired client path is: ${clientPath}`);
 
               const path = subsonicPaths[1].split('|')
                 .map(paths => paths.replaceAll('\\', ''))
                 .filter(paths => paths == clientPath);
-              // logDebug(path);
+              // logDebug(`client/server agree on path: ${path}`);
 
               const match = query.match(shittifySubsonic);
               query = `${path}/app/#/${match![1]}/${match![2]}`;
-              // logDebug(query);
-              // logDebug(subsonicWorker.searchRegex.test(query));
+              // logDebug(`query being sent to acquire is: ${query}`);
+              // logDebug(`query should pass acquire regex: ${subsonicWorker.searchRegex.test(query)}`);
             } else {
               logDebug(`webparent queue—shitty bandaid failed; ${query} does not match regex`);
               worker.postMessage({ id:message.id, error: 'I\'ll fix this once I sleep <3' });
