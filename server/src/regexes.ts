@@ -32,4 +32,5 @@ export const subsonicPattern = /(?:\/app\/#\/)((?:track|playlist|album){1})(?:\/
 // [2] is the ID
 
 // I should definitely be allowed to write code that will ever see production
-export const subsonicPathExtractor = /(?:\(\?:)([a-z0-9-\\.:]+)(?:\))/;
+export const subsonicPathExtractor = /(?:\(\?:)([a-z0-9-\\.:|]+)(?:\))/;
+// export const subsonicPathExtractor = /(?:\(\?:)([a-z0-9-\\.:]+)(?:\))/;

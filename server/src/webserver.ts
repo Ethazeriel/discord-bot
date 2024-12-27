@@ -144,14 +144,24 @@ worker.on('message', async (message:WebWorkerMessage) => {
               query = `spotify.com/${match![1]}/${match![2]}`;
             } else if (shittifySubsonic.test(query)) {
               // yes
-              const path = subsonic.regex.match(subsonicPathExtractor);
-              if (!path || (path && !path.length)) {
+              const subsonicPaths = subsonic.regex.match(subsonicPathExtractor);
+              // logDebug(subsonicPaths);
+              if (!subsonicPaths || (subsonicPaths && !subsonicPaths.length)) {
                 logDebug('how could this fail');
                 worker.postMessage({ id:message.id, error: 'I\'ll fix this, uh, after an amount of time' });
                 return;
               }
+              // logDebug(query);
+              const clientPath = query.split(/(?:;)([a-z0-9-\\.:]+)(?:&)/)[1];
+              // logDebug(clientPath);
+
+              const path = subsonicPaths[1].split('|')
+                .map(paths => paths.replaceAll('\\', ''))
+                .filter(paths => paths == clientPath);
+              // logDebug(path);
+
               const match = query.match(shittifySubsonic);
-              query = `${path[1].replaceAll('\\', '')}/app/#/${match![1]}/${match![2]}`;
+              query = `${path}/app/#/${match![1]}/${match![2]}`;
               // logDebug(query);
               // logDebug(subsonicWorker.searchRegex.test(query));
             } else {
