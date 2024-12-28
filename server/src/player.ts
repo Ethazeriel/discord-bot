@@ -242,14 +242,14 @@ export default class Player {
       try {
         const stream = await this.#getStream(track);
         if (stream) {
-          const resource = createAudioResource(stream);
+          const resource = createAudioResource(stream.source);
           this.#audioPlayer.play(resource);
         } else {
           log('error', ['play failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
           this.next();
           return;
         }
-        log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
+        log('track', [`Playing from ${stream.type}: ${track.goose.artist.name} : ${track.goose.track.name}`]);
       } catch (error:any) {
         log('error', [error.stack]);
       }
@@ -267,14 +267,14 @@ export default class Player {
         // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
         const stream = await this.#getStream(track, time);
         if (stream) {
-          const resource = createAudioResource(stream);
+          const resource = createAudioResource(stream.source);
           this.#audioPlayer.play(resource);
         } else {
           log('error', ['seek failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
           this.next();
           return;
         }
-        log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
+        log('track', [`Seeking to time ${time} in ${track.goose.artist.name} : ${track.goose.track.name} (${stream.type})`]);
       } catch (error:any) {
         log('error', [error.stack]);
       }
@@ -287,7 +287,7 @@ export default class Player {
     if (track.audioSource.subsonic) {
       const stream = await subsonic.getStream(track.audioSource.subsonic.id[0], offset);
       if (stream) {
-        return stream;
+        return { source:stream, type:'subsonic' };
       } else {
         log('error', ['unable to retrieve stream for subsonic id:', track.audioSource.subsonic.id[0]]);
         return;
@@ -304,7 +304,7 @@ export default class Player {
         userAgent: useragent,
       }, { stdio: ['ignore', 'pipe', 'ignore'] });
       stream.catch(err => { err; });
-      return stream.stdout!;
+      return { source:stream.stdout!, type:'youtube' };
     }
   }
 
