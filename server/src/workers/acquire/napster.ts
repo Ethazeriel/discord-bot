@@ -113,4 +113,36 @@ async function fromPlaylist(id:string):Promise<Array<TrackSource>> {
   return sources;
 }
 
-export default { fromTrack, fromAlbum, fromPlaylist };
+async function fromText(search:string):Promise<TrackSource> {
+  log('fetch', [`napsterFromText: ${search}`]);
+  const napsterResultAxios:AxiosResponse<NapsterSearchResult> = await axios({
+    url: `http://api.napster.com/v2.2/search?query=${search}&type=track&per_type_limit=1&apikey=${napster.client_id}`,
+    method: 'get',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    timeout: 10000,
+  });
+  const napsterResult = napsterResultAxios.data;
+
+  const source:TrackSource = {
+    id: Array(napsterResult.search.data.tracks[0].id),
+    name: napsterResult.search.data.tracks[0].name,
+    art: `https://api.napster.com/imageserver/v2/albums/${napsterResult.search.data.tracks[0].albumId}/images/200x200.jpg`,
+    duration: napsterResult.search.data.tracks[0].playbackSeconds,
+    url: napsterResult.search.data.tracks[0].href,
+    album: {
+      id: napsterResult.search.data.tracks[0].albumId,
+      name: napsterResult.search.data.tracks[0].albumName,
+      trackNumber: napsterResult.search.data.tracks[0].index, // TODO: compensate for multiple discs
+    },
+    artist: {
+      id: napsterResult.search.data.tracks[0].artistId,
+      name: napsterResult.search.data.tracks[0].artistName,
+    },
+  };
+  return source;
+}
+
+export default { fromTrack, fromAlbum, fromPlaylist, fromText };

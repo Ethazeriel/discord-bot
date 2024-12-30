@@ -189,3 +189,17 @@ type NapsterPlaylist = {
   freePlayCompliant: boolean,
   links: NapsterLinks
 }
+
+type NapsterSearchResult = {
+  meta: {
+    totalCount: number,
+    returnedCount: number
+  },
+  search: {
+    query: string,
+    data: {
+      tracks: Array<NapsterTrack>
+    },
+    order: Array<string>
+  }
+}
