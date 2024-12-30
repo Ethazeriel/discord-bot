@@ -29,9 +29,7 @@ export const allowedExternalTypes = (event:React.DragEvent<HTMLElement>) => {
 export function chooseAudioSource(track:Track):TrackSource|TrackYoutubeSource {
   if (track.audioSource.subsonic) {
     return track.audioSource.subsonic;
-  } else if (track.audioSource.youtube) {
-    return track.audioSource.youtube[0];
   } else {
-    return track.audioSource.soundcloud;
+    return track.audioSource.youtube![0];
   }
 }
