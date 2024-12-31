@@ -23,7 +23,11 @@ async function upgradeTrack(track:Track, internal:boolean = false):Promise<Track
       query = query.replace(sanitize, '');
       query = query.replace(/(-)+/g, ' ');
       const subsonicResult = await subsonic.fromText(query);
-      if (subsonicResult) { track.audioSource.subsonic = subsonicResult; }
+      if (subsonicResult) {
+        track.audioSource.subsonic = subsonicResult;
+        // also need to update goose duration, as may differ between sources and subsonic is preferred
+        track.goose.track.duration = subsonicResult.duration;
+      }
       track.version = 1;
       return await upgradeTrack(track, true);
     }
