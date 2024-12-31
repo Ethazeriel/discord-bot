@@ -7,7 +7,7 @@ import chalk from 'chalk';
 const { mongo }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
-import Player from './player.js';
+// import Player from './player.js';
 // Connection URL
 let url = mongo.url;
 const dbname = mongo.database;
@@ -414,7 +414,7 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
   }
 }
 
-export async function saveStash(userIDs:string[], playhead:number, queue:Track[]) {// acquire2
+export async function saveStash(userIDs:string[], playhead:number, queue:Track[]) {
   // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
@@ -423,7 +423,10 @@ export async function saveStash(userIDs:string[], playhead:number, queue:Track[]
   // logDebug(`stash before—playhead ${playhead}, queue length ${queue.length}`);
   for (let index = 0; index < queue.length; index++) {
     const track = queue[index];
-    if (!track.status.ephemeral && !Player.pending(track)) {
+    // this used to call Player.pending, but that means we load the entire player in worker threads
+    // we don't want that, so I've copied the return of that function here instead
+    // TODO - should we have a thinned-out database interface for threads?
+    if (!track.status.ephemeral && !(track !== undefined && track.goose.id === '')) {
       idarray.push(track.goose.id);
     } else { playhead &&= --playhead; }
   }
