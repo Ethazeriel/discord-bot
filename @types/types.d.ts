@@ -94,6 +94,7 @@ interface Track {
 		pause?: number
 		start?: number
 	}
+	version: number
 }
 
 interface TrackSource {

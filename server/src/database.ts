@@ -7,6 +7,7 @@ import chalk from 'chalk';
 const { mongo }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
+import { trackVersion, upgradeTrack } from './migrations.js';
 // import Player from './player.js';
 // Connection URL
 let url = mongo.url;
@@ -53,7 +54,12 @@ export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {
   try {
     const tracks = db.collection<Track>(trackcol);
     const track = await tracks.findOne(query, { projection: { _id: 0 } });
-    if (track) { return track; }
+    if (track) {
+      if (track.version === trackVersion) { return track; } else {
+        const newTrack = await upgradeTrack(track);
+        return newTrack;
+      }
+    }
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -64,6 +70,19 @@ export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {
   spotifyID: await getTrack({ 'spotify.id': '76nqR8hb279mkQLNkQMzK1' });
   key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
   */
+
+export async function replaceTrack(newTrack:Track):Promise<number> {
+  // for track migrations, replaces the track with matching goose id
+  const db = await getDb();
+  const tracks = db.collection<Track>(trackcol);
+  const currentTrack = await tracks.findOne({ 'goose.id': newTrack.goose.id }, { projection: { _id: 0 } });
+  if (currentTrack == null) {
+    throw new Error(`replaceTrack failed for id ${newTrack.goose.id}: we don't appear to have that track`);
+  } else {
+    const result = await tracks.replaceOne({ 'goose.id': newTrack.goose.id }, newTrack);
+    return result.modifiedCount;
+  }
+}
 
 
 export async function insertTrack(track:Track):Promise<object | undefined> {
@@ -176,7 +195,7 @@ export async function addPlaylist(trackarray:Track[], listname:string) {
 export async function getPlaylist(listname:string):Promise<Track[]> {
   // returns a playlist as an array of tracks, ready for use
   const db = await getDb();
-  let result:Track[] = [];
+  const result:Track[] = [];
   try {
     const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection<Track>(trackcol);
@@ -184,7 +203,13 @@ export async function getPlaylist(listname:string):Promise<Track[]> {
     const query = { [qustr]: { $exists: true } };
     const options:FindOptions<Track> = { sort: { [qustr]:1 }, projection: { _id: 0 } };
     const cursor = tracks.find(query, options);
-    result = await cursor.toArray();
+    const playlist = await cursor.toArray();
+    for (const track of playlist) {
+      if (track.version === trackVersion) { result.push(track); } else {
+        result.push (await upgradeTrack(track));
+      }
+    }
+    await Promise.allSettled(result);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }

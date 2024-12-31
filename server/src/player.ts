@@ -471,6 +471,7 @@ export default class Player {
           },
         ] },
       'status': {},
+      'version': 0
     });
   }
 

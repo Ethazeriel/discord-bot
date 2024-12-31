@@ -7,6 +7,7 @@ import youtube from './acquire/youtube.js';
 import spotify from './acquire/spotify.js';
 import napster from './acquire/napster.js';
 import subsonic from './acquire/subsonic.js';
+import { trackVersion } from '../migrations.js';
 
 parentPort!.on('message', async data => {
   if (data.action === 'search') {
@@ -99,6 +100,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               audioSource: { youtube: [track.youtube] },
               spotify: track.spotify,
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(actualTrack);
             return actualTrack;
@@ -128,6 +130,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               playlists: {},
               audioSource: { youtube: [track] },
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(youtubeTrack);
             return youtubeTrack;
@@ -159,6 +162,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               playlists: {},
               audioSource: { youtube: track },
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(youtubeTrack);
             return youtubeTrack;
@@ -187,6 +191,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               playlists: {},
               audioSource: { subsonic: track },
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(finishedTrack);
             return finishedTrack;
@@ -220,6 +225,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               playlists: {},
               audioSource: subsonicResult ? { subsonic: subsonicResult } : { youtube: ytArray! },
               status: {},
+              version: trackVersion
             };
             if (sourceType === 'spotify' || sourceType === 'text') {finishedTrack.spotify = track;}
             if (sourceType === 'napster') {finishedTrack.napster = track;}
@@ -343,6 +349,7 @@ async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | T
         playlists: {},
         audioSource: { youtube: [source] },
         status: {},
+        version: trackVersion
       };
       await db.insertTrack(finalTrack);
       return Array(finalTrack);
@@ -398,6 +405,7 @@ async function youtubePlaylistSource(search:string):Promise<Array<TrackYoutubeSo
             playlists: {},
             audioSource: { youtube: [source] },
             status: {},
+            version: trackVersion
           };
           await db.insertTrack(finalTrack);
           return finalTrack;
