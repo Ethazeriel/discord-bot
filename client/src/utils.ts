@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { dragPattern, youtubePattern, youtubePlaylistPattern, spotifyPattern, napsterPattern } from './regexes.js';
+import { dragPattern, youtubePattern, youtubePlaylistPattern, spotifyPattern, napsterPattern, subsonicPattern } from './regexes.js';
 
 export function timeDisplay(seconds:number) {
   let time = new Date(seconds * 1000).toISOString().substring(11, 19).replace(/^[0:]+/, '');
@@ -20,7 +20,7 @@ export const allowExternal = (event:React.DragEvent<HTMLElement>):boolean => {
 export const allowedExternalTypes = (event:React.DragEvent<HTMLElement>) => {
   const allowed = event.dataTransfer.types.filter((type) => typeof type === 'string' && dragPattern.test(type))
     .map((type) => event.dataTransfer.getData(type))
-    .filter((type) => spotifyPattern.test(type));
+    .filter((type) => spotifyPattern.test(type) || subsonicPattern.test(type));
   //  || youtubePlaylistPattern.test(type) || napsterPattern.test(type) || youtubePattern.test(type)
 
   return (allowed);
@@ -29,9 +29,7 @@ export const allowedExternalTypes = (event:React.DragEvent<HTMLElement>) => {
 export function chooseAudioSource(track:Track):TrackSource|TrackYoutubeSource {
   if (track.audioSource.subsonic) {
     return track.audioSource.subsonic;
-  } else if (track.audioSource.youtube) {
-    return track.audioSource.youtube[0];
   } else {
-    return track.audioSource.soundcloud;
+    return track.audioSource.youtube![0];
   }
 }

@@ -1,11 +1,14 @@
+import fs from 'fs';
 import { Worker } from 'worker_threads';
 import { log, logDebug } from './logger.js';
 import Player from './player.js';
 import fetch from './acquire.js';
 import { toggleSlowMode } from './acquire.js';
-import { seekTime as seekRegex } from './regexes.js';
+import { seekTime as seekRegex, subsonicPathExtractor } from './regexes.js';
 import validator from 'validator';
 import { fileURLToPath, URL } from 'url';
+const { subsonic }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+// import { default as subsonicWorker } from './workers/acquire/subsonic.js';
 
 let worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 worker.on('exit', code => {
@@ -133,10 +136,33 @@ worker.on('message', async (message:WebWorkerMessage) => {
               return;
             }
             // I could do this right or I could get it working and sleep
+            // okay look, this wasn't meant to live past the very next day, but hear me out—
             const shittify = /(?:spotify\.com|spotify).+((?:track|playlist|album){1}).+([a-zA-Z0-9]{22})/;
+            const shittifySubsonic = /(?:app).+((?:track|playlist|album){1}).+(?:;)([a-zA-Z0-9-]{32,36})/;
             if (shittify.test(query)) {
               const match = query.match(shittify);
               query = `spotify.com/${match![1]}/${match![2]}`;
+            } else if (shittifySubsonic.test(query)) { // yes. this comment was funnier before it got worse
+              const subsonicPaths = subsonic.regex.match(subsonicPathExtractor);
+              // logDebug(`subsonic config paths are: ${subsonicPaths}`);
+              if (!subsonicPaths || (subsonicPaths && !subsonicPaths.length)) {
+                logDebug('how could this fail');
+                worker.postMessage({ id:message.id, error: 'I\'ll fix this, uh, after an amount of time' });
+                return;
+              }
+              // logDebug(`sanitized client query is: ${query}`);
+              const clientPath = query.split(/(?:;)([a-z0-9-\\.:]+)(?:&)/)[1];
+              // logDebug(`desired client path is: ${clientPath}`);
+
+              const path = subsonicPaths[1].split('|')
+                .map(paths => paths.replaceAll('\\', ''))
+                .filter(paths => paths == clientPath);
+              // logDebug(`client/server agree on path: ${path}`);
+
+              const match = query.match(shittifySubsonic);
+              query = `${path}/app/#/${match![1]}/${match![2]}`;
+              // logDebug(`query being sent to acquire is: ${query}`);
+              // logDebug(`query should pass acquire regex: ${subsonicWorker.searchRegex.test(query)}`);
             } else {
               logDebug(`webparent queue—shitty bandaid failed; ${query} does not match regex`);
               worker.postMessage({ id:message.id, error: 'I\'ll fix this once I sleep <3' });
