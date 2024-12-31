@@ -71,7 +71,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
     nearerTop: false,
     nearerBottom: false,
   };
-  console.log('track happening');
+  // console.log('track happening');
 
   const [state, dispatch] = React.useReducer(reducer, initialState);
   const [allowed, setAllowed] = React.useState<boolean | null>(null);
@@ -168,7 +168,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
   const dragEnter = (event:React.DragEvent<HTMLElement>) => {
     event.stopPropagation();
-    console.log('track handler—enter');
+    // console.log('track handler—enter');
     // console.log(`drag entered track: ${props.id + 1}`);
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (allowed || shouldAllow(event, internal)) {
@@ -215,7 +215,7 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   const dragLeave = (event:React.DragEvent<HTMLElement>) => {
     event.stopPropagation();
     setAllowed(null);
-    console.log('track handler—leave');
+    // console.log('track handler—leave');
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal || allowExternal(event)) {
       // removeEventListener('cleanup', cleanUp);
@@ -248,15 +248,18 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
         console.log(`move track: [${props.dragID}] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
       }
     } else if (externalTypes.length) {
-      console.log(`external accepted: ${externalTypes}`);
+      // console.log(`external accepted: ${externalTypes}`);
       addEventListener('cleanup', cleanUp);
       const to = (state.nearerTop) ? props.id : props.id + 1;
       trackClick('pendingIndex', `${to} ${externalTypes[0]}`);
       console.log(`queue resource ${externalTypes} at position ${to}`);
     } else if (externalTypes.length === 0) {
-      console.log('no valid external types');
+      const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
+      console.log(`track external—no valid types in: ${types}`);
       rejectDrop();
     } else {
+      const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
+      console.log(`track—no valid types in: ${types}`);
       rejectDrop();
     }
   };

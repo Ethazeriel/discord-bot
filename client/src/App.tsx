@@ -6,7 +6,10 @@ import { StatusBar } from './StatusBar';
 import { MediaBar } from './MediaBar';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import DisplaySelect from './DisplaySelect';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { DropCheck } from './DropCheck';
 
 import { allowExternal, allowedExternalTypes } from './utils';
 
@@ -59,7 +62,7 @@ export default class App extends React.Component<Record<string, never>, AppState
         'Content-Type': 'application/json',
       },
     }).then((response) => response.json()).then((json) => {
-      console.log(`fetch response ${Date.now()}`);
+      // console.log(`fetch response ${Date.now()}`);
       // spite
       json && Object.keys(json).map((key:string) => {
         switch (key) {
@@ -97,19 +100,20 @@ export default class App extends React.Component<Record<string, never>, AppState
       const socket = new WebSocket(`${protocol}://${window.location.hostname}:${window.location.port}/websocket`); // this is not a problem
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       socket.addEventListener('open', (event: any) => {
-        console.log(`WebSocket open: ${JSON.stringify(event, null, 2)}`);
+        // console.log(`WebSocket open: ${JSON.stringify(event, null, 2)}`);
       });
       socket.addEventListener('error', (event: any) => {
         console.log(`WebSocket error: ${JSON.stringify(event, null, 2)}`);
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       socket.addEventListener('close', (event: any) => {
-        console.log(`WebSocket close: ${JSON.stringify(event, null, 2)}`);
+        // console.log(`WebSocket close: ${JSON.stringify(event, null, 2)}`);
       });
       socket.addEventListener('message', (event: any) => {
         const data = JSON.parse(event.data);
         switch (data.type) {
           case 'playerStatus': {
-            console.log(`socket status update ${Date.now()}`);
+            // console.log(`socket status update ${Date.now()}`);
             this.setState({ playerStatus: data.queue });
             break;
           }
@@ -146,7 +150,7 @@ export default class App extends React.Component<Record<string, never>, AppState
             <DisplaySelect />
           </MainContent>
         </div>
-      );
+      ); // <DropCheck />
     }
   }
   // <MediaBar playerClick={this.playerClick} />
@@ -212,13 +216,13 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
 
   const shouldAllow = (event:React.DragEvent<HTMLElement>, internal:boolean) => {
     if (allowed !== null) {
-      console.log('queue allow, early exit');
+      // console.log('queue allow, early exit');
       return allowed;
     }
     let allow = internal;
     allow ||= allowExternal(event);
     if (allow) { setAllowed(allow); }
-    console.log(`should ${allow}`);
+    // console.log(`should ${allow}`);
     return allow;
   };
 
@@ -244,7 +248,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
 
   const serverQueue = props.status?.tracks;
   const localQueue:JSX.Element[] = React.useMemo(() => {
-    console.log('queue happening');
+    // console.log('queue happening');
     const queue = [];
     if (serverQueue) {
       for (const [i, track] of serverQueue.entries()) {
@@ -255,7 +259,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
   }, [serverQueue, props.playerClick, dragID]);
 
   React.useEffect(() => {
-    console.log(`serverqueue change ${Date.now()}`);
+    // console.log(`serverqueue change ${Date.now()}`);
     clearStyling();
     dispatchEvent(new CustomEvent('cleanup'));
   }, [serverQueue]);
@@ -277,14 +281,14 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     if (!dropStyle.current) { return; } // not mounted; shouldn't be (possible to be) here
     const same = event.currentTarget === event.target;
     if (!same) { // shouldn't be possible currently, but may be again in future
-      console.log('queue enter handler—same: ' + same);
-      console.log(event);
+      // console.log('queue enter handler—same: ' + same);
+      // console.log(event);
       return;
     }
 
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal && dragID === localQueue.length - 1) {
-      console.log('queue enter, invalid');
+      // console.log('queue enter, invalid');
       dropStyle.current.style.borderTop = '2px solid #f800e3';
       dropStyle.current.style.opacity = '0.4';
       return;
@@ -302,7 +306,7 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     // console.log(`over queue`);
     const internal = event.dataTransfer.types.includes('application/x-goose.track');
     if (internal && dragID === localQueue.length - 1) {
-      console.log('queue over, invalid');
+      // console.log('queue over, invalid');
       return;
     }
 
@@ -316,8 +320,8 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     if (event.currentTarget === event.target) {
       clearStyling();
     } else { // shouldn't be possible currently, but may be again in future
-      console.log('queue enter handler—same: false');
-      console.log(event);
+      // console.log('queue enter handler—same: false');
+      // console.log(event);
       return;
     }
   };
@@ -349,13 +353,11 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
     } else if (externalTypes.length === 0) {
       clearStyling();
       const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
-      console.log(`queue drop external, no valid external types. types: ${types}`);
-      return;
+      console.log(`queue drop external. no valid types in: ${types}`);
     } else {
       clearStyling();
       const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
-      console.log(`queue drop internal, no valid types. types: ${types}`);
-      return;
+      console.log(`queue drop. no valid types in: ${types}`);
     }
   };
 
