@@ -161,7 +161,8 @@ export async function addPlayableTrackSource(query:Filter<Track>, type:'subsonic
   try {
     const tracks = db.collection<Track>(trackcol);
     const target = `audioSource.${type}`;
-    await tracks.updateOne(query, { $set: { [target]: source } } as UpdateFilter<Track>);
+    // duration needs work in future for only updating if added source is higher preference
+    await tracks.updateOne(query, { $set: { [target]: source, 'goose.track.duration':source.duration } } as UpdateFilter<Track>);
     log('database', [`Adding ${type} source to ${chalk.green(query)}`]);
   } catch (error:any) {
     log('error', ['database error:', error.stack]);

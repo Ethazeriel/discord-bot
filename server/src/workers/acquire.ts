@@ -295,6 +295,8 @@ async function checkPlayableTrack(track:TrackSource, type:'subsonic'):Promise<Tr
       // track doesn't have a source of this type yet, so create one
       db.addPlayableTrackSource({ 'goose.id':dbTrack.goose.id }, type, track);
       dbTrack.audioSource![type] = track;
+      // will need tweaking in future depending on preferred source order
+      if (type === 'subsonic') { dbTrack.goose.track.duration = track.duration; }
     }
     return dbTrack;
   } else {return null;}
