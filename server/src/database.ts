@@ -196,7 +196,8 @@ export async function addPlaylist(trackarray:Track[], listname:string) {
 export async function getPlaylist(listname:string):Promise<Track[]> {
   // returns a playlist as an array of tracks, ready for use
   const db = await getDb();
-  const result:Track[] = [];
+  const resultPromises:Array<Promise<Track>> = [];
+  const finishedArray:Array<Track> = [];
   try {
     const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection<Track>(trackcol);
@@ -206,15 +207,20 @@ export async function getPlaylist(listname:string):Promise<Track[]> {
     const cursor = tracks.find(query, options);
     const playlist = await cursor.toArray();
     for (const track of playlist) {
-      if (track.version === trackVersion) { result.push(track); } else {
-        result.push (await upgradeTrack(track));
+      if (track.version === trackVersion) { resultPromises.push(Promise.resolve(track)); } else {
+        resultPromises.push(upgradeTrack(track));
       }
     }
-    await Promise.allSettled(result);
+    await Promise.allSettled(resultPromises).then(promises => {
+      for (const promise of promises) {
+        if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }
+        if (promise.status === 'rejected') { log('error', ['life is pain, playlist recall failed, how do promises work']);}
+      }
+    });
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
-  return result;
+  return finishedArray;
 }
 
 export async function removePlaylist(listname:string):Promise<number | undefined> {
