@@ -173,7 +173,7 @@ async function getStream(id:string, offset:number = 0):Promise<stream.Readable |
 async function getArtPath(id:string) {
   const salt = crypto.randomBytes(10).toString('hex');
   const hash = crypto.createHash('md5').update(`${subsonic.password}${salt}`).digest('hex');
-  const path = `/rest/getCoverArt?id=${id}&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&v=1.16.1`;
+  const path = `/rest/getCoverArt?id=${id}&size=300&u=${subsonic.username}&s=${salt}&t=${hash}&c=${subsonic.client_id}&v=1.16.1`;
   return path;
 }
 
