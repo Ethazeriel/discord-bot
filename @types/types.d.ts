@@ -1,43 +1,3 @@
-interface OldTrack {
-	goose: {
-		id:string,
-		plays?:number
-		errors?:number
-		seek?:number,
-		bar?:ProgressBarOptions
-	},
-  keys: string[],
-	playlists: Record<string, number>,
-	album: {
-		id: string | null,
-		name:string | number, // this needs to be able to be a number for shuffle
-		trackNumber:number
-	},
-	artist: {
-		id: string | null,
-		name: string,
-		official: string // url link to official site, if !official then bandcamp, etc
-	},
-	spotify: {
-		id: string[],
-    name: string,
-		art: string,
-		duration: number
-	},
-	youtube: youtubeObject,
-	alternates: youtubeObject[],
-	ephemeral?: string
-	pause?: number
-	start?: number
-}
-
-interface youtubeObject {
-  id: string,
-  name: string,
-  art: string,
-  duration: number
-}
-
 interface User {
 	discord: {
 		id: string,
@@ -124,7 +84,7 @@ interface Track {
 	}
 	keys: Array<string>
 	playlists: Record<string, number>
-	youtube: Array<TrackYoutubeSource>
+	audioSource: AtLeastOne<AudioSources>	
 	bar?: ProgressBarOptions
 	spotify?: TrackSource
 	napster?: TrackSource
@@ -134,6 +94,7 @@ interface Track {
 		pause?: number
 		start?: number
 	}
+	version: number
 }
 
 interface TrackSource {
@@ -170,4 +131,70 @@ interface SpotifyPlaylist {
 	name: string
 	owner: string
 	description: string
+}
+
+
+type AtLeastOne<T, U = {[K in keyof T]: Pick<T, K> }> = Partial<T> & U[keyof U]
+// stolen from https://stackoverflow.com/questions/48230773/how-to-create-a-partial-like-that-requires-a-single-property-to-be-set
+// I won't pretend to understand this at all
+
+type AudioSources = {
+	youtube: Array<TrackYoutubeSource>
+	subsonic: TrackSource
+}
+
+interface GooseConfig {
+	debug: boolean,
+	functions: { // TODO - should we keep this?
+		web: boolean,
+		music: boolean,
+		translate: boolean,
+	}
+	root_url: string,
+	discord: {
+		token: string,
+		client_id: string,
+		guildId: string,
+		secret: string,
+		scope: 'guild' | 'global',
+		roles: {
+			dj: string,
+			admin: string,
+			translate: string
+		},
+		redirect_uri: string
+	},
+	spotify: {
+		client_id: string,
+		client_secret: string,
+		redirect_uri: string
+	},
+	napster: {
+		client_id: string,
+		client_secret: string,
+		redirect_uri: string
+	},
+	youtube: {
+		apiKey: string,
+		useragent: string
+	},
+	subsonic: {
+		username: string,
+		password: string,
+		client_id: string,
+		endpoint_uri: string,
+		regex: string
+	},
+	mongo: {
+		url: string,
+		database: string,
+		trackcollection: string,
+		usercollection: string
+	},
+	translate: {
+		apiKey: string
+	},
+	internal?: {
+		deployedHash: string
+	}
 }

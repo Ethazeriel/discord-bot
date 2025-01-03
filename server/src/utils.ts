@@ -85,6 +85,14 @@ export function randomHexColor():number {
   return Number(`0x${crypto.randomBytes(3).toString('hex')}`);
 }
 
+export function chooseAudioSource(track:Track):TrackSource|TrackYoutubeSource {
+  if (track.audioSource.subsonic) {
+    return track.audioSource.subsonic;
+  } else {
+    return track.audioSource.youtube![0];
+  }
+}
+
 export function numbersToTrackIndexes(input:string):Array<number> {
   // takes a comma-separated string of numbers and ranges
   // returns an array of numbers in descending order
@@ -130,7 +138,7 @@ export async function generateTrackEmbed(track:Track, messagetitle:string):Promi
       icon_url: pickPride('fish'),
     },
     fields: [
-      { name: messagetitle, value: `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url})\nAlbum - ${track.goose.album.name || '\u200b'}` },
+      { name: messagetitle, value: `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${chooseAudioSource(track).url })\nAlbum - ${track.goose.album.name || '\u200b'}` },
     ],
     thumbnail: {
       url: 'attachment://art.jpg',

@@ -6,11 +6,12 @@ import { ButtonInteraction, CommandInteraction, BaseInteraction, GuildMember, At
 import * as db from './database.js';
 import { log, logDebug } from './logger.js';
 import { fileURLToPath, URL } from 'url';
-const { youtube, functions } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { youtube, functions }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 const useragent = youtube.useragent;
 import * as utils from './utils.js';
 import { embedPage } from './regexes.js';
-import * as seekable from 'play-dl';
+// import * as seekable from 'play-dl';
+import subsonic from './workers/acquire/subsonic.js';
 
 // type GetPlayer = Promise<{ player?: Player; message?: string; }>;
 type JoinableVoiceUser = VoiceUser & { adapterCreator:DiscordGatewayAdapterCreator; };
@@ -235,75 +236,76 @@ export default class Player {
 
   // playback
   async play() {
-    let track = this.getCurrent();
+    const track = this.getCurrent();
     if (track && !Player.pending(track)) {
-      let ephemeral; // TO DO remove db stuff
-      let UUID;
-      if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
-      track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-      if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
-      this.#queue.tracks[this.#queue.playhead] &&= track;
       if (this.getPause()) { this.togglePause({ force: false }); }
-      if (track) {
-        try {
-          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
-            output: '-',
-            quiet: true,
-            forceIpv4: true,
-            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-            limitRate: '100K',
-            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-            userAgent: useragent,
-          }, { stdio: ['ignore', 'pipe', 'ignore'] });
-          youtubeStream.catch(err => { err; });
-          const resource = createAudioResource(youtubeStream.stdout!);
+      try {
+        const stream = await this.#getStream(track);
+        if (stream) {
+          const resource = createAudioResource(stream.source);
           this.#audioPlayer.play(resource);
-          log('track', ['Playing track:', (track.goose.artist.name), ':', (track.goose.track.name)]);
-        } catch (error:any) {
-          log('error', [error.stack]);
+        } else {
+          log('error', ['play failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
+          this.next();
+          return;
         }
-      } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
+        log('track', [`Playing from ${stream.type}: ${track.goose.artist.name} : ${track.goose.track.name}`]);
+      } catch (error:any) {
+        log('error', [error.stack]);
+      }
     } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
   }
 
   async seek(time:number) {
-    let track = this.getCurrent();
+    const track = this.getCurrent();
     if (track && !Player.pending(track)) {
-      let ephemeral; // TO DO remove db stuff
-      let UUID;
-      if (track) { UUID = track.goose.UUID, ephemeral = track.status.ephemeral; }
-      track &&= await db.getTrack({ 'goose.id': track.goose.id }) as Track;
-      if (track) { track.goose.UUID = UUID, track.status.ephemeral = ephemeral; }
-      this.#queue.tracks[this.#queue.playhead] &&= track;
       if (this.getPause()) { this.togglePause({ force: false }); }
-      if (track) {
-        try {
-          seekable.setToken({
-            useragent : [useragent],
-          }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
-          // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
-          // const resource = createAudioResource(source.stream, { inputType: source.type });
-          const youtubeStream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, {
-            output: '-',
-            quiet: true,
-            forceIpv4: true,
-            format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
-            limitRate: '100K',
-            downloadSections : `*${time}-inf`,
-            cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
-            userAgent: useragent,
-          }, { stdio: ['ignore', 'pipe', 'ignore'] });
-          youtubeStream.catch(err => { err; });
-          const resource = createAudioResource(youtubeStream.stdout!);
+      try {
+        // seekable.setToken({
+        //   useragent : [useragent],
+        // }); // can send a cookie string also, but seems unnecessary https://play-dl.github.io/modules.html#setToken
+        // const source = await seekable.stream(`https://www.youtube.com/watch?v=${track.youtube[0].id}`, { seek:time });
+        const stream = await this.#getStream(track, time);
+        if (stream) {
+          const resource = createAudioResource(stream.source);
           this.#audioPlayer.play(resource);
-          log('track', [`Seeking to time ${time} in `, (track.goose.artist.name), ':', (track.goose.track.name)]);
-        } catch (error:any) {
-          log('error', [error.stack]);
+        } else {
+          log('error', ['seek failure, no stream present for track with goose: ', track.goose.track.name, ' ', track.goose.id]);
+          this.next();
+          return;
         }
-        track.status.seek = time;
-        track.status.start = (Date.now() / 1000) - (time || 0);
-      } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); } // include this line in db cleanup, outer handles it
+        log('track', [`Seeking to time ${time} in ${track.goose.artist.name} : ${track.goose.track.name} (${stream.type})`]);
+      } catch (error:any) {
+        log('error', [error.stack]);
+      }
+      track.status.seek = time;
+      track.status.start = (Date.now() / 1000) - (time || 0);
     } else if (this.#audioPlayer.state.status == 'playing') { this.#audioPlayer.stop(); }
+  }
+
+  async #getStream(track:Track, offset:number = 0) {
+    if (track.audioSource.subsonic) {
+      const stream = await subsonic.getStream(track.audioSource.subsonic.id[0], offset);
+      if (stream) {
+        return { source:stream, type:'subsonic' };
+      } else {
+        log('error', ['unable to retrieve stream for subsonic id:', track.audioSource.subsonic.id[0]]);
+        return;
+      }
+    } else {
+      const stream = youtubedl.exec(`https://www.youtube.com/watch?v=${track.audioSource.youtube![0].id}`, {
+        output: '-',
+        quiet: true,
+        forceIpv4: true,
+        format: 'bestaudio[ext=webm]+bestaudio[acodec=opus]+bestaudio[asr=48000]/bestaudio',
+        limitRate: '100K',
+        downloadSections : `*${offset}-inf`,
+        cookies: fileURLToPath(new URL('../../cookies.txt', import.meta.url).toString()),
+        userAgent: useragent,
+      }, { stdio: ['ignore', 'pipe', 'ignore'] });
+      stream.catch(err => { err; });
+      return { source:stream.stdout!, type:'youtube' };
+    }
   }
 
   prev(play = true) { // prior, loop or restart current
@@ -458,16 +460,18 @@ export default class Player {
         'pending',
       ],
       'playlists': {},
-      'youtube': [
-        {
-          'id': 'OVL3MYasc-k',
-          'name': 'Elk Bugle up close.',
-          'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
-          'duration': 232,
-          'url': 'https://youtu.be/OVL3MYasc-k',
-        },
-      ],
+      audioSource: {
+        'youtube': [
+          {
+            'id': 'OVL3MYasc-k',
+            'name': 'Elk Bugle up close.',
+            'art': 'https://i.ytimg.com/vi/OVL3MYasc-k/hqdefault.jpg',
+            'duration': 232,
+            'url': 'https://youtu.be/OVL3MYasc-k',
+          },
+        ] },
       'status': {},
+      'version': 0
     });
   }
 
@@ -718,7 +722,7 @@ export default class Player {
       author: { name: messageTitle, icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
       fields: [
-        { name: '\u200b', value: (track) ? `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url})\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.' },
+        { name: '\u200b', value: (track) ? `${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${utils.chooseAudioSource(track).url})\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.' },
         { name: (track) ? `\` ${utils.progressBar(45, (track.goose.track.duration), elapsedTime, bar)} \`` : utils.progressBar(45, 100, 0), value: `${this.getPause() ? 'Paused:' : 'Elapsed:'} ${utils.timeDisplay(elapsedTime)} | Total: ${utils.timeDisplay(track?.goose.track.duration || 0)}` },
       ],
     };
@@ -773,7 +777,7 @@ export default class Player {
       const dbtrack = (!Player.pending(queuePart[i])) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
       let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
-      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${dbtrack.youtube[0].url}) - ${utils.timeDisplay(dbtrack.youtube[0].duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
+      const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${utils.chooseAudioSource(dbtrack).url}) - ${utils.timeDisplay(utils.chooseAudioSource(dbtrack).duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
       queueStr = queueStr.concat(part);
     }
     let queueTime = 0;
@@ -801,7 +805,7 @@ export default class Player {
       color: 0x3277a8,
       author: { name: (messagetitle || 'Current Queue:'), icon_url: utils.pickPride('fish') },
       thumbnail: { url: 'attachment://art.jpg' },
-      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${track.youtube[0].url}) - ${utils.timeDisplay(track.youtube[0].duration)}\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
+      description: `**${this.getPause() ? 'Paused:' : 'Now Playing:'}** \n ${(track) ? `**${this.getPlayhead() + 1}. **${(track.goose.artist.name || ' ')} - [${(track.goose.track.name)}](${utils.chooseAudioSource(track).url}) - ${utils.timeDisplay(utils.chooseAudioSource(track).duration)}\n[Support this artist!](${track.goose.artist.official})` : 'Nothing is playing.'}\n\n**Queue:** \n${queueStr}`,
       fields: [
         { name: '\u200b', value: `Loop: ${this.getLoop() ? '🟢' : '🟥'}`, inline: true },
         { name: '\u200b', value: `Page ${page} of ${pages}`, inline: true },

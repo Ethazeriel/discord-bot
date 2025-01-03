@@ -10,12 +10,14 @@ import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord, spotify, napster, root_url } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord, spotify, napster, root_url }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 import * as oauth2 from '../oauth2.js';
 import { fileURLToPath, URL } from 'url';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import * as spotifyactions from './webserver/spotify.js';
+import subsonic from './acquire/subsonic.js';
+import proxy from 'express-http-proxy';
 
 
 parentPort!.on('message', async data => {
@@ -249,9 +251,11 @@ app.get('/spotify-playlist/:id([a-zA-Z0-9]{22})', async (req, res) => {
   }
 });
 
+// proxy art requests to subsonic
+app.use('/subsonic-art/:id([a-f0-9]{32})', proxy(subsonic.endpoint_uri, { proxyReqPathResolver: (req) => { return subsonic.getArtPath(req.params.id); } }));
+
+
 // Websocket
-
-
 const httpServer = app.listen(port, () => {
   log('info', [`Web server active at http://localhost:${port}`]);
 });

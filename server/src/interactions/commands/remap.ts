@@ -7,8 +7,7 @@ import Player from '../../player.js';
 import youtube from '../../workers/acquire/youtube.js';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
-// import Jimp from 'jimp';
-const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
@@ -28,9 +27,13 @@ export async function execute(interaction:ChatInputCommandInteraction) {
       if (replace) {
         if (youtubePattern.test(replace)) {
           const match = search.match(youtubePattern);
-          const track = await db.getTrack({ 'youtube.0.id': match![2] });
+          const track = await db.getTrack({ 'audioSource.youtube.0.id': match![2] });
           if (!track) {
             await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
+            return;
+          }
+          if (!track.audioSource.youtube) {
+            await interaction.followUp({ content:'That track doesn\'t have a youtube source.', ephemeral: true });
             return;
           }
           const match2 = replace.match(youtubePattern);
@@ -54,11 +57,11 @@ export async function execute(interaction:ChatInputCommandInteraction) {
                 color: 0xd64004,
                 author: { name: 'Remapped:', icon_url: utils.pickPride('fish') as string },
                 fields: [
-                  { name: 'From:', value: `[${track.youtube[0].name}](https://youtube.com/watch?v=${track.youtube[0].id}) - ${new Date(track.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                  { name: 'From:', value: `[${track.audioSource.youtube[0].name}](https://youtube.com/watch?v=${track.audioSource.youtube[0].id}) - ${new Date(track.audioSource.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                   { name: 'To:', value: `[${newtrack.name}](https://youtube.com/watch?v=${newtrack.id}) - ${new Date(Number(newtrack.duration) * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 ],
                 image: { url: 'attachment://combined.png' },
-                footer: { text: `${track.youtube[0].id}${newtrack.id}` },
+                footer: { text: `${track.audioSource.youtube[0].id}${newtrack.id}` },
               },
             ],
             components: [
@@ -85,15 +88,23 @@ export async function execute(interaction:ChatInputCommandInteraction) {
               await interaction.followUp({ content:'Unable to get the current track; Is something playing?', ephemeral: true });
               return;
             }
+            if (!track.audioSource.youtube) {
+              await interaction.followUp({ content:'That track doesn\'t have a youtube source.', ephemeral: true });
+              return;
+            }
           } else {
             await interaction.followUp({ content: message, ephemeral: true });
             return;
           }
         } else {
           const match = search.match(youtubePattern);
-          track = await db.getTrack({ 'youtube.0.id': match![2] });
+          track = await db.getTrack({ 'audioSource.youtube.0.id': match![2] });
           if (typeof track === 'undefined') {
             await interaction.followUp({ content:'We don\'t appear to have that track.', ephemeral: true });
+            return;
+          }
+          if (!track.audioSource.youtube) {
+            await interaction.followUp({ content:'That track doesn\'t have a youtube source.', ephemeral: true });
             return;
           }
         }
@@ -127,15 +138,15 @@ export async function execute(interaction:ChatInputCommandInteraction) {
               author: { name: 'Remap:', icon_url: utils.pickPride('fish') as string },
               fields: [
                 { name: 'Spotify:', value: `${track.goose.artist.name || 'no artist'} - ${track.goose.track.name} - ${new Date(track.goose.track.duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Current Youtube:', value: `[${track.youtube[0].name}](https://youtube.com/watch?v=${track.youtube[0].id}) - ${new Date(track.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Current Youtube:', value: `[${track.audioSource.youtube[0].name}](https://youtube.com/watch?v=${track.audioSource.youtube[0].id}) - ${new Date(track.audioSource.youtube[0].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
                 { name: '\u200b', value: '** **' },
-                { name: 'Alternate 1:', value: `[${track.youtube[1].name}](https://youtube.com/watch?v=${track.youtube[1].id}) - ${new Date(track.youtube[1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 2:', value: `[${track.youtube[2].name}](https://youtube.com/watch?v=${track.youtube[2].id}) - ${new Date(track.youtube[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 3:', value: `[${track.youtube[3].name}](https://youtube.com/watch?v=${track.youtube[3].id}) - ${new Date(track.youtube[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
-                { name: 'Alternate 4:', value: `[${track.youtube[4].name}](https://youtube.com/watch?v=${track.youtube[4].id}) - ${new Date(track.youtube[4].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 1:', value: `[${track.audioSource.youtube[1].name}](https://youtube.com/watch?v=${track.audioSource.youtube[1].id}) - ${new Date(track.audioSource.youtube[1].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 2:', value: `[${track.audioSource.youtube[2].name}](https://youtube.com/watch?v=${track.audioSource.youtube[2].id}) - ${new Date(track.audioSource.youtube[2].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 3:', value: `[${track.audioSource.youtube[3].name}](https://youtube.com/watch?v=${track.audioSource.youtube[3].id}) - ${new Date(track.audioSource.youtube[3].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
+                { name: 'Alternate 4:', value: `[${track.audioSource.youtube[4].name}](https://youtube.com/watch?v=${track.audioSource.youtube[4].id}) - ${new Date(track.audioSource.youtube[4].duration * 1000).toISOString().substr(11, 8).replace(/^[0:]+/, '')}` },
               ],
               image: { url: 'attachment://combined.png' },
-              footer: { text: track.youtube[0].id },
+              footer: { text: track.audioSource.youtube[0].id },
             },
           ],
           components: [
@@ -146,10 +157,10 @@ export async function execute(interaction:ChatInputCommandInteraction) {
                   'type': 3,
                   'custom_id': 'remap',
                   'options':[
-                    { label: 'Alternative 1', value: '0', description: track.youtube[1].name },
-                    { label: 'Alternative 2', value: '1', description: track.youtube[2].name },
-                    { label: 'Alternative 3', value: '2', description: track.youtube[3].name },
-                    { label: 'Alternative 4', value: '3', description: track.youtube[4].name },
+                    { label: 'Alternative 1', value: '0', description: track.audioSource.youtube[1].name },
+                    { label: 'Alternative 2', value: '1', description: track.audioSource.youtube[2].name },
+                    { label: 'Alternative 3', value: '2', description: track.audioSource.youtube[3].name },
+                    { label: 'Alternative 4', value: '3', description: track.audioSource.youtube[4].name },
                     { label: 'Something else', value: '4', description: 'none of these are correct' },
                   ],
                   'placeholder': 'Select track...',

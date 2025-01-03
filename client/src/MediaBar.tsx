@@ -13,7 +13,7 @@ import Next from './media/placeholder/next.svg?react';
 import Loop from './media/placeholder/loop.svg?react';
 import SlowMode from './media/placeholder/slowmode.png';
 
-import type { Track, PlayerStatus, PlayerClick } from './types';
+import type { PlayerClick } from './types';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
 type MediaState = {
   seek:number,
@@ -110,7 +110,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
 
   const paused = player?.paused as boolean;
   const elapsed = (paused) ? pause - start : now - start;
-  const duration = track?.youtube[0]?.duration || 0;
+  const duration = track ? track.goose.track.duration : 0;
 
   const initialState:MediaState = {
     seek: seek,

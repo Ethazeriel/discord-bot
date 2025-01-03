@@ -25,3 +25,12 @@ export const napsterPattern = /(?:play\.napster\.com)(?:\/album\/|\/playlist\/)(
 // [1] is the ID for albums and playlists
 // [2] is the link type - track, album, playlist
 // [3] is the ID for tracks
+
+export const subsonicPattern = /(?:\/app\/#\/)((?:track|playlist|album){1})(?:\/)([a-f0-9-]{32,36})/;
+// [0] is the original string
+// [1] is track, playlist, or album
+// [2] is the ID
+
+// I should definitely be allowed to write code that will ever see production
+export const subsonicPathExtractor = /(?:\(\?:)([a-z0-9-\\.:|]+)(?:\))/;
+// export const subsonicPathExtractor = /(?:\(\?:)([a-z0-9-\\.:]+)(?:\))/;

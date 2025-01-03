@@ -6,6 +6,8 @@ import { parentPort } from 'worker_threads';
 import youtube from './acquire/youtube.js';
 import spotify from './acquire/spotify.js';
 import napster from './acquire/napster.js';
+import subsonic from './acquire/subsonic.js';
+import { trackVersion } from '../migrations.js';
 
 parentPort!.on('message', async data => {
   if (data.action === 'search') {
@@ -27,10 +29,15 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   // if playlist/album, do the above for each track
   // return array of Track objects
 
+  // Requirements for sources:
+  // support searching by track, playlist, album, text (where applicable)
+  // return standard TrackSource
+  // if source supports direct playback (youtube, subsonic, soundcloud), return ?
+
   search = search.replace(sanitize, '').trim();
 
   let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;
-  let sourceType:'youtube' | 'spotify' | 'napster' | 'text' | undefined = undefined;
+  let sourceType:'youtube' | 'spotify' | 'napster' | 'subsonic' | 'text' | undefined = undefined;
 
   if (youtubePattern.test(search)) {
     sourceArray = await youtubeSource(search);
@@ -44,6 +51,9 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   } else if (napsterPattern.test(search)) {
     sourceArray = await napsterSource(search);
     sourceType = 'napster';
+  } else if (subsonic.searchRegex.test(search)) {
+    sourceArray = await subsonicSource(search);
+    sourceType = 'subsonic';
   } else {
     sourceArray = await textSource(search);
     sourceType = 'text';
@@ -60,7 +70,6 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
     // build an array of promises so we can return them all at once
     promiseArray.push((async () => {
       if (!isTrack(track)) {
-      // finishedArray.push(null);
       // goose does not exist, this is a new track source
       // at this point we should have already checked if we have this track from a different source
       // let's construct a new track
@@ -88,9 +97,10 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               },
               keys: [],
               playlists: {},
-              youtube: [track.youtube],
+              audioSource: { youtube: [track.youtube] },
               spotify: track.spotify,
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(actualTrack);
             return actualTrack;
@@ -118,8 +128,9 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               },
               keys: [],
               playlists: {},
-              youtube: [track],
+              audioSource: { youtube: [track] },
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(youtubeTrack);
             return youtubeTrack;
@@ -149,17 +160,14 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
               },
               keys: [],
               playlists: {},
-              youtube: track,
+              audioSource: { youtube: track },
               status: {},
+              version: trackVersion
             };
             await db.insertTrack(youtubeTrack);
             return youtubeTrack;
-          } else {
-            let query = `${track.name} ${track.artist.name}`;
-            // sanitize this query so youtube doesn't get mad about invalid characters
-            query = query.replace(sanitize, '');
-            query = query.replace(/(-)+/g, ' ');
-            const ytArray = await youtube.fromSearch(query);
+          } else if (sourceType === 'subsonic') {
+            // track came from subsonic, we can play this directly and don't need to fetch from youtube
             const finishedTrack:Track = {
               goose: {
                 id: await genNewGooseId(),
@@ -175,14 +183,49 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
                 },
                 track: {
                   name: track.name,
-                  duration: ytArray[0].duration,
+                  duration: track.duration,
+                  art: track.art,
+                },
+              },
+              keys: [],
+              playlists: {},
+              audioSource: { subsonic: track },
+              status: {},
+              version: trackVersion
+            };
+            await db.insertTrack(finishedTrack);
+            return finishedTrack;
+          } else {
+            let query = `${track.name} ${track.artist.name}`;
+            query = query.replace(sanitize, '');
+            query = query.replace(/(-)+/g, ' ');
+            const subsonicResult = await subsonic.fromText(query);
+            let ytArray;
+            if (!subsonicResult) { ytArray = await youtube.fromSearch(query);}
+            const finishedTrack:Track = {
+              goose: {
+                id: await genNewGooseId(),
+                plays: 0,
+                errors: 0,
+                album: {
+                  name: track.album.name,
+                  trackNumber: track.album.trackNumber,
+                },
+                artist: {
+                  name: track.artist.name,
+                  official: undefined,
+                },
+                track: {
+                  name: track.name,
+                  duration: subsonicResult ? subsonicResult.duration : ytArray![0].duration,
                   art: track.art,
                 },
               },
               keys: (sourceType === 'text') ? [search] : [],
               playlists: {},
-              youtube: ytArray,
+              audioSource: subsonicResult ? { subsonic: subsonicResult } : { youtube: ytArray! },
               status: {},
+              version: trackVersion
             };
             if (sourceType === 'spotify' || sourceType === 'text') {finishedTrack.spotify = track;}
             if (sourceType === 'napster') {finishedTrack.napster = track;}
@@ -234,6 +277,31 @@ async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise
   } else {return null;}
 }
 
+async function checkPlayableTrack(track:TrackSource, type:'subsonic'):Promise<Track | null> {
+  logDebug('checking track ', track.name);
+  // variant of checkTrack specifically for sources that can be played directly
+  const target = `audioSource.${type}.id`;
+  const track1 = await db.getTrack({ [target]: track.id });
+  if (track1) { return track1; }
+  // check the db to see if we have this by name/artist match
+  const dbTrack = await db.getTrack({ $and: [{ 'goose.track.name': track.name }, { 'goose.artist.name': track.artist.name }] });
+  if (dbTrack) {
+    // we have this track by name/artist, but didn't have this exact id
+    if (dbTrack.audioSource![type]) {
+      // this track already has a source of this type, so we just need to add the id
+      db.addPlayableSourceId({ 'goose.id':dbTrack.goose.id }, type, track.id[0]);
+      dbTrack.audioSource![type]!.id.push(track.id[0]);
+    } else {
+      // track doesn't have a source of this type yet, so create one
+      db.addPlayableTrackSource({ 'goose.id':dbTrack.goose.id }, type, track);
+      dbTrack.audioSource![type] = track;
+      // will need tweaking in future depending on preferred source order
+      if (type === 'subsonic') { dbTrack.goose.track.duration = track.duration; }
+    }
+    return dbTrack;
+  } else {return null;}
+}
+
 async function genNewGooseId():Promise<string> {
   let id = crypto.randomBytes(5).toString('hex');
   while (await db.getTrack({ 'goose.id': id })) {
@@ -245,7 +313,7 @@ async function genNewGooseId():Promise<string> {
 async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}> | undefined> {
   // search is a youtube url
   const match = search.match(youtubePattern);
-  const track = await db.getTrack({ 'youtube.0.id': match![2] });
+  const track = await db.getTrack({ 'audioSource.youtube.0.id': match![2] });
   if (track) {
     log('fetch', [`[0] have '${ track.goose.track.name }'`]);
     return (Array(track));
@@ -281,8 +349,9 @@ async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | T
         },
         keys: [],
         playlists: {},
-        youtube: [source],
+        audioSource: { youtube: [source] },
         status: {},
+        version: trackVersion
       };
       await db.insertTrack(finalTrack);
       return Array(finalTrack);
@@ -336,8 +405,9 @@ async function youtubePlaylistSource(search:string):Promise<Array<TrackYoutubeSo
             },
             keys: [],
             playlists: {},
-            youtube: [source],
+            audioSource: { youtube: [source] },
             status: {},
+            version: trackVersion
           };
           await db.insertTrack(finalTrack);
           return finalTrack;
@@ -400,6 +470,58 @@ async function spotifySource(search:string):Promise<Array<TrackSource | Track> |
       const readyTracks:Array<Track | TrackSource> = [];
       for (const [i, source] of newTracks.entries()) {
         const dbTrack = await checkTrack(source, 'spotify');
+        if (dbTrack) {
+          readyTracks.push(dbTrack);
+          log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);
+        } else {
+          readyTracks.push(source);
+          log('fetch', [`[${i}] lack '${ source.name }'`]);
+        }
+      }
+      return readyTracks;
+    }
+  }
+}
+
+async function subsonicSource(search:string):Promise<Array<TrackSource | Track> | undefined> {
+  // search is a subsonic URL
+  // written for use with navidrome, may or may not properly support other platforms
+  const match = search.match(subsonic.searchRegex);
+  switch (match![1]) {
+    case 'track': {
+      const track = await db.getTrack({ 'audioSource.subsonic.id': match![2] });
+      if (track) {
+        log('fetch', [`[0] have '${ track.goose.track.name }'`]);
+        return (Array(track));
+      }
+      // not in the db yet, go get it from subsonic
+      const newTrack = await subsonic.fromTrack(match![2]);
+      const dbTrack = await checkPlayableTrack(newTrack, 'subsonic');
+      if (dbTrack) {return Array(dbTrack);}
+      return Array(newTrack);
+    }
+
+    case 'album': {
+      const newTracks = await subsonic.fromAlbum(match![2]);
+      const readyTracks:Array<Track | TrackSource> = [];
+      for (const [i, source] of newTracks.entries()) {
+        const dbTrack = await checkPlayableTrack(source, 'subsonic');
+        if (dbTrack) {
+          readyTracks.push(dbTrack);
+          log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);
+        } else {
+          readyTracks.push(source);
+          log('fetch', [`[${i}] lack '${ source.name }'`]);
+        }
+      }
+      return readyTracks;
+    }
+
+    case 'playlist': {
+      const newTracks = await subsonic.fromPlaylist(match![2]);
+      const readyTracks:Array<Track | TrackSource> = [];
+      for (const [i, source] of newTracks.entries()) {
+        const dbTrack = await checkPlayableTrack(source, 'subsonic');
         if (dbTrack) {
           readyTracks.push(dbTrack);
           log('fetch', [`[${i}] have '${ dbTrack.goose.track.name }'`]);

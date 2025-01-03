@@ -4,28 +4,18 @@ import { Document, MongoClient } from 'mongodb';
 import type { Db, Filter, FindOptions, UpdateFilter } from 'mongodb';
 import { log } from './logger.js';
 import chalk from 'chalk';
-const { mongo } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
+const { mongo }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
 import { sanitizePlaylists } from './regexes.js';
 import { isMainThread, workerData } from 'worker_threads';
-import Player from './player.js';
+import { trackVersion, upgradeTrack } from './migrations.js';
+// import Player from './player.js';
 // Connection URL
 let url = mongo.url;
 const dbname = mongo.database;
 const trackcol = mongo.trackcollection;
 const usercol = mongo.usercollection;
-if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR; }
+if (process.env.DOCKER) { url = process.env.MONGO_CONN_STR!; }
 let globalDb:Db | undefined;
-// let con:MongoClient | undefined;
-// MongoClient.connect(url, { ignoreUndefined: true }, function(err, client) {
-//   if (err) throw err;
-//   con = client;
-//   globalDb = client?.db(dbname);
-//   if (isMainThread) {
-//     log('database', [`Main thread connected to db: ${dbname}`]);
-//   } else {
-//     log('database', [`${workerData?.name} worker connected to database: ${dbname}`]);
-//   }
-// });
 const con = await MongoClient.connect(url, { ignoreUndefined: true });
 globalDb = con.db(dbname);
 if (isMainThread) {
@@ -58,13 +48,18 @@ export async function closeDB():Promise<object | undefined> {
   }
 }
 
-export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {// acquire2
+export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {
   // returns the first track object that matches the query
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
     const track = await tracks.findOne(query, { projection: { _id: 0 } });
-    if (track) { return track; }
+    if (track) {
+      if (track.version === trackVersion) { return track; } else {
+        const newTrack = await upgradeTrack(track);
+        return newTrack;
+      }
+    }
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
@@ -76,25 +71,38 @@ export async function getTrack(query:Filter<Track>):Promise<Track | undefined> {
   key: await getTrack({ keys:'tng%20those%20arent%20muskets' });
   */
 
+export async function replaceTrack(newTrack:Track):Promise<number> {
+  // for track migrations, replaces the track with matching goose id
+  const db = await getDb();
+  const tracks = db.collection<Track>(trackcol);
+  const currentTrack = await tracks.findOne({ 'goose.id': newTrack.goose.id }, { projection: { _id: 0 } });
+  if (currentTrack == null) {
+    throw new Error(`replaceTrack failed for id ${newTrack.goose.id}: we don't appear to have that track`);
+  } else {
+    const result = await tracks.replaceOne({ 'goose.id': newTrack.goose.id }, newTrack);
+    return result.modifiedCount;
+  }
+}
 
-export async function insertTrack(track:Track):Promise<object | undefined> {// acquire2
+
+export async function insertTrack(track:Track):Promise<object | undefined> {
   // inserts a single track object into the database
   track.status = {}; // track status should be null, but just in case
   const db = await getDb();
   const tracks = db.collection<Track>(trackcol);
   // check if we already have this url
   const test = await tracks.findOne({ 'goose.id': track.goose.id }, { projection: { _id: 0 } });
-  if (test == null || (test.youtube[0].id != track.youtube[0].id && test.goose.id != track.goose.id)) {
+  if (test == null || ((test.audioSource.youtube && track.audioSource.youtube && test.audioSource.youtube[0].id != track.audioSource.youtube[0].id) && test.goose.id != track.goose.id)) {
     // we don't have this in our database yet, so
     const result = await tracks.insertOne(track);
     log('database', [`Adding track ${chalk.green(track.goose.track.name)} by ${chalk.green(track.goose.artist.name)} to database`]);
     return result;
-  } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.youtube[0].id})`);}
+  } else { throw new Error(`Track ${track.goose.id} already exists! (youtube: ${track.audioSource.youtube ? track.audioSource.youtube[0].id : 'none'})`);}
   // I've removed the try/catch block here so this error is actually meaningful
   // shouldn't matter, but leaving this comment just in case
 }
 
-export async function addKey(query:Filter<Track>, newkey:string) {// acquire2
+export async function addKey(query:Filter<Track>, newkey:string) {
   // adds a new key to a track we already have
   // silently fails if we don't have the track in the DB already
   const db = await getDb();
@@ -108,7 +116,7 @@ export async function addKey(query:Filter<Track>, newkey:string) {// acquire2
 }
 // addKey({ 'spotify.id': '7BnKqNjGrXPtVmPkMNcsln' }, 'celestial%20elixr');
 
-export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster', newid:string) {// acquire2
+export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster', newid:string) {
   // adds a new id of the specified type to a track we already have
   // silently fails if we don't have the track in the DB already
   const db = await getDb();
@@ -123,7 +131,21 @@ export async function addSourceId(query:Filter<Track>, type:'spotify' | 'napster
 }
 // addSourceId({ 'goose.id': '12345abcde' }, 'spotify', '6i71OngJrJDr6hQIFmzYI0');
 
-export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'napster', source:TrackSource) {// acquire2
+export async function addPlayableSourceId(query:Filter<Track>, type:'subsonic', newid:string) {
+  // adds a new id of the specified type to a track we already have
+  // silently fails if we don't have the track in the DB already
+  const db = await getDb();
+  try {
+    const tracks = db.collection<Track>(trackcol);
+    const target = `audioSource.${type}.id`;
+    await tracks.updateOne(query, { $addToSet: { [target]: newid } });
+    log('database', [`Adding ${type} id ${chalk.blue(newid)} to ${chalk.green(JSON.stringify(query))}`]);
+  } catch (error:any) {
+    log('error', ['database error:', error.stack]);
+  }
+}
+
+export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'napster', source:TrackSource) {
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
@@ -134,7 +156,20 @@ export async function addTrackSource(query:Filter<Track>, type:'spotify' | 'naps
   }
 }
 
-export async function addPlaylist(trackarray:Track[], listname:string) {// acquire2
+export async function addPlayableTrackSource(query:Filter<Track>, type:'subsonic', source:TrackSource) {
+  const db = await getDb();
+  try {
+    const tracks = db.collection<Track>(trackcol);
+    const target = `audioSource.${type}`;
+    // duration needs work in future for only updating if added source is higher preference
+    await tracks.updateOne(query, { $set: { [target]: source, 'goose.track.duration':source.duration } } as UpdateFilter<Track>);
+    log('database', [`Adding ${type} source to ${chalk.green(query)}`]);
+  } catch (error:any) {
+    log('error', ['database error:', error.stack]);
+  }
+}
+
+export async function addPlaylist(trackarray:Track[], listname:string) {
   // takes an ordered array of tracks and a playlist name, and adds the playlist name and track number to those tracks in the database
   // assumes tracks already exist - if they're not in the database yet, this does nothing - but that should never happen
   const name = listname.replace(sanitizePlaylists, '');
@@ -161,7 +196,8 @@ export async function addPlaylist(trackarray:Track[], listname:string) {// acqui
 export async function getPlaylist(listname:string):Promise<Track[]> {
   // returns a playlist as an array of tracks, ready for use
   const db = await getDb();
-  let result:Track[] = [];
+  const resultPromises:Array<Promise<Track>> = [];
+  const finishedArray:Array<Track> = [];
   try {
     const name = listname.replace(sanitizePlaylists, '');
     const tracks = db.collection<Track>(trackcol);
@@ -169,11 +205,22 @@ export async function getPlaylist(listname:string):Promise<Track[]> {
     const query = { [qustr]: { $exists: true } };
     const options:FindOptions<Track> = { sort: { [qustr]:1 }, projection: { _id: 0 } };
     const cursor = tracks.find(query, options);
-    result = await cursor.toArray();
+    const playlist = await cursor.toArray();
+    for (const track of playlist) {
+      if (track.version === trackVersion) { resultPromises.push(Promise.resolve(track)); } else {
+        resultPromises.push(upgradeTrack(track));
+      }
+    }
+    await Promise.allSettled(resultPromises).then(promises => {
+      for (const promise of promises) {
+        if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }
+        if (promise.status === 'rejected') { log('error', ['life is pain, playlist recall failed, how do promises work']);}
+      }
+    });
   } catch (error:any) {
     log('error', ['database error:', error.stack]);
   }
-  return result;
+  return finishedArray;
 }
 
 export async function removePlaylist(listname:string):Promise<number | undefined> {
@@ -204,13 +251,13 @@ export async function updateTrack(query:Filter<Track>, update:UpdateFilter<Track
   }
 }
 
-export async function removeTrack(query:string) { // acquire2
+export async function removeTrack(query:string) {
   // removes the track with the specified youtube id - USE WITH CAUTION
   // returns 1 if successful, 0 otherwise
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
-    const track = await tracks.deleteOne({ 'youtube.0.id':query });
+    const track = await tracks.deleteOne({ 'audioSource.youtube.0.id':query });
     if (track.deletedCount === 1) {
       log('database', [`Removed track ${chalk.red(query)} from DB.`]);
     } else {
@@ -223,29 +270,29 @@ export async function removeTrack(query:string) { // acquire2
 }
 // usage: await db.removeTrack('DjaE3w8j6vY');
 
-export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource):Promise<number> { // acquire2
+export async function switchAlternate(query:string, alternate:number | TrackYoutubeSource):Promise<number> {
   // returns the first track object that matches the query
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
-    const search = { 'youtube.0.id':query };
+    const search = { 'audioSource.youtube.0.id':query };
     const track:Track | null = await tracks.findOne(search);
-    if (track) {
-      const original = track.youtube[0].id;
+    if (track && track.audioSource.youtube) {
+      const original = track.audioSource.youtube[0].id;
       if (typeof alternate === 'number') {
-        const newmain = track.youtube.splice(alternate, 1, track.youtube[0]);
-        track.youtube.shift();
-        track.youtube.unshift(newmain[0]);
+        const newmain = track.audioSource.youtube.splice(alternate, 1, track.audioSource.youtube[0]);
+        track.audioSource.youtube.shift();
+        track.audioSource.youtube.unshift(newmain[0]);
       } else {
-        track.youtube.unshift(alternate);
-        track.youtube.pop();
+        track.audioSource.youtube.unshift(alternate);
+        track.audioSource.youtube.pop();
       }
       const update = {
-        $set: { 'youtube':track.youtube, 'goose.track.duration':track.youtube[0].duration },
+        $set: { 'audioSource.youtube':track.audioSource.youtube, 'goose.track.duration':track.audioSource.youtube[0].duration },
       };
       const result = await tracks.updateOne(search, update);
       if (result.modifiedCount == 1) {
-        log('database', [`Remapped track ${chalk.green(original)} to ${chalk.green(track.youtube[0].id)}`]);
+        log('database', [`Remapped track ${chalk.green(original)} to ${chalk.green(track.audioSource.youtube[0].id)}`]);
       } else {log('database', [`Failed to remap ${chalk.red(original)} - is this a valid ID?`]);}
       return result.modifiedCount;
     } else {return 0;}
@@ -299,7 +346,7 @@ export async function logPlay(id:string, success = true):Promise<void> {
   }
 }
 
-export async function updateOfficial(id:string, link:string) {// acquire2
+export async function updateOfficial(id:string, link:string) {
   const db = await getDb();
   try {
     const tracks = db.collection<Track>(trackcol);
@@ -399,7 +446,7 @@ export async function updateUser(discordid:string, field:'nickname' | 'locale' |
   }
 }
 
-export async function saveStash(userIDs:string[], playhead:number, queue:Track[]) {// acquire2
+export async function saveStash(userIDs:string[], playhead:number, queue:Track[]) {
   // usage: const result = await saveStash('119678070222225408', player.getPlayhead(), player.getQueue());
   // updates the stash for the given user
   // returns null if unsuccessful
@@ -408,7 +455,10 @@ export async function saveStash(userIDs:string[], playhead:number, queue:Track[]
   // logDebug(`stash before—playhead ${playhead}, queue length ${queue.length}`);
   for (let index = 0; index < queue.length; index++) {
     const track = queue[index];
-    if (!track.status.ephemeral && !Player.pending(track)) {
+    // this used to call Player.pending, but that means we load the entire player in worker threads
+    // we don't want that, so I've copied the return of that function here instead
+    // TODO - should we have a thinned-out database interface for threads?
+    if (!track.status.ephemeral && !(track !== undefined && track.goose.id === '')) {
       idarray.push(track.goose.id);
     } else { playhead &&= --playhead; }
   }

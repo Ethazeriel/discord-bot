@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import Player from '../../player.js';
+import { chooseAudioSource } from '../../utils.js';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { log, logDebug } from '../../logger.js';
 import * as db from '../../database.js';
@@ -8,7 +9,7 @@ import validator from 'validator';
 import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { ChatInputCommandInteraction, GuildMemberRoleManager, Message } from 'discord.js';
-const { discord } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 const roles = discord.roles;
 
 export const data = new SlashCommandBuilder()
@@ -130,7 +131,7 @@ export async function execute(interaction:ChatInputCommandInteraction & { messag
               if (match![2]) {time = (Number(match![2]) * 60) + time;}
               if (match![1]) {time = (Number(match![1]) * 3600) + time;}
 
-              if (time > track.youtube[0].duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
+              if (time > chooseAudioSource(track).duration) { await interaction.editReply({ content: 'You can\'t seek beyond the end of a track.' });} else {
                 await player.seek(time);
                 const mediaEmbed = await player.mediaEmbed(true, 'Seeking...');
                 const queueEmbed = await player.queueEmbed();

@@ -2,7 +2,7 @@ import fs from 'fs';
 import { fileURLToPath, URL } from 'url';
 import { logDebug, log } from '../../logger.js';
 import axios, { AxiosResponse } from 'axios';
-const { spotify } = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { spotify }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../../config.json', import.meta.url).toString()), 'utf-8'));
 
 async function getCreds():Promise<ClientCredentialsResponse> {
   logDebug('getting spotify token');
