@@ -5,7 +5,6 @@ testing
 setup/*
 server/logs/*
 cookies.txt
-.vscode
 config/*
 server/build/*
 compose/*
