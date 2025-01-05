@@ -91,8 +91,8 @@ export async function execute(interaction:ChatInputCommandInteraction) {
   }
 
   let tracks = await getTracks.catch(async (error:Error) => {
-    log('error', [`play—${internal ? 'db' : 'fetch'} error, ${error.stack}`]);
-    await interaction.editReply({ content: (internal) ? 'OH NO SOMETHING\'S FUCKED' : 'either that\'s a private playlist or SOMETHING\'S FUCKED' });
+    log('error', [`play—${internal ? 'db' : 'fetch'} error, ${error}`]);
+    await interaction.editReply({ content: (internal) ? 'OH NO SOMETHING\'S FUCKED' : (error.message) ? error.message : 'either that\'s a private playlist or SOMETHING\'S FUCKED' });
     if (!internal) { // only external resources exist as pending tracks
       const removed = player.removebyUUID(UUID);
       if (!removed.length) { logDebug(`failed to find/ UUID ${UUID} already removed`); }

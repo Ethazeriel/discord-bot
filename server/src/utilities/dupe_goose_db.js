@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import fs from 'fs';
 import { MongoClient } from 'mongodb';
-import { log } from '../../build/logger.js';
+import { log } from '../logger.js';
 const mongo = JSON.parse(fs.readFileSync(new URL('../../../config.json', import.meta.url))).mongo;
 import chalk from 'chalk';
 const url = mongo.url;
