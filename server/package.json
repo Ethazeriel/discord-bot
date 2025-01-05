@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/typescript/bin/tsc --build",
-    "clean": "./node_modules/typescript/bin/tsc --build --clean",
-    "start": "./node_modules/typescript/bin/tsc --build && node .",
+    "build": "./node_modules/typescript/bin/tsc --build --force",
+    "clean": "./node_modules/typescript/bin/tsc --build --clean --force",
+    "start": "./node_modules/typescript/bin/tsc --build --force && node .",
     "lint": "eslint src --report-unused-disable-directives",
     "go": "node ."
   },
