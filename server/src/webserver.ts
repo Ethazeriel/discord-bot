@@ -185,7 +185,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             } catch (error:any) {
               log('error', [`webparent queue—fetch error, ${error.stack}`]);
               worker.postMessage({ id:message.id, error: `check that ${query} is't a private playlist` });
-              const removed = await player.removebyUUID(UUID);
+              const removed = player.removebyUUID(UUID);
               if (!removed.length) { logDebug(`webparent queue—failed to find/ UUID ${UUID} already removed`); }
               return;
             }

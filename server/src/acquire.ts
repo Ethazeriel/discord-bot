@@ -19,20 +19,25 @@ worker.on('error', code => {
   logDebug(`Worker threw error ${code.message}.`, '\n', code.stack);
   worker = new Worker(fileURLToPath(new URL('./workers/acquire.js', import.meta.url).toString()), { workerData:{ name:'Acquire' } });
 }); // ehh fuck it, probably better than just crashing I guess
-
+type fetchPromiseResult = { id:string, tracks?:Array<Track>, error?:string };
 export default async function fetch(search:string, id = crypto.randomBytes(5).toString('hex')):Promise<Track[]> {
   if (slowMode) { await sleep(20000); }
   worker.postMessage({ action:'search', search:search, id:id });
-  const promise = new Promise((resolve, reject) => {
-    const action = (result:{ id:string, tracks:Track[]}) => {
+  const promise:Promise<Track[]> = new Promise((resolve, reject) => {
+    const action = (result:fetchPromiseResult) => {
       if (result.id === id) {
-        resolve(result.tracks);
+        if (result.tracks) {
+          resolve(result.tracks);
+        } else {
+          logDebug(`acquire worker: ${result.error}`);
+          reject(new Error(result.error));
+        }
         worker.removeListener('message', action);
         worker.removeListener('error', error);
       }
       logDebug(`acquire worker, listener ${id} called`);
     };
-    const error = (err:any) => {
+    const error = (err:Error) => {
       log('error', ['worker error', JSON.stringify(err, null, 2)]);
       reject(err);
       worker.removeListener('message', action);
@@ -42,7 +47,7 @@ export default async function fetch(search:string, id = crypto.randomBytes(5).to
     worker.on('error', error);
   });
 
-  return promise as Promise<Track[]>;
+  return promise;
 }
 
 process.on('SIGTERM', async () => {

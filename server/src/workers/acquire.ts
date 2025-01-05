@@ -12,7 +12,11 @@ import { trackVersion } from '../migrations.js';
 parentPort!.on('message', async data => {
   if (data.action === 'search') {
     const tracks = await fetchTracks(data.search);
-    parentPort!.postMessage({ tracks:tracks, id:data.id });
+    if (typeof tracks === 'string') {
+      parentPort!.postMessage({ error:tracks, id:data.id });
+    } else {
+      parentPort!.postMessage({ tracks:tracks, id:data.id });
+    }
   } else if (data.action === 'exit') {
     log('info', ['Worker exiting']);
     await db.closeDB();
@@ -21,7 +25,7 @@ parentPort!.on('message', async data => {
 });
 logDebug('Acquire2 worker spawned.');
 
-async function fetchTracks(search:string):Promise<Array<Track>> {
+async function fetchTracks(search:string):Promise<Array<Track> | string> {
   // Expectations:
   // takes a search string - can be a link to a track, playlist, album for any of the services we support; or a text search
   // go through a decision tree to decide what the search is, search the db to see if we already have it, if we have it from a different service add the relevant info and return
@@ -35,7 +39,6 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   // if source supports direct playback (youtube, subsonic, soundcloud), return ?
 
   search = search.replace(sanitize, '').trim();
-
   let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;
   let sourceType:'youtube' | 'spotify' | 'napster' | 'subsonic' | 'text' | undefined = undefined;
 
@@ -54,6 +57,10 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   } else if (subsonic.searchRegex.test(search)) {
     sourceArray = await subsonicSource(search);
     sourceType = 'subsonic';
+  } else if (/(https?:\/\/)/.test(search)) {
+    // lazy url check - this looks like a url, but didn't match any of our tests
+    // error out here
+    return 'It looks like you\'ve searched a URL, but none of the filters matched; no tracks found';
   } else {
     sourceArray = await textSource(search);
     sourceType = 'text';
@@ -248,7 +255,7 @@ async function fetchTracks(search:string):Promise<Array<Track>> {
   const lengthCheck = finishedArray.filter((track) => track);
   if (lengthCheck.length === sourceArray.length) {
     return finishedArray;
-  } else { throw new Error('final result does not pass length check'); }
+  } else { return 'final result does not pass length check'; }
 }
 
 async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise<Track | null> {
