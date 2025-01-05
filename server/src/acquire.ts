@@ -29,7 +29,6 @@ export default async function fetch(search:string, id = crypto.randomBytes(5).to
         if (result.tracks) {
           resolve(result.tracks);
         } else {
-          logDebug(`acquire worker: ${result.error}`);
           reject(new Error(result.error));
         }
         worker.removeListener('message', action);
