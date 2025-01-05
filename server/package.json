@@ -9,6 +9,7 @@
     "build": "./node_modules/typescript/bin/tsc --build --force",
     "clean": "./node_modules/typescript/bin/tsc --build --clean --force",
     "start": "./node_modules/typescript/bin/tsc --build --force && node .",
+    "debug": "./node_modules/typescript/bin/tsc --build --force --sourcemap && node .",
     "lint": "eslint src --report-unused-disable-directives",
     "go": "node ."
   },
