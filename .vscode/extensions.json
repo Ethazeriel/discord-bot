@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "ms-azuretools.vscode-docker",
+      "mongodb.mongodb-vscode",
+      "jeanp413.open-remote-ssh",
+      "styled-components.vscode-styled-components"
+  ]
+}
