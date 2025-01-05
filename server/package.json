@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/typescript/bin/tsc --build --force",
-    "clean": "./node_modules/typescript/bin/tsc --build --clean --force",
-    "start": "./node_modules/typescript/bin/tsc --build --force && node .",
-    "debug": "./node_modules/typescript/bin/tsc --build --force --sourcemap && node .",
+    "build": "./node_modules/typescript/bin/tsc --build",
+    "clean": "./node_modules/typescript/bin/tsc --build --clean",
+    "start": "./node_modules/typescript/bin/tsc --build && node .",
+    "debug": "./node_modules/typescript/bin/tsc --build --sourcemap && node .",
     "lint": "eslint src --report-unused-disable-directives",
     "go": "node ."
   },
