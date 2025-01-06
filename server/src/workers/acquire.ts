@@ -248,14 +248,14 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
   await Promise.allSettled(promiseArray).then(promises => {
     for (const promise of promises) {
       if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }
-      if (promise.status === 'rejected') { log('error', ['track assembly promise rejected', JSON.stringify(promise, null, 2)]);}
+      if (promise.status === 'rejected') { log('error', ['track assembly promise rejected:', promise.reason]);}
     }
   });
 
   const lengthCheck = finishedArray.filter((track) => track);
   if (lengthCheck.length === sourceArray.length) {
     return finishedArray;
-  } else { return 'final result does not pass length check'; }
+  } else { return 'acquire: track array assembly failed for at least one track, see the log for details'; }
 }
 
 async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise<Track | null> {
@@ -564,6 +564,8 @@ async function textSource(search:string):Promise<Array<TrackSource | Track | Tra
     log('fetch', [`[0] lack '${ newTrack.name }'`]);
     return Array(newTrack);
   } else {
+    // track wasn't on spotify, go to youtube
+    // TODO - do we want to go to subsonic here first?
     const youtubeTrack = await youtube.fromSearch(search);
     const dbTrack = await db.getTrack({ 'youtube.id': youtubeTrack[0].id });
     if (dbTrack) {
