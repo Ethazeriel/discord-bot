@@ -263,7 +263,6 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
       rejectDrop();
     }
   };
-  console.log(props.track.goose.track.name);
   return (
     <Wrapper $name={props.track.goose.track.name}>
       <InsertionMarker visible={state.nearerTop} invalid={state.invalid} />
