@@ -43,7 +43,7 @@ async function fromSearch(search:string):Promise<Array<TrackYoutubeSource>> {
   await Promise.allSettled(ytPromiseArray).then(promises => {
     for (const promise of promises) {
       if (promise.status === 'fulfilled') { ytArray.push(promise.value); }
-      if (promise.status === 'rejected') { log('error', ['youtube promise rejected', JSON.stringify(promise, null, 2)]);}
+      if (promise.status === 'rejected') { log('error', ['ytdl promise rejected:', promise.reason]);}
     }
   });
   return ytArray;
@@ -76,7 +76,7 @@ async function fromPlaylist(id:string):Promise<Array<TrackYoutubeSource>> {
   await Promise.allSettled(ytPromiseArray).then(promises => {
     for (const promise of promises) {
       if (promise.status === 'fulfilled') { ytArray.push(promise.value); }
-      if (promise.status === 'rejected') { log('error', [JSON.stringify(promise, null, 2)]);}
+      if (promise.status === 'rejected') { log('error', ['ytdl promise rejected:', promise.reason]);}
     }
   });
   return ytArray;

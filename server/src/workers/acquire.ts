@@ -39,7 +39,7 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
   // if source supports direct playback (youtube, subsonic, soundcloud), return ?
 
   search = search.replace(sanitize, '').trim();
-  let sourceArray:Array<Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;
+  let sourceArray:Array<string | Track | TrackYoutubeSource | TrackSource | {youtube:TrackYoutubeSource, spotify:TrackSource} | TrackYoutubeSource[]> | undefined = undefined;
   let sourceType:'youtube' | 'spotify' | 'napster' | 'subsonic' | 'text' | undefined = undefined;
 
   if (youtubePattern.test(search)) {
@@ -76,6 +76,11 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
   for (const track of sourceArray) {
     // build an array of promises so we can return them all at once
     promiseArray.push((async () => {
+      if (typeof track === 'string') {
+        // this track failed to retrieve for some reason, track is a string explaining why
+        // reject the promise to pass the message along
+        return Promise.reject(track);
+      }
       if (!isTrack(track)) {
       // goose does not exist, this is a new track source
       // at this point we should have already checked if we have this track from a different source
@@ -207,8 +212,13 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
             query = query.replace(sanitize, '');
             query = query.replace(/(-)+/g, ' ');
             const subsonicResult = await subsonic.fromText(query);
-            let ytArray;
+            let ytArray:Array<TrackYoutubeSource> = [];
             if (!subsonicResult) { ytArray = await youtube.fromSearch(query);}
+            if (!subsonicResult && !ytArray.length) {
+              // subsonic didn't have anything, and all of the youtube tracks filed to return
+              // can't make a track from this, so reject the promise
+              return Promise.reject(`Couldn't find a playable source for ${track.name}; see the logs for more details`);
+            }
             const finishedTrack:Track = {
               goose: {
                 id: await genNewGooseId(),
@@ -224,7 +234,7 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
                 },
                 track: {
                   name: track.name,
-                  duration: subsonicResult ? subsonicResult.duration : ytArray![0].duration,
+                  duration: subsonicResult ? subsonicResult.duration : ytArray[0].duration,
                   art: track.art,
                 },
               },
@@ -248,14 +258,19 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
   await Promise.allSettled(promiseArray).then(promises => {
     for (const promise of promises) {
       if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }
-      if (promise.status === 'rejected') { log('error', ['track assembly promise rejected', JSON.stringify(promise, null, 2)]);}
+      if (promise.status === 'rejected') {
+        log('error', ['track assembly promise rejected:', promise.reason]);
+        if (promise.reason) {
+          finishedArray.push(promise.reason);
+        }
+      }
     }
   });
 
   const lengthCheck = finishedArray.filter((track) => track);
   if (lengthCheck.length === sourceArray.length) {
     return finishedArray;
-  } else { return 'final result does not pass length check'; }
+  } else { return 'acquire: track array assembly failed without explanation for at least one track, see the log for details'; }
 }
 
 async function checkTrack(track:TrackSource, type:'spotify' | 'napster'):Promise<Track | null> {
@@ -317,7 +332,7 @@ async function genNewGooseId():Promise<string> {
   return id;
 }
 
-async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource}> | undefined> {
+async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | Track | {youtube:TrackYoutubeSource, spotify:TrackSource} | string> | undefined> {
   // search is a youtube url
   const match = search.match(youtubePattern);
   const track = await db.getTrack({ 'audioSource.youtube.0.id': match![2] });
@@ -327,7 +342,8 @@ async function youtubeSource(search:string):Promise<Array<TrackYoutubeSource | T
   }
   // we don't have this yet - go talk to youtube
   log('fetch', [`[0] lack '${ match![2] }'`]);
-  const source = await youtube.fromId(match![2]);
+  const source = await youtube.fromId(match![2]).catch((e:PromiseRejectedResult) => { return e.reason;});
+  if (typeof source === 'string') { return Array(source); }
   // let's see if spotify knows anything about this track
   // use ContentID info as search parameter, don't perform search if no ContentID match
   const find = source.contentID ? `${source.contentID.name} ${source.contentID.artist}` : null;
@@ -542,7 +558,7 @@ async function subsonicSource(search:string):Promise<Array<TrackSource | Track> 
   }
 }
 
-async function textSource(search:string):Promise<Array<TrackSource | Track | TrackYoutubeSource[]> | undefined> {
+async function textSource(search:string):Promise<Array<string | TrackSource | Track | TrackYoutubeSource[]> | undefined> {
   // search is not any of the url types we recognize, treat as text
   search = search.toLowerCase();
   const track = await db.getTrack({ keys: search });
@@ -564,7 +580,10 @@ async function textSource(search:string):Promise<Array<TrackSource | Track | Tra
     log('fetch', [`[0] lack '${ newTrack.name }'`]);
     return Array(newTrack);
   } else {
-    const youtubeTrack = await youtube.fromSearch(search);
+    // track wasn't on spotify, go to youtube
+    // TODO - do we want to go to subsonic here first?
+    const youtubeTrack = await youtube.fromSearch(search).catch((e:PromiseRejectedResult) => { return e.reason;});
+    if (typeof youtubeTrack === 'string') { return Array(youtubeTrack); }
     const dbTrack = await db.getTrack({ 'youtube.id': youtubeTrack[0].id });
     if (dbTrack) {
       log('fetch', [`[0] have '${ dbTrack.goose.track.name }'`]);

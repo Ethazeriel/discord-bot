@@ -263,9 +263,8 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
       rejectDrop();
     }
   };
-
   return (
-    <Wrapper>
+    <Wrapper $name={props.track.goose.track.name}>
       <InsertionMarker visible={state.nearerTop} invalid={state.invalid} />
       <TrackStyle onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
         <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
@@ -290,15 +289,19 @@ const TrackStyle = styled.div`
   display: flex;
   height: 8vh;
   align-items: center;
-  background-color: #242627;
-  &:nth-child(even) {background-color: #292b2c;}
-  &:hover {background-color: #303233;}
   width:100%;
 `;
 
-const Wrapper = styled.div`
+const Wrapper = styled.div<{ $name?:string; }>`
   display: flex;
   flex-direction: column;
+  background-color: ${props => (
+    (props.$name === 'PENDING') ? '#172417' : (props.$name === 'FAILED') ? '#241717' : '#242627'
+  ) };
+  &:nth-child(even) {background-color: ${props => (
+    (props.$name === 'PENDING') ? '#1f301f' : (props.$name === 'FAILED') ? '#311f1f' : '#292b2c'
+  ) };}
+  &:hover {background-color: #303233;}
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
