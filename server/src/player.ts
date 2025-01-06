@@ -237,7 +237,7 @@ export default class Player {
   // playback
   async play() {
     const track = this.getCurrent();
-    if (track && !Player.pending(track)) {
+    if (track && !Player.placeholder(track)) {
       if (this.getPause()) { this.togglePause({ force: false }); }
       try {
         const stream = await this.#getStream(track);
@@ -258,7 +258,7 @@ export default class Player {
 
   async seek(time:number) {
     const track = this.getCurrent();
-    if (track && !Player.pending(track)) {
+    if (track && !Player.placeholder(track)) {
       if (this.getPause()) { this.togglePause({ force: false }); }
       try {
         // seekable.setToken({
@@ -386,20 +386,20 @@ export default class Player {
   }
 
   // insert, return UUID needed to replace; caller is expected to do follow/clean-up for now
-  pendingNext(username:string):{ UUID:string } {
-    const pending = Player.pendingTrack(username);
+  placeholderNext(username:string):{ UUID:string } {
+    const pending = Player.placeholderTrack('pending', username);
     this.#queue.tracks.splice(this.#queue.playhead + 1, 0, pending);
     return ({ UUID: pending.goose.UUID });
   }
 
-  pendingLast(username:string):{ UUID:string, length:number } {
-    const pending = Player.pendingTrack(username);
+  placeholderLast(username:string):{ UUID:string, length:number } {
+    const pending = Player.placeholderTrack('pending', username);
     const length = this.#queue.tracks.push(pending);
     return ({ UUID: pending.goose.UUID, length: length });
   }
 
-  pendingIndex(username:string, index:number):{ UUID:string } {
-    const pending = Player.pendingTrack(username);
+  placeholderIndex(username:string, index:number):{ UUID:string } {
+    const pending = Player.placeholderTrack('pending', username);
     const length = this.#queue.tracks.length; // eslint-disable-next-line max-statements-per-line
     if (index < 0) { index = 0; } else if (index > length) { index = length; }
     logDebug(`pendingIndex—playhead is ${this.#queue.playhead}, track is ${(this.#queue.tracks[this.#queue.playhead]) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
@@ -413,7 +413,7 @@ export default class Player {
     return ({ UUID: pending.goose.UUID });
   }
 
-  replacePending(tracks:Track[], targetUUID:string):boolean {
+  replacePlaceholder(tracks:Track[], targetUUID:string):boolean {
     const start = this.getIndex(targetUUID);
     if (start !== -1) {
       logDebug(`replace—playhead is ${this.#queue.playhead}, track is ${(this.#queue.playhead < this.#queue.tracks.length) ? this.#queue.tracks[this.#queue.playhead].goose.track.name : 'undefined because playhead == length'}`);
@@ -432,14 +432,14 @@ export default class Player {
   }
 
   // a track has to exist to be pending; undefined is not a transient state
-  static pending(track:Track|undefined) {
+  static placeholder(track:Track|undefined) {
     return (track !== undefined && track.goose.id === '');
   }
 
-  static pendingTrack(queuedBy:string):Track & { goose:{ UUID:string }} {
+  static placeholderTrack(type:'pending' | 'failed', data:string):Track & { goose:{ UUID:string }} {
     return ({
       'goose': {
-        'id': '', // currently no id means pending
+        'id': '', // currently no id means this is a placeholder track
         'plays': 0,
         'errors': 0,
         'album': {
@@ -447,17 +447,17 @@ export default class Player {
           'trackNumber': 0,
         },
         'artist': {
-          'name': `Queued by ${queuedBy}`,
+          'name': (type === 'pending') ? `Queued by ${data}` : data,
         },
         'track': {
-          'name': 'PENDING',
+          'name': type.toUpperCase(),
           'duration': 232,
           'art': utils.pickPride('dab', false),
         },
         'UUID': crypto.randomUUID(),
       },
       'keys': [
-        'pending',
+        type,
       ],
       'playlists': {},
       audioSource: {
@@ -712,7 +712,7 @@ export default class Player {
     };
     // const elapsedTime = (!track || !track.status?.start) ? 0 : (this.getPause()) ? (track.status.pause! - track.status.start) : ((Date.now() / 1000) - track.status.start);
     const elapsedTime:number = (this.getPause() ? (track?.status?.pause! - track?.status?.start!) : ((Date.now() / 1000) - track?.status?.start!)) || 0;
-    if (track && !Player.pending(track) && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
+    if (track && !Player.placeholder(track) && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official)) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';
@@ -774,7 +774,7 @@ export default class Player {
     for (let i = 0; i < queuePart.length; i++) {
       const songNum = ((page - 1) * 10 + (i + 1));
       // const dbtrack = await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track; // was
-      const dbtrack = (!Player.pending(queuePart[i])) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
+      const dbtrack = (!Player.placeholder(queuePart[i])) ? await db.getTrack({ 'goose.id':queuePart[i].goose.id }) as Track : queuePart[i];
       let songName = dbtrack.goose.track.name;
       if (songName.length > 250) { songName = songName.slice(0, 250).concat('...'); }
       const part = `**${songNum}.** ${((songNum - 1) == this.getPlayhead()) ? '**' : ''}${(dbtrack.goose.artist.name || ' ')} - [${songName}](${utils.chooseAudioSource(dbtrack).url}) - ${utils.timeDisplay(utils.chooseAudioSource(dbtrack).duration)}${((songNum - 1) == this.getPlayhead()) ? '**' : ''} \n`;
@@ -796,7 +796,7 @@ export default class Player {
       barafter: track?.bar?.barafter || '-',
       head: track?.bar?.head || '#',
     };
-    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official && !Player.pending(track))) {
+    if (track && ((track.goose.artist.name !== 'Unknown Artist') && !track.goose.artist?.official && !Player.placeholder(track))) {
       const result = await utils.mbArtistLookup(track.goose.artist.name);
       if (result) {db.updateOfficial(track.goose.id, result);}
       track.goose.artist.official = result ? result : '';

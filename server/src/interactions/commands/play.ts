@@ -81,10 +81,10 @@ export async function execute(interaction:ChatInputCommandInteraction) {
     getTracks = fetch(search, interaction.id);
     let queueEmbed;
     if (when === 'now' || when === 'next') {
-      ({ UUID } = player.pendingNext(interaction.user.username));
+      ({ UUID } = player.placeholderNext(interaction.user.username));
       queueEmbed = await player.queueEmbed('Pending:', Math.ceil((player.getPlayhead() + 2) / 10));
     } else {
-      ({ UUID, length } = player.pendingLast(interaction.user.username));
+      ({ UUID, length } = player.placeholderLast(interaction.user.username));
       queueEmbed = await player.queueEmbed('Pending:', (Math.ceil((length / 10) || 1)));
     }
     await player.sync(interaction, 'queue', queueEmbed);
@@ -125,7 +125,7 @@ export async function execute(interaction:ChatInputCommandInteraction) {
 
   // only external resources exist as pending tracks
   if (!internal) {
-    const success = player.replacePending(tracks, UUID);
+    const success = player.replacePlaceholder(tracks, UUID);
     if (!success) { // to do: remove this if we decide that pending tracks should not be removeable
       logDebug(`failed to replace UUID ${UUID}, probably deleted`);
       await interaction.editReply({ content:'either you/someone removed your pending track before it resolved or SOMETHING\'S FUCKED' });

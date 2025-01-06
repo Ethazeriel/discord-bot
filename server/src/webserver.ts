@@ -169,7 +169,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
               return;
             }
 
-            const { UUID } = player.pendingIndex(message.userName, index);
+            const { UUID } = player.placeholderIndex(message.userName, index);
             player.webSync('queue');
             const status = player.getStatus();
             worker.postMessage({ id:message.id, status:status });
@@ -197,7 +197,7 @@ worker.on('message', async (message:WebWorkerMessage) => {
             } else if (length < index) { flag = true; /* handled by splice */ }
             if (flag) { logDebug(`webparent queue—${(index < 0) ? `index negative ${index}` : `index ${index} > ${length}`}. queueing anyway`); }
 
-            const success = player.replacePending(tracks, UUID);
+            const success = player.replacePlaceholder(tracks, UUID);
             if (!success) {
               logDebug(`webparent queue—failed to replace UUID ${UUID}, probably deleted`);
               return;
