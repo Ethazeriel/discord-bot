@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "vite",
+    "wdyr": "VITE_ENABLE_WHY_DID_YOU_RENDER=true vite",
     "build": "vite build",
     "lint": "eslint src --ext js,ts,tsx --report-unused-disable-directives"
   },
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@typescript-eslint/eslint-plugin": "^5.22.0",
-    "@typescript-eslint/parser": "^5.22.0"
+    "@typescript-eslint/parser": "^5.22.0",
+    "@welldone-software/why-did-you-render": "^8.0.3"
   }
 }
