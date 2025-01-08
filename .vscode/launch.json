@@ -2,17 +2,27 @@
   "configurations": [
     {
       "type": "node-terminal",
-      "name": "Start Server",
+      "name": "Server - Start",
       "request": "launch",
       "command": "npm run debug",
       "cwd": "${workspaceFolder}/server"
     },
     {
-      "type": "node-terminal",
-      "name": "Start Client",
+      "type": "firefox",
+      "name": "Client - Start",
+      "skipFiles": [
+        "${workspaceFolder}/client/node_modules/**/*.js"
+      ],
       "request": "launch",
-      "command": "npm run start",
-      "cwd": "${workspaceFolder}/client"
+      "reAttach": true,
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/client",
+      "pathMappings": [
+        {
+          "url": "http://localhost:3000",
+          "path": "${workspaceFolder}/client"
+        }
+      ]
     }
   ]
 }

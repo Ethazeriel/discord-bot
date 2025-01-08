@@ -4,6 +4,7 @@
       "ms-azuretools.vscode-docker",
       "mongodb.mongodb-vscode",
       "jeanp413.open-remote-ssh",
-      "styled-components.vscode-styled-components"
+      "styled-components.vscode-styled-components",
+      "firefox-devtools.vscode-firefox-debug"
   ]
 }
