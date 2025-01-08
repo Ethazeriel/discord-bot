@@ -2,19 +2,19 @@ import * as React from 'react';
 import styled from 'styled-components';
 import type { User, PlayerClick } from './types';
 import { MediaControls } from './MediaControls';
+import { Glass } from './components/GlassEffect';
 
 type Status = {
   user: User
   player?: PlayerStatus
 };
 
-const Bar = styled.div`
+const Bar = styled(Glass)`
 position:fixed;
-background-color: #242526;
-border-bottom: 2px solid #373839;
+/* border-bottom: 2px solid #373839; */
 overflow: visible;
 width: 100%;
-height: calc(6vh + 2px);
+height: calc(6vh);
 min-height: 20px;
 max-height: 82px;
 display: flex;
@@ -26,7 +26,7 @@ font-size: 2vh;
   width: 100%;
   flex: 1;
 }
-> div:first-child {
+> div:first-of-type {
   text-align: left;
   padding-left:1em;
 }
@@ -63,13 +63,13 @@ z-index:3;
 height: 6vh;
 min-height: 20px;
 max-height: 80px;
-background-color: #242526;
+/* background-color: #242526; */
 `;
 
-const Connections = styled.div`
+const Connections = styled(Glass)`
 position: absolute;
 right:0px;
-top:-7em;
+top:-10em;
 overflow-y:visible;
 width: fit-content;
 max-width: 33vw;
@@ -78,30 +78,20 @@ padding-right:1em;
 padding-top:4em;
 padding-left:1em;
 padding-bottom:0.5em;
-background-color: #242526;
-border-bottom: 2px solid #373839;
+/* background-color: #242526; */
+/* border-bottom: 2px solid #373839; */
 border-left: 2px solid #373839;
-z-index: 1;
+z-index: -2;
 //transform: translateY(100%);
-transition: 0.2s transform;
+transition: 0.25s transform;
 &:hover,:focus-within {
-  transform: translateY(6.5em);
+  transform: translateY(9.5em);
 }
 ${AlwaysVisible}:hover + & {
-  transform: translateY(6.5em);
+  transform: translateY(9.5em);
 }
 `;
 
-const ConBlock = styled.div`
-background-color: #242526;
-height:6vh;
-max-height: 80px;
-width:20vw;
-z-index:2;
-position: absolute;
-top: 0;
-right: 0;
-`;
 
 export function StatusBar(props: { status: Status, playerClick:(action:PlayerClick) => void }) {
   if (props?.status?.user?.status == 'new') {
@@ -120,7 +110,6 @@ export function StatusBar(props: { status: Status, playerClick:(action:PlayerCli
           <div>Current track: {props.status.player?.tracks[props.status.player?.playhead]?.goose?.track?.name || 'None'}</div>
           <div><MediaControls status={props.status.player} playerClick={props.playerClick} type='slider'/></div>
           <div>
-            <ConBlock />
             <AlwaysVisible>
               Connections ▼ <br />
               <ConLogo type='discord' active={(props?.status?.user?.discord?.username ? true : false)} />
