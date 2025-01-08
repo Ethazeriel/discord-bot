@@ -99,7 +99,7 @@ function reducer(state:MediaState, [type, value]:[any, any?]) {
   }
 }
 
-export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void}) {
+export function MediaControls(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void, type:'bar'|'buttons'|'slider'}) {
   const player = props.status;
   const track = player?.tracks?.[player?.playhead];
 
@@ -170,24 +170,36 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
       dispatch(['cancel', false]);
     }
   };
-
-  return (
-    <MediaContainer>
-      <ButtonRow>
-        <Button onClick={() => button('shuffle')}><Shuffle /></Button>
-        <Button onClick={() => button('prev')}><Prev /></Button>
-        <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
-        <Button onClick={() => button('next')}><Next /></Button>
-        <Button onClick={() => button('toggleLoop')}><Loop /></Button>
-        <img src={SlowMode} height='36px' width='36px' onClick={() => button('slowmode')} />
-      </ButtonRow>
-      <SliderRow>
-        <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
-        <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => sliderSlide(event)} onMouseUp={(event) => sliderRelease(event)} />
-        <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
-      </SliderRow>
-    </MediaContainer>
+  const buttonDisplay = (
+    <ButtonRow>
+      <Button onClick={() => button('shuffle')}><Shuffle /></Button>
+      <Button onClick={() => button('prev')}><Prev /></Button>
+      <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
+      <Button onClick={() => button('next')}><Next /></Button>
+      <Button onClick={() => button('toggleLoop')}><Loop /></Button>
+      <img src={SlowMode} height='36px' width='36px' onClick={() => button('slowmode')} />
+    </ButtonRow>
   );
+  const sliderDisplay = (
+    <SliderRow>
+      <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
+      <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => sliderSlide(event)} onMouseUp={(event) => sliderRelease(event)} />
+      <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
+    </SliderRow>
+  );
+  switch (props.type) {
+    case 'buttons':
+      return buttonDisplay;
+    case 'slider':
+      return sliderDisplay;
+    case 'bar':
+      return (
+        <MediaContainer>
+          {buttonDisplay}
+          {sliderDisplay}
+        </MediaContainer>
+      );
+  }
 }
 
 const MediaContainer = styled.div`

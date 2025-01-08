@@ -3,7 +3,7 @@ import * as React from 'react';
 import { TrackSmall, DraggedTrack } from './TrackSmall';
 import type { PlayerClick, User } from './types';
 import { StatusBar } from './StatusBar';
-import { MediaBar } from './MediaBar';
+import { MediaControls } from './MediaControls';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -143,7 +143,7 @@ export default class App extends React.Component<Record<string, never>, AppState
       return (
         <div className="App">
           <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
-          <MediaBar status={this.state.playerStatus} playerClick={this.playerClick}/>
+          <MediaControls status={this.state.playerStatus} playerClick={this.playerClick} type='bar'/>
           <ErrorDisplay error={this.state.error} />
           <MainContent>
             <PlayerQueue playerClick={this.playerClick} status={this.state.playerStatus} />
