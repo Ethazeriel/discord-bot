@@ -1,3 +1,4 @@
+import { PropsWithChildren } from 'react';
 import styled from 'styled-components';
 
 const GlassStyle = styled.div`
@@ -34,7 +35,7 @@ const BackdropEdge = styled.span`
     z-index: -3;
 `;
 
-export function Glass({ className, children }:any) {
+export function Glass({ className, children }:PropsWithChildren<{className?:string}>) {
   return (
     <GlassStyle className={className}>
       <Backdrop />
