@@ -29,5 +29,8 @@ export default defineConfig({
       'not dead',
       'not op_mini all',
     ]),
+    rollupOptions: {
+      external: ['@welldone-software/why-did-you-render/jsx-runtime', '@welldone-software/why-did-you-render'],
+    },
   },
 });
