@@ -3,7 +3,7 @@ import * as React from 'react';
 import { TrackSmall, DraggedTrack } from './TrackSmall';
 import type { PlayerClick, User } from './types';
 import { StatusBar } from './StatusBar';
-import { MediaControls } from './MediaControls';
+// import { MediaControls } from './MediaControls';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -135,15 +135,15 @@ export default class App extends React.Component<Record<string, never>, AppState
     if (this.state.user.status === 'new') {
       return (
         <div className="App">
-          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
+          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} playerClick={this.playerClick}/>
           <ErrorDisplay error={this.state.error} />
         </div>
       );
     } else {
       return (
         <div className="App">
-          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
-          <MediaControls status={this.state.playerStatus} playerClick={this.playerClick} type='bar'/>
+          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} playerClick={this.playerClick} />
+          {/* <MediaControls status={this.state.playerStatus} playerClick={this.playerClick} type='bar'/> */}
           <ErrorDisplay error={this.state.error} />
           <MainContent>
             <PlayerQueue playerClick={this.playerClick} status={this.state.playerStatus} />

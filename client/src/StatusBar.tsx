@@ -1,6 +1,7 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import type { User } from './types';
+import type { User, PlayerClick } from './types';
+import { MediaControls } from './MediaControls';
 
 type Status = {
   user: User
@@ -8,6 +9,7 @@ type Status = {
 };
 
 const Bar = styled.div`
+position:fixed;
 background-color: #242526;
 border-bottom: 2px solid #373839;
 overflow: visible;
@@ -32,6 +34,12 @@ font-size: 2vh;
   text-align: right;
   padding-right:1em;
 }
+`;
+const SpaceHolder = styled.div`
+width: 100%;
+height: calc(6vh + 2px);
+min-height: 20px;
+max-height: 82px;
 `;
 
 const AuthLink = styled.a`
@@ -88,14 +96,14 @@ const ConBlock = styled.div`
 background-color: #242526;
 height:6vh;
 max-height: 80px;
-width:33vw;
+width:20vw;
 z-index:2;
 position: absolute;
 top: 0;
 right: 0;
 `;
 
-export function StatusBar(props: { status: Status }) {
+export function StatusBar(props: { status: Status, playerClick:(action:PlayerClick) => void }) {
   if (props?.status?.user?.status == 'new') {
     return (
       <Bar>
@@ -104,25 +112,30 @@ export function StatusBar(props: { status: Status }) {
     );
   } else {
     return (
-      <Bar>
-        <div><Clock /></div>
-        <div>Current track: {props.status.player?.tracks[props.status.player?.playhead]?.goose?.track?.name || 'None'}</div>
-        <div>
-          <ConBlock />
-          <AlwaysVisible>
+      <>
+        <SpaceHolder />
+        <Bar>
+          <div><Clock /></div>
+          <div><MediaControls status={props.status.player} playerClick={props.playerClick} type='buttons'/></div>
+          <div>Current track: {props.status.player?.tracks[props.status.player?.playhead]?.goose?.track?.name || 'None'}</div>
+          <div><MediaControls status={props.status.player} playerClick={props.playerClick} type='slider'/></div>
+          <div>
+            <ConBlock />
+            <AlwaysVisible>
               Connections ▼ <br />
-            <ConLogo type='discord' active={(props?.status?.user?.discord?.username ? true : false)} />
-            <ConLogo type='spotify' active={(props?.status?.user?.spotify?.username ? true : false)} />
-            <ConLogo type='napster' active={(props?.status?.user?.napster?.username ? true : false)} />
-          </AlwaysVisible>
-          <Connections>
-            <Account type='discord' user={props?.status?.user} />
-            <Account type='spotify' user={props?.status?.user} />
-            <Account type='napster' user={props?.status?.user} />
+              <ConLogo type='discord' active={(props?.status?.user?.discord?.username ? true : false)} />
+              <ConLogo type='spotify' active={(props?.status?.user?.spotify?.username ? true : false)} />
+              <ConLogo type='napster' active={(props?.status?.user?.napster?.username ? true : false)} />
+            </AlwaysVisible>
+            <Connections>
+              <Account type='discord' user={props?.status?.user} />
+              <Account type='spotify' user={props?.status?.user} />
+              <Account type='napster' user={props?.status?.user} />
 
-          </Connections>
-        </div>
-      </Bar>
+            </Connections>
+          </div>
+        </Bar>
+      </>
     );
   }
 }
