@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
 const GlassStyle = styled.div`
-  background: hsl(0deg 0% 0% / 0.2);
+  background: hsl(0deg 0% 0% / 0.1);
 `;
 
 const Backdrop = styled.span`
@@ -9,7 +9,7 @@ const Backdrop = styled.span`
   inset: 0;
   height: 200%;
   width: 100%;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px) brightness(75%) saturate(125%);
   mask-image: linear-gradient( to bottom, black 0% 50%, transparent 50% 100% );
   background: linear-gradient( to bottom, #18191a 0% 0%, transparent 30%);
   pointer-events: none;
@@ -23,7 +23,7 @@ const BackdropEdge = styled.span`
   height:100%;
   transform: translateY(100%);
   background: hsl(0deg 0% 0% / 0.3);
-  backdrop-filter: blur(8px) brightness(120%);
+  backdrop-filter: blur(8px) brightness(120%) saturate(125%);
   pointer-events: none;
   mask-image: linear-gradient(
       to bottom,
