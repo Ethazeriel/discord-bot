@@ -37,7 +37,7 @@ font-size: 2vh;
 `;
 const SpaceHolder = styled.div`
 width: 100%;
-height: calc(6vh + 2px);
+height: calc(6vh + 3px);
 min-height: 20px;
 max-height: 82px;
 `;
