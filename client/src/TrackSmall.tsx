@@ -74,6 +74,11 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
 
   const [state, dispatch] = React.useReducer(reducer, initialState);
   const [allowed, setAllowed] = React.useState<boolean | null>(null);
+  // this is only used in failed tracks, but has to be here or react complains about new hooks
+  // ideally failedtrack should be its own component, rather than a variant on tracksmall
+  // but I don't want to tear apart the dnd stuff that's in here right now
+  // when dnd generified, make failedtrack its own thing and move this there
+  const [newSearch, setNewSearch] = React.useState('');
 
   const shouldAllow = (event:React.DragEvent<HTMLElement>, internal:boolean) => {
     if (allowed !== null) { return allowed; }
@@ -103,9 +108,6 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
   //   cursorText(['label', `${label.trackName}●${label.artistName}`]);
   // }, [cursorText, label]);
 
-  const trackClick = (action:Action, parameter:string | number = props.id) => {
-    props.playerClick({ action:action, parameter: parameter });
-  };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   // needs a better name. is intended to be called by event; exists to connect cancelled drops to what was last
@@ -243,14 +245,14 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
         addEventListener('cleanup', cleanUp);
         // basically how it reads; insert before else after
         const to = (state.nearerTop) ? props.id : props.id + 1;
-        trackClick('move', `${props.dragID} ${to} ${from.UUID}`); // I'm sorry
+        props.playerClick({ action:'move', parameter:{ from: props.dragID!, to:to, UUID:from.UUID } });
         console.log(`move track: [${props.dragID}] ${from.name} to: [${to}], ${state.nearerTop ? 'above' : 'below'} [${props.id}] ${props.track.goose.track.name}`);
       }
     } else if (externalTypes.length) {
       // console.log(`external accepted: ${externalTypes}`);
       addEventListener('cleanup', cleanUp);
       const to = (state.nearerTop) ? props.id : props.id + 1;
-      trackClick('pendingIndex', `${to} ${externalTypes[0]}`);
+      props.playerClick({ action: 'pendingIndex', parameter: { index:to, query:externalTypes[0] } });
       console.log(`queue resource ${externalTypes} at position ${to}`);
     } else if (externalTypes.length === 0) {
       const types = event.dataTransfer.types.map(type => `\nkey: ${type},\n\tvalue: ${event.dataTransfer.getData(type)}`).toString();
@@ -262,25 +264,66 @@ export function TrackSmall(props: { id:number, track:Track, playerClick:(action:
       rejectDrop();
     }
   };
+  const TrackContents = (props.track.goose.track.name === 'FAILED') ? FailedContents({ id:props.id, track:props.track, playerClick:props.playerClick, searchVal:newSearch, searchValSet:setNewSearch }) : NormalContents({ id:props.id, track:props.track, playerClick:props.playerClick });
   return (
     <Wrapper $name={props.track.goose.track.name}>
       <InsertionMarker visible={state.nearerTop} invalid={state.invalid} />
       <TrackStyle onDragStart={dragStart} onDragEnd={dragEnd} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDrop={drop}>
-        <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
-        <ButtonContainer>
-          <Button src={playButton} onClick={() => trackClick('jump')} draggable="false" />
-          <Number>{(props.id + 1)}</Number>
-          <Button src={removeButton} onClick={() => trackClick('remove')} draggable="false" />
-        </ButtonContainer>
-        <Handle src={dragHandle} draggable="true" />
-        <Details>
-          <Title>{props.track.goose.track.name}</Title>
-          <AlbumInfo>{props.track.goose.artist.name} - <em>{props.track.goose.album.name}</em></AlbumInfo>
-        </Details>
-        <Duration>{timeDisplay(props.track.goose.track.duration)}</Duration>
+        {TrackContents}
       </TrackStyle>
       <InsertionMarker visible={state.nearerBottom} invalid={state.invalid} />
     </Wrapper>
+  );
+}
+
+function NormalContents(props: {id:number, track:Track, playerClick:(action:PlayerAction<ActionType>) => void}) {
+  const trackClick = (action:Action, parameter:string | number = props.id) => {
+    props.playerClick({ action:action, parameter: parameter });
+  };
+  return (
+    <>
+      <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
+      <ButtonContainer>
+        <Button src={playButton} onClick={() => trackClick('jump')} draggable="false" />
+        <Number>{(props.id + 1)}</Number>
+        <Button src={removeButton} onClick={() => trackClick('remove')} draggable="false" />
+      </ButtonContainer>
+      <Handle src={dragHandle} draggable="true" />
+      <Details>
+        <Title>{props.track.goose.track.name}</Title>
+        <AlbumInfo>{props.track.goose.artist.name} - <em>{props.track.goose.album.name}</em></AlbumInfo>
+      </Details>
+      <Duration>{timeDisplay(props.track.goose.track.duration)}</Duration>
+    </>
+  );
+}
+
+function FailedContents(props: {id:number, track:Track, playerClick:(action:PlayerAction<ActionType>) => void, searchVal:string, searchValSet:React.Dispatch<React.SetStateAction<string>> }) {
+  const trackClick = (action:Action, parameter:string | number = props.id) => {
+    // TODO - figure out how to type trackClick tying in to PlayerAction
+    props.playerClick({ action:action, parameter: parameter });
+  };
+  const failClick = () => {
+    props.playerClick({ action:'failedIndex', parameter: { UUID:props.track.goose.UUID!, query:props.searchVal } });
+  };
+  return (
+    <>
+      <Art src={props.track.goose.track.art} alt="album art" crossOrigin='anonymous' draggable="false" />
+      <ButtonContainer>
+        <Button src={playButton} onClick={() => trackClick('jump')} draggable="false" />
+        <Number>{(props.id + 1)}</Number>
+        <Button src={removeButton} onClick={() => trackClick('remove')} draggable="false" />
+      </ButtonContainer>
+      <Handle src={dragHandle} draggable="true" />
+      <Details>
+        <AlbumInfo><em>Error: </em>{props.track.goose.artist.name}</AlbumInfo>
+        <NewSearch>
+          Try again?:
+          <input value={props.searchVal} onChange={e => props.searchValSet(e.target.value)} />
+          <input type="button" name="searchgo" value="Go!" onClick={() => failClick()} />
+        </NewSearch>
+      </Details>
+    </>
   );
 }
 
@@ -391,6 +434,15 @@ const Title = styled.h2`
   font-size: 2vh;
   user-select: none;
   pointer-events: none;
+`;
+
+const NewSearch = styled.h2`
+  margin: 0px;
+  margin-top: 0.2em;
+  font-weight: normal;
+  font-size: 2vh;
+  user-select: auto;
+  pointer-events: auto;
 `;
 
 const AlbumInfo = styled.p` // was Artist

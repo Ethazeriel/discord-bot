@@ -341,12 +341,12 @@ function PlayerQueue(props: { playerClick:(action:PlayerAction<ActionType>) => v
         return;
       } else {
         addEventListener('cleanup', cleanUp);
-        props.playerClick({ action:'move', parameter:`${dragID} ${localQueue.length} ${from.UUID}` }); // I'm sorry
+        props.playerClick({ action:'move', parameter:{ from: dragID!, to:localQueue.length, UUID:from.UUID } });
         console.log(`move track: [${dragID}] ${from.name} to: [${localQueue.length}]`);
       }
     } else if (externalTypes.length) {
       addEventListener('cleanup', cleanUp);
-      props.playerClick({ action:'pendingIndex', parameter:`${localQueue.length} ${externalTypes[0]}` }); // I'm sorry
+      props.playerClick({ action:'pendingIndex', parameter:{ index:localQueue.length, query:externalTypes[0] } });
       console.log(`queue external ${externalTypes[0]} at position ${localQueue.length}`);
     } else if (externalTypes.length === 0) {
       clearStyling();

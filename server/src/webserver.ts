@@ -1,14 +1,11 @@
-import fs from 'fs';
 import { Worker } from 'worker_threads';
 import { log, logDebug } from './logger.js';
 import Player from './player.js';
 import fetch from './acquire.js';
 import { toggleSlowMode } from './acquire.js';
-import { seekTime as seekRegex, subsonicPathExtractor } from './regexes.js';
+import { seekTime as seekRegex } from './regexes.js';
 import validator from 'validator';
 import { fileURLToPath, URL } from 'url';
-const { subsonic }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../config.json', import.meta.url).toString()), 'utf-8'));
-// import { default as subsonicWorker } from './workers/acquire/subsonic.js';
 
 let worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 worker.on('exit', code => {
@@ -122,52 +119,15 @@ worker.on('message', async (message:WebWorkerMessage<ActionType>) => {
             break;
           }
 
-          case 'pendingIndex': { // eslint-disable-next-line prefer-const
-            let [stringIndex, query] = (message.parameter as string).split(' ');
-            if (!(stringIndex && query)) {
-              logDebug(`webparent queue—at least one parameter nullish; stringIndex contains [${stringIndex}], query contains [${query}]; message was [${message.parameter}]`);
+          case 'pendingIndex': {
+            if (!(message.parameter)) {
+              logDebug(`webparent queue—parameter nullish; was [${message.parameter}]`);
               worker.postMessage({ id:message.id, error: `either you've altered your client or we've fucked up; can't queue ${message.parameter}` });
               return;
             }
-            let index = Number(stringIndex);
-            if (isNaN(index)) {
-              logDebug(`webparent queue—index NaN, contains [${index}]`);
-              worker.postMessage({ id:message.id, error: `either you've altered your client or we've fucked up; can't queue ${message.parameter}` });
-              return;
-            }
-            // I could do this right or I could get it working and sleep
-            // okay look, this wasn't meant to live past the very next day, but hear me out—
-            const shittify = /(?:spotify\.com|spotify).+((?:track|playlist|album){1}).+([a-zA-Z0-9]{22})/;
-            const shittifySubsonic = /(?:app).+((?:track|playlist|album){1}).+(?:;)([a-zA-Z0-9-]{32,36})/;
-            if (shittify.test(query)) {
-              const match = query.match(shittify);
-              query = `spotify.com/${match![1]}/${match![2]}`;
-            } else if (shittifySubsonic.test(query)) { // yes. this comment was funnier before it got worse
-              const subsonicPaths = subsonic.regex.match(subsonicPathExtractor);
-              // logDebug(`subsonic config paths are: ${subsonicPaths}`);
-              if (!subsonicPaths || (subsonicPaths && !subsonicPaths.length)) {
-                logDebug('how could this fail');
-                worker.postMessage({ id:message.id, error: 'I\'ll fix this, uh, after an amount of time' });
-                return;
-              }
-              // logDebug(`sanitized client query is: ${query}`);
-              const clientPath = query.split(/(?:;)([a-z0-9-\\.:]+)(?:&)/)[1];
-              // logDebug(`desired client path is: ${clientPath}`);
-
-              const path = subsonicPaths[1].split('|')
-                .map(paths => paths.replaceAll('\\', ''))
-                .filter(paths => paths == clientPath);
-              // logDebug(`client/server agree on path: ${path}`);
-
-              const match = query.match(shittifySubsonic);
-              query = `${path}/app/#/${match![1]}/${match![2]}`;
-              // logDebug(`query being sent to acquire is: ${query}`);
-              // logDebug(`query should pass acquire regex: ${subsonicWorker.searchRegex.test(query)}`);
-            } else {
-              logDebug(`webparent queue—shitty bandaid failed; ${query} does not match regex`);
-              worker.postMessage({ id:message.id, error: 'I\'ll fix this once I sleep <3' });
-              return;
-            }
+            // if we're here, these values should be safe (validated by joi)
+            let index = (message.parameter as PlayerPendingIndex).index;
+            const query = (message.parameter as PlayerPendingIndex).query;
 
             const { UUID } = player.placeholderIndex(message.userName, index);
             player.webSync('queue');
@@ -211,30 +171,64 @@ worker.on('message', async (message:WebWorkerMessage<ActionType>) => {
             return;
           }
 
+          case 'failedIndex': {
+            if (!(message.parameter)) {
+              logDebug(`webparent queue—parameter nullish; was [${message.parameter}]`);
+              worker.postMessage({ id:message.id, error: `either you've altered your client or we've fucked up; can't queue ${message.parameter}` });
+              return;
+            }
+            // if we're here, these values should be safe (validated by joi)
+            const UUID = (message.parameter as PlayerFailedIndex).UUID;
+            const query = (message.parameter as PlayerFailedIndex).query;
+
+            let tracks: Track[] = [];
+            try {
+              tracks = await fetch(query);
+              if (tracks.length == 0) {
+                logDebug(`webparent queue—[${query}] resulted in 0 tracks; message was [${message.parameter}]`);
+                worker.postMessage({ id:message.id, error: `either ${query}\nis an empty playlist/ album, or we've fucked up` });
+                return;
+              }
+            } catch (error:any) {
+              log('error', [`webparent queue—fetch error, ${error.stack}`]);
+              worker.postMessage({ id:message.id, error: `check that ${query} is't a private playlist` });
+              return;
+            }
+
+            const success = player.replacePlaceholder(tracks, UUID);
+            if (!success) {
+              logDebug(`webparent queue—failed to replace UUID ${UUID}, probably deleted`);
+              return;
+            }
+
+            const current = player.getCurrent();
+            //                if current will change or just changed (pending and was just replaced)
+            const mediaSync = (current === undefined || current.goose.UUID === UUID);
+
+            player.webSync(mediaSync ? 'media' : 'queue');
+            return;
+          }
+
           case 'move': { // TODO: probably remove/ move this to the webserver parent when done testing
             const length = player.getQueue().length;
             if (length > 1) {
-              if (message.parameter && typeof message.parameter == 'string') {
-                const [stringFrom, stringTo, UUID] = (message.parameter as string).split(' ');
-                if (stringFrom && stringTo && UUID) {
-                  const from = Number(stringFrom); const to = Number(stringTo);
-                  if (!(isNaN(from) || isNaN(to) || typeof UUID !== 'string')) {
-                    const { success, message: failure } = player.move(from, to, UUID);
-                    if (success) {
-                      player.webSync('queue');
-                      const status = player.getStatus();
-                      worker.postMessage({ id:message.id, status:status });
-                    } else { logDebug(`move—probable user error ${failure}`); worker.postMessage({ id:message.id, error:failure }); }
-                  } else {
-                    logDebug(`move—${isNaN(from) ? `from is NaN, contains [${from}]` : isNaN(to) ? `to is NaN, contains [${to}]` : `UUID is not a string, contains [${UUID}]`}`);
-                    worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
-                  }
+              if (message.parameter) {
+                const from = (message.parameter as PlayerMove).from;
+                const to = (message.parameter as PlayerMove).to;
+                const UUID = (message.parameter as PlayerMove).UUID;
+                if (!(isNaN(from) || isNaN(to) || typeof UUID !== 'string')) {
+                  const { success, message: failure } = player.move(from, to, UUID);
+                  if (success) {
+                    player.webSync('queue');
+                    const status = player.getStatus();
+                    worker.postMessage({ id:message.id, status:status });
+                  } else { logDebug(`move—probable user error ${failure}`); worker.postMessage({ id:message.id, error:failure }); }
                 } else {
-                  logDebug(`move—${!stringFrom ? `from is nullish, contains [${stringFrom}]` : !stringTo ? `to is nullish, contains [${stringTo}]` : `UUID is nullish, contains [${UUID}]`}`);
+                  logDebug(`move—${isNaN(from) ? `from is NaN, contains [${from}]` : isNaN(to) ? `to is NaN, contains [${to}]` : `UUID is not a string, contains [${UUID}]`}`);
                   worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
                 }
               } else {
-                logDebug(`move—${!message.parameter ? `parameter is nullish, contains [${message.parameter}]` : `parameter is not a string, typeof [${typeof message.parameter}]`}`);
+                logDebug(`move—${`parameter is nullish, contains [${message.parameter}]` }`);
                 worker.postMessage({ id:message.id, error:'either you\'ve altered your client or we\'ve fucked up' });
               }
             } else {

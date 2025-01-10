@@ -13,11 +13,12 @@ type ParameterMap = {
   'seek':string,
   'togglePause':boolean,
   'toggleLoop':undefined,
-  'pendingIndex':string, // will be PlayerPendingIndex
-  'move':string, // will be PlayerMove
+  'pendingIndex':PlayerPendingIndex
+  'move':PlayerMove
   'remove':number,
   'empty':undefined,
   'shuffle':boolean,
+  'failedIndex':PlayerFailedIndex
 }
 
 type ActionType = keyof ParameterMap
@@ -27,9 +28,13 @@ interface PlayerPendingIndex {
   query: string
 }
 interface PlayerMove {
-  from: string,
-  to: string,
+  from: number,
+  to: number,
   UUID: string
+}
+interface PlayerFailedIndex {
+  UUID: string,
+  query: string
 }
 
 interface WebWorkerMessage<A extends ActionType> extends PlayerAction<A> {
