@@ -10,7 +10,7 @@ import { timeDisplay, allowExternal, allowedExternalTypes } from './utils';
 
 import './App.css';
 
-import type { PlayerClick } from './types';
+import { ActionType, PlayerAction } from './@types/webclient';
 type Action = 'jump' | 'remove' | 'move' | 'pendingIndex';
 
 // yep, still haven't learned how to type this
@@ -63,7 +63,7 @@ export type DraggedTrack = {
   name: string,
 }
 
-export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerClick) => void, dragID:number|null, cursorText:React.Dispatch<[any, any?]> }) {
+export function TrackSmall(props: { id:number, track:Track, playerClick:(action:PlayerAction<ActionType>) => void, dragID:number|null, cursorText:React.Dispatch<[any, any?]> }) {
   const initialState:DragState = {
     origin: false,
     dragging: false,

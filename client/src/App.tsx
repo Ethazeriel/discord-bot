@@ -1,9 +1,9 @@
 import './App.css';
 import * as React from 'react';
 import { TrackSmall, DraggedTrack } from './TrackSmall';
-import type { PlayerClick, User } from './types';
+import type { User } from './types';
 import { StatusBar } from './StatusBar';
-// import { MediaControls } from './MediaControls';
+import type { ActionType, PlayerAction } from './@types/webclient';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -53,7 +53,7 @@ export default class App extends React.Component<Record<string, never>, AppState
     this.playerClick = this.playerClick.bind(this);
   }
 
-  playerClick(playerClick: PlayerClick) {
+  playerClick(playerClick:PlayerAction<ActionType>) {
     fetch(`${window.location.origin}/player`, {
       method: 'POST',
       body: JSON.stringify({ action: playerClick.action, parameter: playerClick.parameter }),
@@ -201,7 +201,7 @@ function dragText(state: any, [type, value]:[any, any?]) {
     }
   }
 }
-function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:PlayerStatus }) {
+function PlayerQueue(props: { playerClick:(action:PlayerAction<ActionType>) => void, status?:PlayerStatus }) {
   const initialState: { visible:boolean, label:string, dragY:number, dragX:number, offsetX:number } = {
     visible: false,
     label: '',

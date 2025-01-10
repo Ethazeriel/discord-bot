@@ -16,7 +16,7 @@
     "noEmit": true,
     "sourceMap": true,
     "jsx": "react-jsx",
-    "typeRoots": ["./src/types", "./node_modules/@types", "./node_modules"],
+    "typeRoots": ["./src/@types", "./node_modules/@types", "./node_modules"],
     "types": ["node", "vite/client"]
   },
   "include": [

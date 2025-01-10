@@ -13,7 +13,7 @@ import Next from './media/placeholder/next.svg?react';
 import Loop from './media/placeholder/loop.svg?react';
 import SlowMode from './media/placeholder/slowmode.png';
 
-import type { PlayerClick } from './types';
+import { ActionType, PlayerAction } from './@types/webclient';
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
 type MediaState = {
   seek:number,
@@ -99,7 +99,7 @@ function reducer(state:MediaState, [type, value]:[any, any?]) {
   }
 }
 
-export function MediaControls(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void, type:'bar'|'buttons'|'slider'}) {
+export function MediaControls(props: { status?:PlayerStatus, playerClick:(action:PlayerAction<ActionType>) => void, type:'bar'|'buttons'|'slider'}) {
   const player = props.status;
   const track = player?.tracks?.[player?.playhead];
 
@@ -152,7 +152,7 @@ export function MediaControls(props: { status?:PlayerStatus, playerClick:(action
   }, [duration]);
 
   const button = (action:Action) => {
-    props.playerClick({ action: action });
+    props.playerClick({ action:action, parameter:undefined });
   };
 
   const sliderSlide = (event:React.ChangeEvent<HTMLInputElement>) => {

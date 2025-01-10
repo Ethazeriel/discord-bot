@@ -1,8 +1,9 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import type { User, PlayerClick } from './types';
+import type { User } from './types';
 import { MediaControls } from './MediaControls';
 import { Glass } from './components/GlassEffect';
+import { ActionType, PlayerAction } from './@types/webclient';
 
 type Status = {
   user: User
@@ -93,7 +94,7 @@ ${AlwaysVisible}:hover + & {
 `;
 
 
-export function StatusBar(props: { status: Status, playerClick:(action:PlayerClick) => void }) {
+export function StatusBar(props: { status: Status, playerClick:(action:PlayerAction<ActionType>) => void }) {
   if (props?.status?.user?.status == 'new') {
     return (
       <Bar>

@@ -1,8 +1,3 @@
-export type PlayerClick = {
-  action: string,
-  parameter?: any
-};
-
 export type User = {
 	status: 'new' | 'known'
 	discord?: {
