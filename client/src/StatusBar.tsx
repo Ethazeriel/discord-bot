@@ -1,12 +1,11 @@
 import * as React from 'react';
 import styled from 'styled-components';
-import type { User } from './types';
 import { MediaControls } from './MediaControls';
 import { Glass } from './components/GlassEffect';
-import { ActionType, PlayerAction } from './@types/webclient';
+
 
 type Status = {
-  user: User
+  user: WebUser | { status:'new' }
   player?: PlayerStatus
 };
 
@@ -144,7 +143,7 @@ function ConLogo(props:{ type:'spotify' | 'discord' | 'napster', active:boolean 
   );
 }
 
-function Account(props:{ type:'spotify' | 'discord' | 'napster', user:User}) {
+function Account(props:{ type:'spotify' | 'discord' | 'napster', user:WebUser}) {
   switch (props.type) {
     case 'spotify': {
       if (props.user?.spotify) {

@@ -21,7 +21,7 @@ worker.on('error', code => {
   worker = new Worker(fileURLToPath(new URL('./workers/webserver.js', import.meta.url).toString()), { workerData:{ name:'WebServer' } });
 }); // ehh fuck it, probably better than just crashing I guess
 
-worker.on('message', async (message:WebWorkerMessage) => {
+worker.on('message', async (message:WebWorkerMessage<ActionType>) => {
 
   switch (message.type) {
     case 'player': {

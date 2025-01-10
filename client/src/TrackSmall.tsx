@@ -10,7 +10,6 @@ import { timeDisplay, allowExternal, allowedExternalTypes } from './utils';
 
 import './App.css';
 
-import { ActionType, PlayerAction } from './@types/webclient';
 type Action = 'jump' | 'remove' | 'move' | 'pendingIndex';
 
 // yep, still haven't learned how to type this

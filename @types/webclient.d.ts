@@ -1,5 +1,5 @@
 
-export interface PlayerAction<A extends ActionType> {
+interface PlayerAction<A extends ActionType> {
   action: A
   parameter: ParameterMap[A]
 }
@@ -20,7 +20,7 @@ type ParameterMap = {
   'shuffle':boolean,
 }
 
-export type ActionType = keyof ParameterMap
+type ActionType = keyof ParameterMap
 
 interface PlayerPendingIndex {
   index: number,
@@ -30,4 +30,36 @@ interface PlayerMove {
   from: string,
   to: string,
   UUID: string
+}
+
+interface WebWorkerMessage<A extends ActionType> extends PlayerAction<A> {
+  id:string
+  userId:string
+  userName:string
+  type:'player'
+}
+
+type WebParentMessage = {
+  id:string
+  error:string
+  status:PlayerStatus
+}
+
+type WebUser = {
+  status:'known'
+  discord: {
+    id: string
+    username: string
+    discriminator: string
+  }
+  spotify?: {
+		id:string,
+		username:string,
+		locale:string
+	}
+  napster?: {
+    id:string,
+    username:string,
+    locale:string
+  }
 }

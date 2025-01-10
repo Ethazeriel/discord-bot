@@ -1,9 +1,7 @@
 import './App.css';
 import * as React from 'react';
 import { TrackSmall, DraggedTrack } from './TrackSmall';
-import type { User } from './types';
 import { StatusBar } from './StatusBar';
-import type { ActionType, PlayerAction } from './@types/webclient';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -16,14 +14,14 @@ import { allowExternal, allowedExternalTypes } from './utils';
 
 type AppState = {
   playerStatus?: PlayerStatus,
-  user: User,
+  user: WebUser | { status:'new' },
   error: null | string,
   socket?: any,
 }
 
 type LoadResponse = {
   player?: PlayerStatus,
-  user: User,
+  user: WebUser,
   error: null | string,
 }
 
