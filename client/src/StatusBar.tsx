@@ -40,6 +40,7 @@ width: 100%;
 height: calc(6vh + 3px);
 min-height: 20px;
 max-height: 82px;
+background-color: #626569;
 `;
 
 const AuthLink = styled.a`
@@ -80,7 +81,7 @@ padding-left:1em;
 padding-bottom:0.5em;
 /* background-color: #242526; */
 /* border-bottom: 2px solid #373839; */
-border-left: 2px solid #373839;
+border-left: 3px solid #373839;
 z-index: -2;
 //transform: translateY(100%);
 transition: 0.25s transform;

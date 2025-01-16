@@ -12,7 +12,7 @@ const Backdrop = styled.span`
   width: 100%;
   backdrop-filter: blur(16px) brightness(75%) saturate(125%);
   mask-image: linear-gradient( to bottom, black 0% 50%, transparent 50% 100% );
-  background: linear-gradient( to bottom, #18191a 0% 0%, transparent 30%);
+  background: linear-gradient( to bottom, #2e3032 0% 0%, transparent 50%);
   pointer-events: none;
   z-index: -1;
 `;
@@ -23,7 +23,7 @@ const BackdropEdge = styled.span`
   inset: 0;
   height:100%;
   transform: translateY(100%);
-  background: hsl(0deg 0% 0% / 0.3);
+  background: hsl(0deg 0% 30% / 0.3);
   backdrop-filter: blur(8px) brightness(120%) saturate(125%);
   pointer-events: none;
   mask-image: linear-gradient(
