@@ -319,7 +319,7 @@ function FailedContents(props: {id:number, track:Track, playerClick:(action:Play
         <AlbumInfo><em>Error: </em>{props.track.goose.artist.name}</AlbumInfo>
         <NewSearch>
           Try again?:
-          <input value={props.searchVal} onChange={e => props.searchValSet(e.target.value)} />
+          <input value={props.searchVal} onChange={e => props.searchValSet(e.target.value)} onSubmit={() => failClick()} />
           <input type="button" name="searchgo" value="Go!" onClick={() => failClick()} />
         </NewSearch>
       </Details>
@@ -338,12 +338,12 @@ const Wrapper = styled.div<{ $name?:string; }>`
   display: flex;
   flex-direction: column;
   background-color: ${props => (
-    (props.$name === 'PENDING') ? '#172417' : (props.$name === 'FAILED') ? '#241717' : '#242627'
-  ) };
+    (props.$name === 'PENDING') ? '#172417' : (props.$name === 'FAILED') ? '#241717' : '#242627') };
   &:nth-child(even) {background-color: ${props => (
-    (props.$name === 'PENDING') ? '#1f301f' : (props.$name === 'FAILED') ? '#311f1f' : '#292b2c'
-  ) };}
-  &:hover {background-color: #303233;}
+    (props.$name === 'PENDING') ? '#1f301f' : (props.$name === 'FAILED') ? '#311f1f' : '#292b2c') };
+    }
+  &:hover {background-color: ${props => (
+    (props.$name === 'PENDING') ? '#2a422a' : (props.$name === 'FAILED') ? '#432a2a' : '#303233') };}
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
