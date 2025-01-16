@@ -22,13 +22,19 @@ html {
   box-sizing: inherit;
 }
 
-select { /* just doing this as fallback, assume we'll properly style these things */
+select { /* dark default if otherwise unstyled */
   background-color: #18191a;
   color: #fff;
   border-radius: 5px;
 }
 
-button { /* just doing this as fallback, assume we'll properly style these things */
+button { /* dark default if otherwise unstyled */
+  background-color: #18191a;
+  color: #fff;
+  border-radius: 5px;
+}
+
+input { /* dark default if otherwise unstyled */
   background-color: #18191a;
   color: #fff;
   border-radius: 5px;

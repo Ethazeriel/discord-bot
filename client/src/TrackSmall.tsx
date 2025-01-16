@@ -303,7 +303,8 @@ function FailedContents(props: {id:number, track:Track, playerClick:(action:Play
     // TODO - figure out how to type trackClick tying in to PlayerAction
     props.playerClick({ action:action, parameter: parameter });
   };
-  const failClick = () => {
+  const failClick = (e:React.FormEvent) => {
+    e.preventDefault();
     props.playerClick({ action:'failedIndex', parameter: { UUID:props.track.goose.UUID!, query:props.searchVal } });
   };
   return (
@@ -317,11 +318,13 @@ function FailedContents(props: {id:number, track:Track, playerClick:(action:Play
       <Handle src={dragHandle} draggable="true" />
       <Details>
         <AlbumInfo><em>Error: </em>{props.track.goose.artist.name}</AlbumInfo>
-        <NewSearch>
+        <form onSubmit={(e) => failClick(e)}>
+          <NewSearch>
           Try again?:
-          <input value={props.searchVal} onChange={e => props.searchValSet(e.target.value)} onSubmit={() => failClick()} />
-          <input type="button" name="searchgo" value="Go!" onClick={() => failClick()} />
-        </NewSearch>
+            <input value={props.searchVal} onChange={e => props.searchValSet(e.target.value)}/>
+            <button type="submit">Go!</button>
+          </NewSearch>
+        </form>
       </Details>
     </>
   );
