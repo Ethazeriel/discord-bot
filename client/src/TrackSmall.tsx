@@ -346,7 +346,7 @@ const Wrapper = styled.div<{ $name?:string; }>`
     (props.$name === 'PENDING') ? '#1f301f' : (props.$name === 'FAILED') ? '#311f1f' : '#292b2c') };
     }
   &:hover {background-color: ${props => (
-    (props.$name === 'PENDING') ? '#2a422a' : (props.$name === 'FAILED') ? '#432a2a' : '#303233') };}
+    (props.$name === 'PENDING') ? '#233723' : (props.$name === 'FAILED') ? '#3f2727' : '#303233') };}
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
