@@ -97,8 +97,7 @@ worker.on('message', async (message:WebWorkerMessage<ActionType>) => {
           case 'togglePause': {
             if (player.getQueue().length) {
               if (player.getCurrent()) {
-                let force;
-                if (message.parameter !== 'undefined') { force = (message.parameter === 'true') ? true : false; }
+                const force = (message as WebWorkerMessage<'togglePause'>).parameter;
                 player.togglePause({ force: force });
               } else { player.jump(0); }
               player.webSync('media');
