@@ -20,6 +20,7 @@ max-height: 82px;
 display: flex;
 align-items: center;
 justify-content: center;
+pointer-events: none;
 font-size: 2vh;
 > div {
   max-height: 100%;
@@ -59,6 +60,7 @@ white-space: nowrap;
 
 const AlwaysVisible = styled.div`
 position: absolute;
+pointer-events: auto;
 top: 0;
 right: 0;
 padding-right:1em;
@@ -71,6 +73,7 @@ max-height: 80px;
 
 const Connections = styled(Glass)`
 position: absolute;
+pointer-events: auto;
 right:0px;
 top:-10em;
 overflow-y:visible;

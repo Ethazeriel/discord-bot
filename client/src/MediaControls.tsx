@@ -221,6 +221,7 @@ const ButtonRow = styled.div<{ $size?:string }>`
 `;
 
 const Button = styled.svg<{ $size?:string }>`
+  pointer-events: auto;
   width: ${props => props.$size || '36px'};
   height: ${props => props.$size || '36ps'};
   margin: 0 2px 0 2px;
@@ -238,6 +239,7 @@ const SliderRow = styled.div`
 `;
 
 const SliderStyle = styled.input`
+  pointer-events: auto;
   height: 100%;
   width: 240px;
   margin: 0;
