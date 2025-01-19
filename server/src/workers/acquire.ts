@@ -25,7 +25,7 @@ parentPort!.on('message', async data => {
 });
 logDebug('Acquire2 worker spawned.');
 
-async function fetchTracks(search:string):Promise<Array<Track> | string> {
+async function fetchTracks(search:string):Promise<Array<Track | string> | string> {
   // Expectations:
   // takes a search string - can be a link to a track, playlist, album for any of the services we support; or a text search
   // go through a decision tree to decide what the search is, search the db to see if we already have it, if we have it from a different service add the relevant info and return
@@ -61,6 +61,9 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
     // lazy url check - this looks like a url, but didn't match any of our tests
     // error out here
     return 'It looks like you\'ve searched a URL, but none of the filters matched; no tracks found';
+  } else if (search === 'givefailpls') {
+    // sometimes I just need a failed track, ok?
+    return ['here is the failed track you asked for'];
   } else {
     sourceArray = await textSource(search);
     sourceType = 'text';
@@ -254,7 +257,7 @@ async function fetchTracks(search:string):Promise<Array<Track> | string> {
     })());
   }
 
-  const finishedArray:Array<Track> = [];
+  const finishedArray:Array<Track | string> = [];
   await Promise.allSettled(promiseArray).then(promises => {
     for (const promise of promises) {
       if (promise.status === 'fulfilled') { finishedArray.push(promise.value); }

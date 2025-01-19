@@ -18,7 +18,8 @@ import type { WebSocket } from 'ws';
 import * as spotifyactions from './webserver/spotify.js';
 import subsonic from './acquire/subsonic.js';
 import proxy from 'express-http-proxy';
-
+import { createValidator } from 'express-joi-validation';
+import { playerQueueSchema } from './webserver/validation.js';
 
 parentPort!.on('message', async data => {
   if (data.action === 'exit') {
@@ -30,6 +31,7 @@ parentPort!.on('message', async data => {
 
 const app = express();
 const port = 2468;
+const joiValidator = createValidator();
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -186,16 +188,15 @@ app.get('/player-:playerId([0-9]{18})', async (req, res) => {
   }
 });
 
-// look into json schema, npm joi maybe
 // take actions on the player with the given id
-app.post('/player', async (req, res) => {
+app.post('/player', joiValidator.body(playerQueueSchema), async (req, res) => {
   const webId = req.signedCookies.id;
   logDebug(`Client load event with id ${webId}`);
   if (webId && webIdRegex.test(webId)) {
     const user = await db.getUserWeb(webId);
     if (user) {
-      const action = validator.escape(validator.stripLow(req.body?.action?.replace(sanitize, '') || '')).trim();
-      const parameter = validator.escape(validator.stripLow(('' + req.body?.parameter)?.replace(sanitize, '') || '')).trim();
+      const action = req.body.action;
+      const parameter = req.body.parameter;
       log(req.method, [req.originalUrl, chalk.green(action)]);
       // log('post', [`Endpoint ${chalk.blue('/player')}, code ${chalk.green(req.body.code)}`]);
       const id = crypto.randomBytes(5).toString('hex');

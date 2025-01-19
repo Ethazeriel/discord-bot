@@ -21,3 +21,21 @@ html {
 *, *:before, *:after {
   box-sizing: inherit;
 }
+
+select { /* dark default if otherwise unstyled */
+  background-color: #18191a;
+  color: #fff;
+  border-radius: 5px;
+}
+
+button { /* dark default if otherwise unstyled */
+  background-color: #18191a;
+  color: #fff;
+  border-radius: 5px;
+}
+
+input { /* dark default if otherwise unstyled */
+  background-color: #18191a;
+  color: #fff;
+  border-radius: 5px;
+}

@@ -13,7 +13,7 @@ import Next from './media/placeholder/next.svg?react';
 import Loop from './media/placeholder/loop.svg?react';
 import SlowMode from './media/placeholder/slowmode.png';
 
-import type { PlayerClick } from './types';
+
 type Action = 'prev' | 'togglePause' | 'next' | 'shuffle' | 'toggleLoop' | 'seek' | 'slowmode';
 type MediaState = {
   seek:number,
@@ -99,7 +99,7 @@ function reducer(state:MediaState, [type, value]:[any, any?]) {
   }
 }
 
-export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:PlayerClick) => void}) {
+export function MediaControls(props: { status?:PlayerStatus, playerClick:(action:PlayerAction<ActionType>) => void, type:'bar'|'buttons'|'slider', buttonSize?:string}) {
   const player = props.status;
   const track = player?.tracks?.[player?.playhead];
 
@@ -152,7 +152,7 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
   }, [duration]);
 
   const button = (action:Action) => {
-    props.playerClick({ action: action });
+    props.playerClick({ action:action, parameter:undefined });
   };
 
   const sliderSlide = (event:React.ChangeEvent<HTMLInputElement>) => {
@@ -170,24 +170,36 @@ export function MediaBar(props: { status?:PlayerStatus, playerClick:(action:Play
       dispatch(['cancel', false]);
     }
   };
-
-  return (
-    <MediaContainer>
-      <ButtonRow>
-        <Button onClick={() => button('shuffle')}><Shuffle /></Button>
-        <Button onClick={() => button('prev')}><Prev /></Button>
-        <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
-        <Button onClick={() => button('next')}><Next /></Button>
-        <Button onClick={() => button('toggleLoop')}><Loop /></Button>
-        <img src={SlowMode} height='36px' width='36px' onClick={() => button('slowmode')} />
-      </ButtonRow>
-      <SliderRow>
-        <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
-        <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => sliderSlide(event)} onMouseUp={(event) => sliderRelease(event)} />
-        <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
-      </SliderRow>
-    </MediaContainer>
+  const buttonDisplay = (
+    <ButtonRow $size={props.buttonSize}>
+      <Button $size={props.buttonSize} onClick={() => button('shuffle')}><Shuffle /></Button>
+      <Button $size={props.buttonSize} onClick={() => button('prev')}><Prev /></Button>
+      <Button $size={props.buttonSize} onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
+      <Button $size={props.buttonSize} onClick={() => button('next')}><Next /></Button>
+      <Button $size={props.buttonSize} onClick={() => button('toggleLoop')}><Loop /></Button>
+      <img src={SlowMode} height={props.buttonSize} width={props.buttonSize} onClick={() => button('slowmode')} />
+    </ButtonRow>
   );
+  const sliderDisplay = (
+    <SliderRow>
+      <TimeStyle>{timeDisplay(state.seeking || state.elapsed)}</TimeStyle>
+      <SliderStyle type="range" min="0" max={state.duration} step="1" value={state.seeking || state.elapsed} onChange={(event) => sliderSlide(event)} onMouseUp={(event) => sliderRelease(event)} />
+      <TimeStyle>{timeDisplay(state.duration)}</TimeStyle>
+    </SliderRow>
+  );
+  switch (props.type) {
+    case 'buttons':
+      return buttonDisplay;
+    case 'slider':
+      return sliderDisplay;
+    case 'bar':
+      return (
+        <MediaContainer>
+          {buttonDisplay}
+          {sliderDisplay}
+        </MediaContainer>
+      );
+  }
 }
 
 const MediaContainer = styled.div`
@@ -199,8 +211,8 @@ const MediaContainer = styled.div`
   overflow: visible;
 `;
 
-const ButtonRow = styled.div`
-  height: 36px;
+const ButtonRow = styled.div<{ $size?:string }>`
+  height: ${props => props.$size || 36}px;
   margin: 4px 0 0 0;
   display: flex;
   flex-direction: row;
@@ -208,9 +220,10 @@ const ButtonRow = styled.div`
   justify-content: center;
 `;
 
-const Button = styled.svg`
-  width: 36px;
-  height: 36px;
+const Button = styled.svg<{ $size?:string }>`
+  pointer-events: auto;
+  width: ${props => props.$size || '36px'};
+  height: ${props => props.$size || '36ps'};
   margin: 0 2px 0 2px;
   color: #e736e7;
   &:hover {
@@ -226,8 +239,9 @@ const SliderRow = styled.div`
 `;
 
 const SliderStyle = styled.input`
+  pointer-events: auto;
   height: 100%;
-  width: 200px;
+  width: 240px;
   margin: 0;
   padding: 0;
   object-fit: contain;

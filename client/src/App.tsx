@@ -1,9 +1,7 @@
 import './App.css';
 import * as React from 'react';
 import { TrackSmall, DraggedTrack } from './TrackSmall';
-import type { PlayerClick, User } from './types';
 import { StatusBar } from './StatusBar';
-import { MediaBar } from './MediaBar';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import styled, { css } from 'styled-components';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -16,14 +14,14 @@ import { allowExternal, allowedExternalTypes } from './utils';
 
 type AppState = {
   playerStatus?: PlayerStatus,
-  user: User,
+  user: WebUser | { status:'new' },
   error: null | string,
   socket?: any,
 }
 
 type LoadResponse = {
   player?: PlayerStatus,
-  user: User,
+  user: WebUser,
   error: null | string,
 }
 
@@ -53,7 +51,7 @@ export default class App extends React.Component<Record<string, never>, AppState
     this.playerClick = this.playerClick.bind(this);
   }
 
-  playerClick(playerClick: PlayerClick) {
+  playerClick(playerClick:PlayerAction<ActionType>) {
     fetch(`${window.location.origin}/player`, {
       method: 'POST',
       body: JSON.stringify({ action: playerClick.action, parameter: playerClick.parameter }),
@@ -135,15 +133,15 @@ export default class App extends React.Component<Record<string, never>, AppState
     if (this.state.user.status === 'new') {
       return (
         <div className="App">
-          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
+          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} playerClick={this.playerClick}/>
           <ErrorDisplay error={this.state.error} />
         </div>
       );
     } else {
       return (
         <div className="App">
-          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} />
-          <MediaBar status={this.state.playerStatus} playerClick={this.playerClick}/>
+          <StatusBar status={{ user: this.state.user, player:this.state.playerStatus }} playerClick={this.playerClick} />
+          {/* <MediaControls status={this.state.playerStatus} playerClick={this.playerClick} type='bar'/> */}
           <ErrorDisplay error={this.state.error} />
           <MainContent>
             <PlayerQueue playerClick={this.playerClick} status={this.state.playerStatus} />
@@ -201,7 +199,7 @@ function dragText(state: any, [type, value]:[any, any?]) {
     }
   }
 }
-function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:PlayerStatus }) {
+function PlayerQueue(props: { playerClick:(action:PlayerAction<ActionType>) => void, status?:PlayerStatus }) {
   const initialState: { visible:boolean, label:string, dragY:number, dragX:number, offsetX:number } = {
     visible: false,
     label: '',
@@ -343,12 +341,12 @@ function PlayerQueue(props: { playerClick:(action:PlayerClick) => void, status?:
         return;
       } else {
         addEventListener('cleanup', cleanUp);
-        props.playerClick({ action:'move', parameter:`${dragID} ${localQueue.length} ${from.UUID}` }); // I'm sorry
+        props.playerClick({ action:'move', parameter:{ from: dragID!, to:localQueue.length, UUID:from.UUID } });
         console.log(`move track: [${dragID}] ${from.name} to: [${localQueue.length}]`);
       }
     } else if (externalTypes.length) {
       addEventListener('cleanup', cleanUp);
-      props.playerClick({ action:'pendingIndex', parameter:`${localQueue.length} ${externalTypes[0]}` }); // I'm sorry
+      props.playerClick({ action:'pendingIndex', parameter:{ index:localQueue.length, query:externalTypes[0] } });
       console.log(`queue external ${externalTypes[0]} at position ${localQueue.length}`);
     } else if (externalTypes.length === 0) {
       clearStyling();

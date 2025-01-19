@@ -7,7 +7,7 @@ import browserslistToEsbuild from 'browserslist-to-esbuild';
 export default defineConfig({
   base: '',
   plugins: [
-    react(),
+    react({ jsxImportSource: (process.env.NODE_ENV === 'production') ? 'react' : '@welldone-software/why-did-you-render' }),
     viteTsconfigPaths(),
     svgr(),
   ],
@@ -29,5 +29,8 @@ export default defineConfig({
       'not dead',
       'not op_mini all',
     ]),
+    rollupOptions: {
+      external: ['@welldone-software/why-did-you-render'],
+    },
   },
 });
