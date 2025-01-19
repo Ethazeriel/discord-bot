@@ -99,7 +99,7 @@ function reducer(state:MediaState, [type, value]:[any, any?]) {
   }
 }
 
-export function MediaControls(props: { status?:PlayerStatus, playerClick:(action:PlayerAction<ActionType>) => void, type:'bar'|'buttons'|'slider'}) {
+export function MediaControls(props: { status?:PlayerStatus, playerClick:(action:PlayerAction<ActionType>) => void, type:'bar'|'buttons'|'slider', buttonSize?:string}) {
   const player = props.status;
   const track = player?.tracks?.[player?.playhead];
 
@@ -171,13 +171,13 @@ export function MediaControls(props: { status?:PlayerStatus, playerClick:(action
     }
   };
   const buttonDisplay = (
-    <ButtonRow>
-      <Button onClick={() => button('shuffle')}><Shuffle /></Button>
-      <Button onClick={() => button('prev')}><Prev /></Button>
-      <Button onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
-      <Button onClick={() => button('next')}><Next /></Button>
-      <Button onClick={() => button('toggleLoop')}><Loop /></Button>
-      <img src={SlowMode} height='36px' width='36px' onClick={() => button('slowmode')} />
+    <ButtonRow $size={props.buttonSize}>
+      <Button $size={props.buttonSize} onClick={() => button('shuffle')}><Shuffle /></Button>
+      <Button $size={props.buttonSize} onClick={() => button('prev')}><Prev /></Button>
+      <Button $size={props.buttonSize} onClick={() => button('togglePause')}>{(state.paused) ? <Play /> : <Pause />}</Button>
+      <Button $size={props.buttonSize} onClick={() => button('next')}><Next /></Button>
+      <Button $size={props.buttonSize} onClick={() => button('toggleLoop')}><Loop /></Button>
+      <img src={SlowMode} height={props.buttonSize} width={props.buttonSize} onClick={() => button('slowmode')} />
     </ButtonRow>
   );
   const sliderDisplay = (
@@ -211,8 +211,8 @@ const MediaContainer = styled.div`
   overflow: visible;
 `;
 
-const ButtonRow = styled.div`
-  height: 36px;
+const ButtonRow = styled.div<{ $size?:string }>`
+  height: ${props => props.$size || 36}px;
   margin: 4px 0 0 0;
   display: flex;
   flex-direction: row;
@@ -220,9 +220,9 @@ const ButtonRow = styled.div`
   justify-content: center;
 `;
 
-const Button = styled.svg`
-  width: 36px;
-  height: 36px;
+const Button = styled.svg<{ $size?:string }>`
+  width: ${props => props.$size || '36px'};
+  height: ${props => props.$size || '36ps'};
   margin: 0 2px 0 2px;
   color: #e736e7;
   &:hover {
@@ -239,7 +239,7 @@ const SliderRow = styled.div`
 
 const SliderStyle = styled.input`
   height: 100%;
-  width: 200px;
+  width: 240px;
   margin: 0;
   padding: 0;
   object-fit: contain;

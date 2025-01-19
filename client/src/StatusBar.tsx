@@ -24,15 +24,17 @@ font-size: 2vh;
 > div {
   max-height: 100%;
   width: 100%;
-  flex: 1;
+  flex: 2;
 }
 > div:first-of-type {
   text-align: left;
   padding-left:1em;
+  flex: 1;
 }
 > div:last-child {
   text-align: right;
   padding-right:1em;
+  flex: 1;
 }
 `;
 const SpaceHolder = styled.div`
@@ -73,7 +75,7 @@ right:0px;
 top:-10em;
 overflow-y:visible;
 width: fit-content;
-max-width: 33vw;
+max-width: 25vw;
 min-height: 6em;
 padding-right:1em;
 padding-top:4em;
@@ -107,9 +109,9 @@ export function StatusBar(props: { status: Status, playerClick:(action:PlayerAct
         <SpaceHolder />
         <Bar>
           <div><Clock /></div>
-          <div><MediaControls status={props.status.player} playerClick={props.playerClick} type='buttons'/></div>
+          <div><MediaControls status={props.status.player} playerClick={props.playerClick} type='bar' buttonSize='30px' /></div>
           <div>Current track: {props.status.player?.tracks[props.status.player?.playhead]?.goose?.track?.name || 'None'}</div>
-          <div><MediaControls status={props.status.player} playerClick={props.playerClick} type='slider'/></div>
+          <div>{/* free real estate */}</div>
           <div>
             <AlwaysVisible>
               Connections ▼ <br />
