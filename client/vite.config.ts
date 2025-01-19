@@ -7,7 +7,7 @@ import browserslistToEsbuild from 'browserslist-to-esbuild';
 export default defineConfig({
   base: '',
   plugins: [
-    react({ jsxImportSource: '@welldone-software/why-did-you-render' }),
+    react({ jsxImportSource: (process.env.NODE_ENV === 'production') ? 'react' : '@welldone-software/why-did-you-render' }),
     viteTsconfigPaths(),
     svgr(),
   ],
