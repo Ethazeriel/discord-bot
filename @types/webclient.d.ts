@@ -62,6 +62,11 @@ type WebUser = {
 		username:string,
 		locale:string
 	}
+  lastfm?: {
+		id:string,
+		username:string,
+		locale:string
+	}
   napster?: {
     id:string,
     username:string,

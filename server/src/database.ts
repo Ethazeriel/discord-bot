@@ -512,6 +512,7 @@ export async function getUserWeb(webid:string):Promise<WebUser | undefined> {
         },
         spotify: result.spotify,
         napster: result.napster,
+        lastfm: result.lastfm,
         status: 'known',
       };
       return basicuser;

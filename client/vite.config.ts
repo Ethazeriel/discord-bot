@@ -15,7 +15,7 @@ export default defineConfig({
     open: true,
     port: 3000,
     proxy: {
-      '^/load|/oauth2|/tracks|/playlist|/player|/spotify-playlist|/subsonic-art': 'http://localhost:2468',
+      '^/load|/oauth2|/basicauth|/tracks|/playlist|/player|/spotify-playlist|/subsonic-art': 'http://localhost:2468',
       '/websocket': {
         target: 'ws://localhost:2468',
         ws: true,

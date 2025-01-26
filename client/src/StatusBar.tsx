@@ -120,11 +120,13 @@ export function StatusBar(props: { status: Status, playerClick:(action:PlayerAct
               Connections ▼ <br />
               <ConLogo type='discord' active={(props?.status?.user?.discord?.username ? true : false)} />
               <ConLogo type='spotify' active={(props?.status?.user?.spotify?.username ? true : false)} />
+              <ConLogo type='lastfm' active={(props?.status?.user?.lastfm?.username ? true : false)} />
               <ConLogo type='napster' active={(props?.status?.user?.napster?.username ? true : false)} />
             </AlwaysVisible>
             <Connections>
               <Account type='discord' user={props?.status?.user} />
               <Account type='spotify' user={props?.status?.user} />
+              <Account type='lastfm' user={props?.status?.user} />
               <Account type='napster' user={props?.status?.user} />
 
             </Connections>
@@ -140,7 +142,7 @@ height: 1.5vh;
 width: auto; 
 margin-right:4px;
 `;
-function ConLogo(props:{ type:'spotify' | 'discord' | 'napster', active:boolean }) {
+function ConLogo(props:{ type:'spotify' | 'discord' | 'napster' | 'lastfm', active:boolean }) {
   const loc = `/media/connections/${props.type}/${props.active}.png`;
   return (
     <>
@@ -149,7 +151,7 @@ function ConLogo(props:{ type:'spotify' | 'discord' | 'napster', active:boolean 
   );
 }
 
-function Account(props:{ type:'spotify' | 'discord' | 'napster', user:WebUser}) {
+function Account(props:{ type:'spotify' | 'discord' | 'napster' | 'lastfm', user:WebUser}) {
   switch (props.type) {
     case 'spotify': {
       if (props.user?.spotify) {
@@ -158,6 +160,18 @@ function Account(props:{ type:'spotify' | 'discord' | 'napster', user:WebUser}) 
         return (
           <div>
             <AuthLink href={`${window.location.origin}/oauth2?type=spotify`}><ConLogo type='spotify' active={(props.user?.spotify?.username ? true : false)} />Link Spotify</AuthLink>
+          </div>
+        );
+      }
+    }
+
+    case 'lastfm': {
+      if (props.user?.lastfm) {
+        return (<ConAccount><ConLogo type='lastfm' active={(props.user?.lastfm?.username ? true : false)} />{props.user?.lastfm?.username}</ConAccount>);
+      } else {
+        return (
+          <div>
+            <AuthLink href={`${window.location.origin}/basicauth?type=lastfm`}><ConLogo type='lastfm' active={(props.user?.lastfm?.username ? true : false)} />Link LastFM</AuthLink>
           </div>
         );
       }

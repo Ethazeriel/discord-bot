@@ -18,11 +18,17 @@ interface User {
 	}
 	tokens: {
     discord?:Oauth2Token,
-    spotify?:Oauth2Token
+    spotify?:Oauth2Token,
+		lastfm?:Oauth2Token,
 		napster?:Oauth2Token
   },
 	webClientId?:string[],
 	spotify?: {
+		id:string,
+		username:string,
+		locale:string
+	},
+	lastfm?: {
 		id:string,
 		username:string,
 		locale:string
@@ -170,6 +176,11 @@ interface GooseConfig {
 		redirect_uri: string
 	},
 	napster: {
+		client_id: string,
+		client_secret: string,
+		redirect_uri: string
+	},
+	lastfm: {
 		client_id: string,
 		client_secret: string,
 		redirect_uri: string

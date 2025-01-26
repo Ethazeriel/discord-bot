@@ -106,7 +106,7 @@ export async function flow(type:'discord' | 'spotify' | 'napster', code:string, 
   return false;
 }
 
-export async function getToken(user:object, type:'discord' | 'spotify' | 'napster') {
+export async function getToken(user:object, type:'discord' | 'spotify' | 'napster' | 'lastfm') {
   // takes a db query object, and refreshes/returns the relevant tokens, ready to use
   const dab = await db.getDb();
   try {
@@ -120,13 +120,14 @@ export async function getToken(user:object, type:'discord' | 'spotify' | 'napste
   } catch (error:any) { log('error', ['oauth error:', error.stack]); }
 }
 
-async function updateToken(user:User, type:'discord' | 'spotify' | 'napster'):Promise<string | undefined> {
+async function updateToken(user:User, type:'discord' | 'spotify' | 'napster' | 'lastfm'):Promise<string | undefined> {
   let timeout;
 
   switch (type) {
     case 'discord': { timeout = 86400000; break;} // token lasts one week, so use one day as timeout
     case 'spotify': { timeout = 1800000; break;} // token lasts one hour, so use half hour as timeout
     case 'napster': { timeout = 64800000; break;} // token lasts one day, so use 18 hours as timeout
+    case 'lastfm': { timeout = 64800000; break;} // token never expires, so this doesn't matter
   }
   if (user.tokens && user.tokens[type]) {
     if ((user.tokens[type]!.expiry - Date.now()) < timeout) {
@@ -156,6 +157,14 @@ async function updateToken(user:User, type:'discord' | 'spotify' | 'napster'):Pr
           tokenconfig = {
             url: 'https://api.napster.com/oauth/access_token',
             data: `client_id=${napster.client_id}&client_secret=${napster.client_secret}&response_type=code&grant_type=refresh_token&refresh_token=${user.tokens.napster!.renew}`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          };
+          break;}
+
+        case 'lastfm': {
+          tokenconfig = { // nonsense values, will never get called
+            url: 'https://localhost',
+            data: 'ur mum',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           };
           break;}

@@ -10,12 +10,13 @@ import { sanitize, webClientId as webIdRegex } from '../regexes.js';
 import { parentPort } from 'worker_threads';
 import crypto from 'crypto';
 import fs from 'fs';
-const { discord, spotify, napster, root_url }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
+const { discord, spotify, napster, lastfm, root_url }:GooseConfig = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../../../config.json', import.meta.url).toString()), 'utf-8'));
 import * as oauth2 from '../oauth2.js';
 import { fileURLToPath, URL } from 'url';
 import { WebSocketServer } from 'ws';
 import type { WebSocket } from 'ws';
 import * as spotifyactions from './webserver/spotify.js';
+import * as lastfmactions from './webserver/lastfm.js';
 import subsonic from './acquire/subsonic.js';
 import proxy from 'express-http-proxy';
 import { createValidator } from 'express-joi-validation';
@@ -112,13 +113,38 @@ app.get('/oauth2', async (req, res) => {
         default: { res.status(400).end(); break; }
       }
       res.redirect(303, target);
-    } else if (state !== idHash) { // if these don't match, something is very wrong and we need to not attempt auth
+    } else if (state !== idHash) {
+      // state check to protect against XSRF
       res.status(409).end();
     } else if (type !== 'discord' && type !== 'spotify' && type !== 'napster') { // we should never hit this but typescript demands it
       logDebug(type);
       return;
     } else { // the client has approved, so let's go do our thing
       const auth = await oauth2.flow(type, code, webId);
+      auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
+    }
+  }
+});
+
+// neutered auth flow for lastfm, as they don't follow the oauth spec at all :(
+app.get('/basicauth', async (req, res) => {
+  log(req.method, [req.originalUrl]);
+  const webId = req.signedCookies.id;
+  if (!(webId && webIdRegex.test(webId))) { res.status(400).send('This function requires a client ID cookie'); } else {
+    const type = validator.escape(validator.stripLow(((req.query?.type as string)?.replace(sanitize, '') || ''))).trim(); // should always have this
+    const token = validator.escape(validator.stripLow((req.query?.token as string)?.replace(sanitize, '') || '')).trim(); // only exists after the client approves, so use this to know what stage we're at
+    if (!token) {
+      let target = 'https://localhost';
+      switch (type) {
+        case 'lastfm': { target = `https://www.last.fm/api/auth?api_key=${lastfm.client_id}&cb=${lastfm.redirect_uri}`; break;}
+        default: { res.status(400).end(); break; }
+      }
+      res.redirect(303, target);
+    } else if (type !== 'lastfm') { // we should never hit this but typescript demands it
+      logDebug(type);
+      return;
+    } else { // the client has approved, so let's go do our thing
+      const auth = await lastfmactions.auth(token, webId);
       auth ? res.redirect(302, root_url) : res.status(500).send('Server error during oauth2 flow');
     }
   }

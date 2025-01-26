@@ -29,6 +29,11 @@
         "client_secret": "yourclientsecret",
         "redirect_uri": "http://localhost/oauth2?type=napster"
     },
+    "lastfm": {
+        "client_id": "yourclientid",
+        "client_secret": "yourclientsecret",
+        "redirect_uri": "http://localhost/basicauth?type=lastfm"
+    },
     "youtube": {
         "apiKey": "youryoutubeapikey",
         "useragent": "yourbrowseruseragentstring"
